@@ -1,0 +1,14 @@
+<odoo>
+    <record id="tenant_identity_form" model="ir.ui.view">
+        <field name="name">uno360x.tenant.identity.form</field>
+        <field name="model">uno360x.tenant.identity</field>
+        <field name="arch" type="xml">
+            <form string="Instancia UNO360X" create="false" edit="false" delete="false">
+                <sheet><group>
+                    <field name="tenant_id"/>
+                    <field name="hostname"/>
+                </group></sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.sqlite3
+*.db
+.env
+secrets/
+*.p12
+*.pfx
+*.pem
+*.key
