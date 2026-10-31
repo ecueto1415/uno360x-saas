@@ -1,0 +1,118 @@
+<t t-name="uno360x.plans_public"><t t-call="website.layout"><t t-set="additional_title">Planes y precios | UNO360X</t><div id="wrap"><div id="uno360x-public"><style>body:has(#uno360x-public) {background:#fff;}
+body:has(#uno360x-public) #wrapwrap&gt;header,body:has(#uno360x-public) #wrapwrap&gt;footer{display:none;}
+#uno360x-public{--navy:#101e35;--teal:#16b8a6;--ink:#18283f;--muted:#66778d;--line:#e3eaf2;--light:#f3f6fa;color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;padding:24px 24px 0;}
+#uno360x-public *,#uno360x-public *::before,#uno360x-public *::after{box-sizing:border-box;}
+#uno360x-public a{color:inherit;text-decoration:none;}
+#uno360x-public a:hover{text-decoration:underline;}
+#uno360x-public .u-container{max-width:1120px;margin:0 auto;}
+#uno360x-public .u-wordmark{font-size:26px;line-height:1;font-weight:800;letter-spacing:-.7px;white-space:nowrap;}
+#uno360x-public .u-wordmark span{color:#24c9b6;}
+#uno360x-public .u-nav{display:flex;gap:28px;align-items:center;background:var(--navy);color:#fff;border-radius:12px;padding:22px 26px;}
+#uno360x-public .u-navlinks{display:flex;gap:26px;align-items:center;margin-left:auto;font-size:13px;color:#c2cedd;}
+#uno360x-public .u-actions{display:flex;align-items:center;gap:12px;}
+#uno360x-public .u-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#12877c;color:#fff!important;border:1px solid #12877c;border-radius:9px;padding:12px 20px;font-size:13px;line-height:1.4;font-weight:650;text-align:center;min-height:44px;cursor:pointer;}
+#uno360x-public .u-btn:hover{background:#0e7067;text-decoration:none;}
+#uno360x-public .u-btn-secondary{background:#243850;border-color:#243850;}
+#uno360x-public .u-mobile-menu{display:none;position:relative;}
+#uno360x-public .u-mobile-menu summary{cursor:pointer;font-size:13px;list-style:none;padding:9px;}
+#uno360x-public .u-mobile-links{position:absolute;right:0;top:45px;background:var(--navy);border:1px solid #35516c;padding:18px;border-radius:10px;min-width:190px;z-index:10;display:grid;gap:15px;}
+#uno360x-public .u-hero{margin-top:18px;padding:50px 34px;background:var(--navy);color:#fff;border-radius:20px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.98fr);gap:38px;align-items:center;}
+#uno360x-public .u-eyebrow{display:inline-block;padding:6px 12px;border-radius:30px;background:#203d50;color:#94e6da;text-transform:uppercase;letter-spacing:1.1px;font-size:10px;font-weight:750;margin:0 0 25px;}
+#uno360x-public h1{font-size:clamp(38px,4.2vw,54px);line-height:1.12;letter-spacing:-1.8px;color:#fff;font-weight:750;margin:0 0 26px;}
+#uno360x-public .u-hero-copy&gt;p:not(.u-eyebrow):not(.u-note){font-size:17px;line-height:1.7;color:#c3cfdd;margin:0 0 28px;max-width:430px;}
+#uno360x-public .u-note{color:#a5b8ce;font-size:11px;margin:28px 0 0;line-height:1.7;}
+#uno360x-public .u-preview{min-width:0;}
+#uno360x-public .u-product{background:#fff;color:var(--ink);border-radius:13px;overflow:hidden;border:1px solid #dce5ef;box-shadow:0 20px 45px #0002;}
+#uno360x-public .u-productbar{padding:14px 16px;background:#e7edf5;font-size:10px;font-weight:700;}
+#uno360x-public .u-productbody{display:grid;grid-template-columns:94px minmax(0,1fr);gap:14px;padding:14px;min-height:275px;}
+#uno360x-public .u-productside{background:var(--navy);border-radius:7px;padding:14px 10px;color:#b5c4d7;font-size:9px;display:flex;flex-direction:column;gap:14px;}
+#uno360x-public .u-productside .u-wordmark{font-size:13px;color:white;margin-bottom:4px;}
+#uno360x-public .u-productmain{min-width:0;}
+#uno360x-public .u-productmain h3{font-size:16px;margin:0 0 5px;font-weight:750;}
+#uno360x-public .u-productmain&gt;p{font-size:9px;color:var(--muted);margin:0 0 18px;}
+#uno360x-public .u-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+#uno360x-public .u-metrics&gt;div{padding:12px 10px;background:var(--light);border-radius:7px;}
+#uno360x-public .u-metrics span{display:block;font-size:8px;color:var(--muted);}
+#uno360x-public .u-metrics strong{display:block;font-size:21px;line-height:1.4;}
+#uno360x-public .u-chart{padding:12px;background:var(--light);border-radius:8px;margin-top:16px;}
+#uno360x-public .u-chart&gt;span{font-size:9px;font-weight:700;}
+#uno360x-public .u-bars{height:78px;display:flex;align-items:end;gap:10px;margin-top:10px;}
+#uno360x-public .u-bars i{flex:1;background:#c9e9e4;border-radius:4px 4px 0 0;height:var(--h);}
+#uno360x-public .u-bars i:last-child{background:var(--teal);}
+#uno360x-public .u-preview&gt;p{font-size:9px;color:#98aec8;margin:13px 0 0;}
+#uno360x-public .u-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px;margin:30px 0 74px;padding:0 10px;}
+#uno360x-public .u-benefits h3{font-size:17px;margin:0 0 8px;font-weight:700;}
+#uno360x-public .u-benefits p{font-size:12px;color:var(--muted);margin:0;}
+#uno360x-public .u-section{padding:12px 0 68px;scroll-margin-top:24px;}
+#uno360x-public h2{font-size:clamp(26px,3.3vw,36px);line-height:1.25;letter-spacing:-.7px;font-weight:750;margin:0 0 15px;color:var(--ink);}
+#uno360x-public .u-section-intro{font-size:15px;color:var(--muted);margin:0 0 32px;}
+#uno360x-public .u-modulegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;}
+#uno360x-public .u-module{border:1px solid var(--line);border-radius:12px;background:#fff;padding:22px 18px;min-width:0;}
+#uno360x-public .u-icon{width:38px;height:38px;background:#e0f5ef;color:#148a80;border-radius:10px;display:grid;place-items:center;font-size:19px;margin-bottom:20px;}
+#uno360x-public .u-module h3{font-size:15px;font-weight:750;margin:0 0 12px;line-height:1.4;}
+#uno360x-public .u-module&gt;p{font-size:12px;color:var(--muted);margin:0 0 17px;line-height:1.8;}
+#uno360x-public .u-module summary{font-size:12px;color:#147d75;font-weight:700;cursor:pointer;list-style:none;}
+#uno360x-public .u-module details p{font-size:12px;color:var(--muted);margin:14px 0;}
+#uno360x-public .u-module details a{font-size:12px;color:#147d75;font-weight:700;}
+#uno360x-public .u-more{font-size:14px;margin:26px 0 0;}
+#uno360x-public .u-growth{padding:32px;background:var(--navy);border-radius:16px;color:white;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.8fr);gap:35px;align-items:center;}
+#uno360x-public .u-growth h2{color:#fff;font-size:30px;line-height:1.4;margin-bottom:0;}
+#uno360x-public .u-growthaside{font-size:16px;color:#b8c9dc;line-height:2;}
+#uno360x-public .u-growthaside strong{font-size:21px;color:white;display:block;}
+#uno360x-public .u-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:24px;}
+#uno360x-public .u-step{padding:25px;border:1px solid var(--line);border-radius:12px;}
+#uno360x-public .u-number{display:inline-block;background:#e0f5ef;color:#187661;border-radius:25px;padding:5px 12px;font-size:11px;font-weight:700;}
+#uno360x-public .u-step h3{font-size:18px;line-height:1.4;font-weight:700;margin:23px 0 16px;}
+#uno360x-public .u-step p{font-size:13px;color:var(--muted);margin:0;}
+#uno360x-public .u-permissions{background:#e0f5ef;color:#187661;padding:22px;border-radius:10px;margin-top:24px;}
+#uno360x-public .u-permissions strong{font-size:17px;display:block;}
+#uno360x-public .u-permissions p{font-size:12px;margin:8px 0 0;}
+#uno360x-public .u-contactgrid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:24px;}
+#uno360x-public .u-contactintro{background:var(--navy);color:#fff;padding:35px;border-radius:15px;}
+#uno360x-public .u-contactintro h2{color:white;font-size:32px;line-height:1.4;margin:10px 0 25px;}
+#uno360x-public .u-contactintro p:not(.u-eyebrow){font-size:15px;color:#c1cedd;line-height:1.8;}
+#uno360x-public .u-contactintro ul{list-style:none;padding:0;margin:30px 0 0;display:grid;gap:16px;font-size:14px;}
+#uno360x-public .u-contactintro li::before{content:'+ ';color:#69d6c7;margin-right:6px;}
+#uno360x-public .u-formcard{padding:28px;border:1px solid var(--line);border-radius:15px;min-width:0;}
+#uno360x-public .u-formcard h3{font-size:25px;font-weight:750;margin:0 0 10px;letter-spacing:-.5px;}
+#uno360x-public .u-formcard&gt;p{font-size:12px;color:var(--muted);margin:0 0 25px;}
+#uno360x-public .u-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 20px;}
+#uno360x-public .u-fields .u-full{grid-column:1/-1;}
+#uno360x-public label{display:block;font-size:11px;font-weight:650;line-height:1.5;color:var(--ink);margin:0 0 8px;}
+#uno360x-public .s_website_form_input{display:block;width:100%;min-width:0;min-height:44px;background:#f5f7fb;border:1px solid #dce4ed;border-radius:7px;padding:10px 12px;font:13px/1.4 inherit;color:var(--ink);}
+#uno360x-public .u-consent{font-size:11px;color:var(--muted);line-height:1.7;margin:20px 0;}
+#uno360x-public .s_website_form_send{width:100%;}
+#uno360x-public #s_website_form_result{display:block;font-size:12px;margin-top:12px;}
+#uno360x-public .u-success{background:#e0f5ef;color:#187661;border-radius:10px;padding:24px;}
+#uno360x-public .u-success h3{font-size:23px;color:#187661;}
+#uno360x-public .u-success p{font-size:14px;}
+#uno360x-public .u-footer{background:var(--navy);color:white;padding:30px 27px;border-radius:14px;margin:0 auto 24px;display:grid;grid-template-columns:minmax(0,1.25fr) repeat(3,minmax(0,1fr));gap:28px;}
+#uno360x-public .u-footer p{font-size:11px;color:#b2c2d5;margin:18px 0 0;}
+#uno360x-public .u-footer strong{display:block;font-size:12px;margin:0 0 15px;}
+#uno360x-public .u-footer a:not(.u-wordmark){display:block;font-size:11px;color:#b2c2d5;margin:8px 0;}
+#uno360x-public .u-privacy{font-size:11px;color:var(--muted);margin:0 auto 30px;max-width:1120px;}
+#uno360x-public .u-privacy summary{cursor:pointer;font-weight:600;}
+#uno360x-public .u-privacy p{margin-top:12px;max-width:800px;}
+#uno360x-public :is(a,summary,input,select,button):focus-visible{outline:3px solid #12877c;outline-offset:4px;}
+@media(max-width:1000px){#uno360x-public .u-nav{gap:20px;padding:20px;}#uno360x-public .u-navlinks{gap:15px;}#uno360x-public .u-nav .u-btn{padding:11px 14px;font-size:12px;}#uno360x-public .u-modulegrid{grid-template-columns:repeat(2,minmax(0,1fr));}#uno360x-public .u-productbody{grid-template-columns:76px minmax(0,1fr);}#uno360x-public .u-hero{gap:24px;padding:38px 28px;}}
+@media(max-width:760px){#uno360x-public{padding:15px 14px 0;}#uno360x-public .u-nav{background:#fff;color:var(--ink);padding:14px 8px;gap:12px;}#uno360x-public .u-navlinks{display:none;}#uno360x-public .u-nav&gt;.u-actions{margin-left:auto;}#uno360x-public .u-nav .u-navdemo{display:none;}#uno360x-public .u-mobile-menu{display:block;}#uno360x-public .u-mobile-links{color:white;}#uno360x-public .u-nav .u-wordmark{font-size:23px;}#uno360x-public .u-nav .u-btn-secondary{font-size:11px;padding:9px 12px;}#uno360x-public .u-hero{grid-template-columns:minmax(0,1fr);margin-top:10px;border-radius:16px;padding:36px 26px;}#uno360x-public h1{font-size:40px;letter-spacing:-1px;}#uno360x-public .u-hero-copy&gt;p:not(.u-eyebrow):not(.u-note){font-size:15px;}#uno360x-public .u-hero .u-actions{display:grid;gap:12px;}#uno360x-public .u-hero .u-btn{width:100%;}#uno360x-public .u-preview{display:none;}#uno360x-public .u-benefits{grid-template-columns:minmax(0,1fr);gap:22px;margin:28px 0 52px;padding:0 10px;}#uno360x-public .u-section{padding-bottom:48px;}#uno360x-public .u-modulegrid{grid-template-columns:minmax(0,1fr);}#uno360x-public .u-module{padding:22px;}#uno360x-public .u-growth{grid-template-columns:minmax(0,1fr);padding:27px;}#uno360x-public .u-growth h2{font-size:26px;}#uno360x-public .u-growthaside{font-size:14px;}#uno360x-public .u-steps{grid-template-columns:minmax(0,1fr);}#uno360x-public .u-contactgrid{grid-template-columns:minmax(0,1fr);}#uno360x-public .u-contactintro{padding:28px;}#uno360x-public .u-contactintro h2{font-size:28px;}#uno360x-public .u-formcard{padding:24px;}#uno360x-public .u-fields{grid-template-columns:minmax(0,1fr);gap:19px;}#uno360x-public .u-footer{grid-template-columns:repeat(2,minmax(0,1fr));padding:28px;}}
+@media(max-width:380px){#uno360x-public .u-nav{gap:6px;}#uno360x-public .u-nav .u-wordmark{font-size:21px;}#uno360x-public .u-nav .u-btn-secondary{padding:8px;font-size:10px;}#uno360x-public .u-hero{padding:30px 21px;}#uno360x-public h1{font-size:34px;}#uno360x-public .u-footer{grid-template-columns:minmax(0,1fr);}}
+@media(prefers-reduced-motion:reduce){#uno360x-public *{scroll-behavior:auto;transition:none;}}
+
+#uno360x-public{background:#f6f9fb;padding-bottom:35px}body:has(#uno360x-public){background:#f6f9fb}
+.p-intro{text-align:center;padding:44px 0 30px}.p-intro h1{color:#101e35!important;font-size:40px!important;margin:20px 0!important}.p-intro p{color:#66778d}.p-kicker{color:#008f85;font-size:12px;font-weight:750;letter-spacing:.7px}
+.p-period{display:inline-flex;background:#e6edf3;padding:4px;border-radius:13px;gap:4px;margin:12px 0}.p-period button{border:0;padding:10px 48px;border-radius:10px;color:#66778d;background:transparent;cursor:pointer}.p-period button[aria-pressed=true]{background:#101e35;color:white;font-weight:700}
+.p-layout{display:grid;grid-template-columns:minmax(0,2.05fr) minmax(0,1fr);gap:25px;align-items:start}.p-base,.p-module{background:white;border:1px solid #ccd9e6;border-radius:17px;padding:26px}.p-base{border-top:6px solid #07988d}.p-base h2{font-size:29px!important;margin:12px 0!important}.p-muted{color:#66778d;font-size:13px}.p-base-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;margin:25px 0 8px}.p-price{font-size:27px;font-weight:750;margin:0}.p-base ul{padding-left:20px;line-height:2}.p-fiscal{background:#e4f3ef;padding:20px;border-radius:14px}.p-fiscal strong{color:#008f85;display:block}.p-fiscal p{font-size:12px;color:#66778d}.p-modules-title{margin-top:36px!important;font-size:28px!important}
+.p-module{margin-top:18px;display:block;cursor:pointer}.p-module:has(input:checked){border:2px solid #00988c;padding:25px}.p-module-head{display:flex;gap:14px;align-items:center}.p-module input{width:24px;height:24px;accent-color:#008e84;flex-shrink:0}.p-module h3{font-size:21px;font-weight:700;margin:0}.p-module p{margin:8px 0 16px 38px}.p-module-bottom{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-left:38px;font-size:13px}.p-state{border-radius:10px;background:#101e35;color:white;padding:10px 20px;min-width:140px;text-align:center}.p-module:has(input:checked) .p-state{background:#e0f3ed;color:#008e84}
+.p-summary{background:#101e35;color:white;border-radius:19px;padding:28px;position:sticky;top:20px}.p-summary h2{color:white!important;font-size:27px!important}.p-summary .p-muted{color:#bbcad8}.p-selection{padding:0;list-style:none;margin:30px 0}.p-selection li{margin-bottom:25px;font-weight:700;font-size:14px}.p-selection small{display:block;color:#afc2d2;font-weight:400;margin:4px 0 0 22px}.p-summary hr{border:0;border-top:1px solid #536476;margin:25px 0}.p-summary .u-btn{width:100%;margin-top:22px}.p-total-label{font-size:11px;font-weight:700;color:#a0d8ce}.p-how{padding:55px 0 30px}.p-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:35px}.p-steps strong{color:#008e84}.p-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #d8e2eb;padding-top:25px;gap:20px}.p-footer a{color:#008e84!important;font-weight:700} .p-footer{background:#101e35;color:white;border-radius:12px;padding:25px}.p-footer a.u-wordmark{color:#fff!important;font-weight:800} .p-footer a.u-wordmark span{color:#24c9b6}.p-fine{font-size:11px;color:#66778d;margin-top:24px}
+@media(max-width:1050px){#uno360x-public .u-nav{gap:15px}#uno360x-public .u-navlinks{gap:12px;font-size:12px}}
+@media(max-width:760px){.p-intro{padding:25px 0}.p-intro h1{font-size:32px!important}.p-layout,.p-base-grid,.p-steps{grid-template-columns:minmax(0,1fr)}.p-summary{position:static}.p-base,.p-module{padding:22px}.p-module:has(input:checked){padding:21px}.p-period button{padding:10px 35px}.p-module-bottom{margin-left:0;flex-wrap:wrap}.p-module p{margin-left:0}.p-footer{flex-wrap:wrap}.p-base h2{font-size:26px!important}}
+</style><div class="u-container"><nav class="u-nav" aria-label="Navegación UNO360X"><a class="u-wordmark" href="/#inicio" aria-label="UNO360X, inicio">UNO<span>360X</span></a><div class="u-navlinks"><a href="/#soluciones">Soluciones</a><a href="/planes-y-precios">Planes y precios</a><a href="/#como-funciona">Cómo funciona</a><a href="/#contacto">Contacto</a></div><div class="u-actions"><a class="u-btn u-btn-secondary" href="/web/login">Iniciar sesión</a><a class="u-btn u-navdemo" href="/#contacto">Solicitar demo</a></div><details class="u-mobile-menu"><summary aria-label="Abrir menú">☰</summary><div class="u-mobile-links"><a href="/#soluciones">Soluciones</a><a href="/planes-y-precios">Planes y precios</a><a href="/#como-funciona">Cómo funciona</a><a href="/#contacto">Solicitar demo</a></div></details></nav>
+<section class="p-intro"><span class="p-kicker">PLANES Y MÓDULOS UNO360X</span><h1>Elige lo que tu empresa necesita.</h1><p>Empieza con la Base Empresarial. Añade módulos a tu medida.</p><div class="p-period" role="group" aria-label="Periodo de suscripción"><button type="button" data-period="mensual" aria-pressed="true">Mensual</button><button type="button" data-period="anual" aria-pressed="false">Anual</button></div><p class="p-muted">Precios y condiciones por definir.</p></section>
+<div class="p-layout"><main><section class="p-base"><span class="p-kicker">PLAN PRINCIPAL</span><h2>Base Empresarial</h2><p class="p-muted">Tu operación conectada desde el primer módulo.</p><div class="p-base-grid"><div><p class="p-price">Precio por definir</p><p class="p-muted">Suscripción <span class="p-subscription">mensual</span></p><ul><li>Ventas y compras</li><li>Inventario</li><li>Cobros, pagos y reportes</li></ul></div><div class="p-fiscal"><strong>Facturación electrónica</strong><b>Incluida</b><p>Sujeta a configuración fiscal, validación y habilitación aplicable a cada empresa.</p></div></div></section>
+<h2 class="p-modules-title">Personaliza tu plan</h2><p class="p-muted">Selecciona los módulos que quieres agregar a la Base.</p><label class="p-module"><div class="p-module-head"><input type="checkbox" id="p-nomina" data-module="Nómina y RR. HH." checked="checked"/><h3>Nómina y RR. HH.</h3></div><p class="p-muted">Empleados, asistencia y novedades.<br/>Nómina, aprobaciones y comprobantes.</p><div class="p-module-bottom"><strong>Precio por definir / <span class="p-unit">mes</span></strong><span class="p-state">✓ Agregado</span></div></label><label class="p-module"><div class="p-module-head"><input type="checkbox" id="p-jenifer" data-module="Jenifer IA" checked="checked"/><h3>Jenifer IA</h3></div><p class="p-muted">Consultas y asistencia con permisos.<br/>Automatizaciones y consumo acordados.</p><div class="p-module-bottom"><strong>Precio por definir / <span class="p-unit">mes</span></strong><span class="p-state">✓ Agregado</span></div></label><label class="p-module"><div class="p-module-head"><input type="checkbox" id="p-proyectos" data-module="Proyectos y Servicios"/><h3>Proyectos y Servicios</h3></div><p class="p-muted">Tareas, horas y seguimiento de costos.<br/>Presupuestos y rentabilidad.</p><div class="p-module-bottom"><strong>Precio por definir / <span class="p-unit">mes</span></strong><span class="p-state">+ Agregar</span></div></label></main>
+<aside class="p-summary" aria-label="Resumen de tu selección"><h2>Tu selección</h2><p class="p-muted">Base y módulos para tu empresa</p><ul class="p-selection" aria-live="polite"/><hr/><p class="p-total-label">TOTAL <span class="p-total-period">MENSUAL</span></p><p class="p-price">Por definir</p><p class="p-muted">Precios aún no establecidos.</p><a class="u-btn" href="/#contacto">Solicitar propuesta</a><p class="p-muted">Revisaremos tu selección contigo antes de contratar.</p></aside></div>
+<section class="p-how"><h2>Así preparas tu espacio</h2><div class="p-steps"><div><strong>01 · Elige</strong><p class="p-muted">Base y módulos para tu empresa.</p></div><div><strong>02 · Solicita tu propuesta</strong><p class="p-muted">Revisamos alcance y condiciones contigo.</p></div><div><strong>03 · Empieza</strong><p class="p-muted">Configuramos tu espacio y acompañamos la puesta en marcha.</p></div></div></section><footer class="p-footer"><a class="u-wordmark" href="/">UNO<span>360X</span></a><strong>¿Necesitas ayuda para elegir?</strong><a href="/#contacto">Hablar con un asesor ↗</a></footer><p class="p-fine">Precios, límites, usuarios y condiciones pendientes. La selección no crea una cuenta ni genera un cobro.</p>
+</div><script type="text/javascript">
+(function(){function init(){const root=document.getElementById('uno360x-public');if(!root)return;const inputs=[...root.querySelectorAll('[data-module]')];function refresh(){const list=root.querySelector('.p-selection');list.replaceChildren();const base=document.createElement('li');base.textContent='✓ Base Empresarial';const detail=document.createElement('small');detail.textContent='Plan principal';base.append(detail);list.append(base);inputs.forEach(input=&gt;{input.closest('label').querySelector('.p-state').textContent=input.checked?'✓ Agregado':'+ Agregar';if(input.checked){const li=document.createElement('li');li.textContent='✓ '+input.dataset.module;const small=document.createElement('small');small.textContent='Módulo agregado';li.append(small);list.append(li);}});}inputs.forEach(i=&gt;i.addEventListener('change',refresh));root.querySelectorAll('[data-period]').forEach(button=&gt;button.addEventListener('click',()=&gt;{const annual=button.dataset.period==='anual';root.querySelectorAll('[data-period]').forEach(b=&gt;b.setAttribute('aria-pressed',String(b===button)));root.querySelectorAll('.p-unit').forEach(e=&gt;e.textContent=annual?'año':'mes');root.querySelector('.p-subscription').textContent=annual?'anual':'mensual';root.querySelector('.p-total-period').textContent=annual?'ANUAL':'MENSUAL';}));refresh();}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}})();
+</script></div></div></t></t>

@@ -1,0 +1,24 @@
+{
+  "captured": "2026-10-31",
+  "source": "public Odoo views, read-only export",
+  "views": [
+    {
+      "id": 3811,
+      "key": "uno360x.homepage_public",
+      "inherit_id": 2081,
+      "languages": [
+        "en_US",
+        "es_ES"
+      ]
+    },
+    {
+      "id": 3884,
+      "key": "uno360x.plans_public",
+      "inherit_id": null,
+      "languages": [
+        "en_US",
+        "es_ES"
+      ]
+    }
+  ]
+}

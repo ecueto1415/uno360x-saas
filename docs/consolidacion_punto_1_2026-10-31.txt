@@ -1,0 +1,67 @@
+UNO360X - PUNTO 1 DEL PLAN - CONSOLIDACIÓN
+Fecha: 31/10/2026. Responsable del proyecto: Ericsson Cueto, OUTSOLUTECH.
+Alcance: inventario y verificaciones; no cambios operativos de producción.
+
+1. BASE COMPROBADA
+Repositorio local y origin/main coincidían en 860eccf al iniciar esta revisión.
+Árbol de trabajo limpio al inicio. No se encontraron instrucciones AGENTS.md
+en la búsqueda previa del espacio de proyectos.
+La web pública y /planes-y-precios responden, muestran el enlace de planes y
+mantienen precios por definir. Selección y responsive se verificaron durante
+la implementación; esta revisión repitió comprobaciones HTTP y de contenido.
+
+2. COMPONENTES IMPLEMENTADOS
+Registro: reservas únicas, ID estable, solicitudes idempotentes, dominios
+canónicos y referencias separadas por cliente. Prototipo SQLite local.
+Simulador: configuración deseada, diario persistente, cinco pasos simulados,
+reanudación tras fallo y rechazo de cambios inesperados. No aprovisiona.
+Identidad Odoo: módulo inicial por instancia y estado fiscal por empresa.
+Laboratorio base: Odoo 18 upstream y PostgreSQL 16, sin datos operativos.
+Dos clientes de ensayo: Empresa Alfa y Empresa Beta, cada uno con instancia,
+PostgreSQL, rol, claves, archivos y red privada propios. No DNS público.
+Web: copias de las dos vistas públicas ahora guardadas en website_snapshots.
+Son referencias QWeb, no un módulo web instalable ni despliegue automático.
+
+3. PRUEBAS REPETIDAS EN ESTA CONSOLIDACIÓN
+Nueve pruebas unitarias aprobadas: registro y aprovisionador simulado.
+dev/verify.py: laboratorio base activo, módulo instalado, red interna,
+sin puertos publicados por contenedores, rol limitado y login HTTP 200.
+dev/verify_tenants.py: consulta de solo lectura sobre clientes existentes:
+- Login HTTP 200 en Alfa y Beta.
+- Identidad correcta por instancia.
+- Redes internas y volúmenes distintos; marcadores propios presentes.
+- Sin puertos publicados; rol/base del otro cliente ausentes.
+- Roles sin superusuario, creación de bases/roles ni bypass RLS.
+- Cron activo 0; servidores de correo 0.
+- Conexiones cruzadas a PostgreSQL bloqueadas en ambas direcciones.
+Las tres pruebas ORM del hito inicial no se repitieron en esta revisión.
+La aceptación de clave propia y rechazo de clave ajena constan en el hito
+anterior; el nuevo verificador de lectura no vuelve a leer secretos.
+
+4. FUNCIONES PENDIENTES
+Módulos comerciales reproducibles, registro público, membresías verificadas,
+invitaciones, acceso por correo, aprovisionador general conectado al alta,
+DNS/HTTPS, proveedor de pagos, suscripciones, soporte administrativo,
+carga fiscal segura, monitoreo comercial y recuperación automatizada.
+Elegir módulos en la web aún no crea un cliente. El laboratorio instala solo
+Odoo base y uno360x_tenant_config; el alcance seleccionado es deseado.
+
+5. CORRECCIONES DE DOCUMENTACIÓN
+README actualizado: ya existen laboratorio y simulador que figuraban como
+próximos hitos. Ahora se distinguen de la infraestructura comercial pendiente.
+Nuevo verificador de clientes en solo lectura, sin reiniciar ni crear recursos.
+Copias de vistas públicas versionadas para evitar que el diseño quede solo
+en la base operativa. No incluyen datos privados ni configuraciones secretas.
+
+6. CONTROLES QUE SE CONSERVAN
+No se modificaron VM, datos operativos, correo, Jenifer ni DGII.
+Claves del laboratorio permanecen fuera de Git, en directorios Linux protegidos.
+La topología del ensayo no determina la arquitectura comercial definitiva.
+Se mantiene la identidad visual; nuevos flujos se presentan primero en PDF.
+
+7. RESULTADO Y SIGUIENTE PASO
+Punto 1 completado como consolidación de la base existente, con los límites
+anteriores explícitos. No constituye aprobación de lanzamiento comercial.
+Continuar con el punto 2 del plan: inventariar y empaquetar Base Empresarial,
+identificando dependencias, personalizaciones y pruebas de cada capacidad.
+Después seguir registro/acceso y alta automática, según el orden del plan.

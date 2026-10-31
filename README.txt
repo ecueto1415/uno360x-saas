@@ -1,4 +1,4 @@
-UNO360X SaaS - desarrollo aislado v0.1
+UNO360X SaaS - desarrollo aislado - consolidación 31/10/2026
 
 Este directorio no está desplegado ni conectado a producción.
 El registro local permite reservar clientes ficticios y resolver sus dominios.
@@ -13,7 +13,8 @@ Componentes:
 - tests: aislamiento lógico y reservas; no requiere servicios externos.
 
 Validación local: python -m unittest discover -s tests -v
-El módulo Odoo requiere instalación y pruebas en Odoo aislado antes de usarse.
+El módulo Odoo está instalado en el laboratorio; esto no valida todas las
+personalizaciones ni el funcionamiento de los módulos comerciales.
 El control usa SQLite únicamente para el prototipo local; no es un panel público.
 No exponerlo a Internet. El aprovisionador real con privilegios queda por implementar.
 
@@ -30,6 +31,23 @@ Hito 0.2 - simulación local (31/10/2026):
 - Validación: nueve pruebas unitarias (registro y simulación). Las pruebas ORM
   anteriores no se repitieron en este hito, que no modifica el módulo Odoo.
 
+Hito 0.3 - dos clientes ficticios:
+- dev/tenants.py crea Empresa Alfa y Empresa Beta dentro de WSL, con instancias,
+  PostgreSQL, roles, credenciales, redes y volúmenes separados.
+- Solo Odoo base y uno360x_tenant_config instalados. Módulos comerciales son
+  alcance deseado; no se instalan automáticamente.
+- dev/verify_tenants.py comprueba las instancias existentes en solo lectura:
+    python3 dev/verify_tenants.py
+  Ejecutar dentro del WSL de laboratorio como root. No crea ni reinicia recursos.
+- Sin DNS ni puertos publicados; claves fuera del repositorio.
+
+La página pública de planes se publicó mediante vistas Odoo. Las copias de
+inicio y planes están en website_snapshots como referencia versionada;
+no son un módulo instalable. No existe despliegue automático a VM.
+No existen registro público, membresías, pago ni alta conectada a la web.
+Ver docs/decisiones_acceso_2026-10-31.txt y el inventario de consolidación.
+
 No copiar esta carpeta a la VM operativa ni usar datos de clientes reales.
-Siguiente hito: Odoo aislado, migración reproducible de personalizaciones y
-adaptador simulado de aprovisionamiento, antes de conectar infraestructura real.
+Siguiente etapa del plan: empaquetar el producto reproducible por cliente,
+empezando por Base Empresarial. El registro, membresías y autoservicio se
+construirán después sobre ese producto y el aprovisionamiento probado.
