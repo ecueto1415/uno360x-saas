@@ -1,0 +1,48 @@
+UNO360X - PUNTO 2 - PRIMER PAQUETE EMPRESARIAL VALIDADO
+31/10/2026
+
+RESULTADO
+Paquete uno360x_business_base 18.0.0.1.0 instalado en Empresa Alfa y Empresa
+Beta dentro del WSL local. Dependencias de ventas, compras, inventario,
+contabilidad, contactos y localización dominicana agrupadas de forma repetible.
+Se ejecutó instalación inicial y después actualización del mismo paquete.
+
+PRUEBAS
+Tres pruebas ORM aprobadas en cada cliente, tanto al instalar como al actualizar:
+1. Cotización -> confirmación -> factura contabilizada -> cobro conciliado.
+2. Compra -> recepción de tres unidades -> factura de proveedor contabilizada.
+3. Plan de cuentas de prueba presente y estado fiscal sin habilitación activa.
+Datos ficticios bajo transacciones revertidas: consultas posteriores confirmaron
+cero sale_order, purchase_order y account_move en ambas bases.
+Nueve pruebas unitarias del registro y simulador siguen aprobadas.
+Comprobación posterior: login HTTP 200 en ambas instancias, redes privadas,
+volúmenes separados, conexión cruzada bloqueada, cron activo cero, correo cero.
+No se afirma validación exhaustiva de reportes, impuestos o procesos fiscales.
+
+ENTREGABLES EN REPOSITORIO
+addons/uno360x_business_base: paquete estándar y pruebas ORM.
+product/business_base.json: alcance, versión y capacidades pendientes.
+dev/install_business_base.py: instalación/actualización solo en clientes ficticios.
+dev/verify_business_base.py: lectura de instalación y resultados de prueba.
+docs/inventario_producto_2026-10-31.txt: inventario de producción de solo lectura
+y dependencias propias que deben revisarse antes de trasladarlas.
+
+PRODUCCIÓN
+Solo consultas de inventario de lectura. No se instaló ni actualizó nada en la VM.
+No se cambiaron usuarios, permisos, módulos, credenciales, correo, Jenifer o DGII.
+OUTSOLUTECH conserva todo su acceso y funciones. No le aplican límites SaaS.
+Los reinicios del instalador afectaron únicamente las apps Alfa/Beta de WSL.
+
+ESTADO DEL PUNTO 2
+En curso. La base estándar reproducible quedó validada; no está terminado todo
+el producto comercial. Falta revisar y empaquetar cotizaciones/diseño propios,
+acciones y campos necesarios, Nómina/RRHH, Jenifer y Proyectos/Servicios.
+El conector fiscal y la carga segura de certificados siguen pendientes.
+No importar muestras de empleados, credenciales ni acciones de producción en bloque.
+La revisión de licencias de módulos propios y compatibilidad 18.2 -> 18.0
+también debe completarse antes de distribuir el producto.
+
+SIGUIENTE TRABAJO DENTRO DEL PUNTO 2
+Revisar primero las personalizaciones de cotizaciones y su dependencia del
+entorno de OUTSOLUTECH, antes de decidir cómo empaquetarlas en el SaaS.
+Conservar identidad actual; cualquier cambio visual requiere PDF previo.

@@ -1,0 +1,68 @@
+UNO360X - PUNTO 2 - INVENTARIO DE PRODUCTO
+Fecha: 31/10/2026. Consultas de producción mediante BEGIN READ ONLY.
+
+REGLA CONFIRMADA POR CUETO
+OUTSOLUTECH utiliza producción diariamente y conserva acceso a todos sus
+módulos y funciones actuales. No aplicar límites de planes SaaS a ese entorno.
+Este trabajo no cambia usuarios, permisos, módulos, servicios o integraciones
+de producción. No reiniciar producción para instalar o probar el paquete.
+
+BASE ESTÁNDAR REPRODUCIBLE EN LABORATORIO
+Paquete: addons/uno360x_business_base, versión 18.0.0.1.0.
+Dependencias directas: uno360x_tenant_config, contacts, sale_management,
+sale_stock, purchase_stock, l10n_do. Account, purchase y stock son transitivas.
+La imagen Odoo está fijada mediante images.json del laboratorio existente.
+Es un paquete de dependencias sin hooks de activación fiscal, sin cambios
+visuales, sin datos de muestra, sin usuarios ni credenciales predefinidos.
+No contiene una copia de la base de OUTSOLUTECH.
+product/business_base.json declara el alcance y las capacidades pendientes.
+
+EVIDENCIA ACTUAL DE PRODUCCIÓN
+Instalados: contacts 18.2.1.0, sale_management/sale_stock 18.2.1.0,
+purchase/purchase_stock 18.2.1.2, stock 18.2.1.1, account 18.2.1.4,
+l10n_do 18.2.2.0. No asumir equivalencia con módulos upstream 18.0.
+Personalización de cotizaciones: uno360x_quote_ui 18.2.1.1.0.
+Emisión/precertificación: outsolutech_ecf_pruebas 18.2.0.1.0,
+outsolutech_ecf_flujo 18.2.0.6.0, outsolutech_ecf_firma_pruebas 18.2.0.3.0.
+No se copiaron esos módulos ni sus datos en esta fase.
+
+EXTENSIONES A EMPAQUETAR POR SEPARADO
+Nómina: outsolutech_daypay 18.2.24.11.1, outsolutech_payroll_data
+18.2.1.1.0 y outsolutech_weekend_data 18.2.1.0.3; hr, hr_attendance,
+hr_holidays. Revisar código y separar datos específicos de OUTSOLUTECH.
+Jenifer: jenifer_outsolutech 18.2.1.4.0 y servicio externo; parametrización,
+permisos y eliminación de dependencias fijas pendientes.
+Proyectos: project 18.2.1.3 más personalizaciones y acciones en base.
+Un módulo de muestra de empleado está instalado en producción; no trasladarlo
+ni usarlo como dependencia del producto comercial.
+
+PERSONALIZACIONES EN BASE
+206 acciones con código; 43 sin identificador externo.
+76 campos manuales y cuatro modelos manuales:
+x_outs_payroll_batch, x_outs_payroll_line, x_outs_project_incentive,
+x_outsolutech_weekend. Ninguno tiene company_id según esta consulta.
+La separación por base del SaaS no resuelve por sí sola permisos multiempresa
+dentro de una misma base. No reutilizar estos modelos sin revisión.
+Falta clasificar, revisar y empaquetar las acciones; no importarlas en bloque.
+
+FACTURACIÓN ELECTRÓNICA
+Incluida en el alcance comercial. El paquete estándar no implementa firma,
+transmisión, aprobación DGII, certificados ni habilitación de emisión.
+l10n_do upstream aporta localización contable, no el conector e-CF de UNO360X.
+Los estados fiscales siguen sin opción de emisión activa. Adaptador fiscal,
+carga cifrada por empresa y pruebas externas requieren trabajo posterior.
+
+ALCANCE DE VALIDACIÓN
+Pruebas de negocio con datos ficticios y rollback en laboratorio.
+Sin evaluación legal/fiscal de tasas, nómina o cumplimiento. La localización
+instalada y un asiento contable de prueba no certifican la emisión fiscal.
+No se afirma paridad visual o funcional con todo el Odoo 18.2 de OUTSOLUTECH.
+
+CRITERIOS PARA CERRAR EL PUNTO 2 COMPLETO
+1. Paquete estándar instalable y flujos básicos aprobados en dos clientes.
+2. Cotizaciones y diseño actuales revisados y empaquetados sin alterar identidad.
+3. Nómina, Jenifer y Proyectos revisados, parametrizados y probados.
+4. Acciones y campos necesarios versionados, con seguridad y migraciones.
+5. Conector fiscal revisado y adaptado; emisión bloqueada hasta validación.
+6. Dependencias, licencias, versiones y rutas de actualización documentadas.
+El primer paquete de laboratorio no completa por sí solo todos esos criterios.

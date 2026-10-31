@@ -51,3 +51,17 @@ No copiar esta carpeta a la VM operativa ni usar datos de clientes reales.
 Siguiente etapa del plan: empaquetar el producto reproducible por cliente,
 empezando por Base Empresarial. El registro, membresías y autoservicio se
 construirán después sobre ese producto y el aprovisionamiento probado.
+
+Punto 2 - Base estándar de laboratorio:
+- addons/uno360x_business_base agrupa ventas, compras, inventario, contabilidad,
+  contactos y localización dominicana upstream. Sin hooks ni datos operativos.
+- product/business_base.json declara el alcance comercial y lo aún pendiente.
+- dev/install_business_base.py instala/actualiza y prueba solo Alfa y Beta en
+  WSL. Detiene únicamente la app del cliente ficticio durante la instalación;
+  desactiva cron antes de reiniciarla. Nunca ejecutar en producción.
+- dev/verify_business_base.py verifica instalación y resultados en solo lectura.
+- Tres pruebas ORM de negocio por cliente: venta/factura/cobro,
+  compra/recepción/factura y bloqueo fiscal. No certifican emisión DGII.
+- docs/inventario_producto_2026-10-31.txt identifica personalizaciones que
+  faltan por revisar y empaquetar. No hay paridad total con producción 18.2.
+OUTSOLUTECH conserva acceso a todos sus módulos; no aplicarle límites SaaS.

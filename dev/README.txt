@@ -35,3 +35,16 @@ ausencia de rol/base del otro cliente, claves distintas y bloqueo de red cruzado
 Reejecutar reusa recursos; no borra datos. Una instalación fallida requiere
 revisión explícita. No imprime secretos ni copia datos de producción.
 Estas instancias no publican subdominios y no implementan autoservicio todavía.
+
+Base estándar de negocio, solo después de crear los dos clientes:
+  python3 dev/install_business_base.py
+Instala/actualiza uno360x_business_base y ejecuta tres pruebas ORM por cliente.
+Detiene exclusivamente su aplicación ficticia mientras actualiza. Mantiene
+credenciales y datos locales; reinicia sin cron activo. No afecta al laboratorio
+base ni a producción. Rechaza ejecutar fuera de WSL.
+Verificación posterior de solo lectura:
+  python3 dev/verify_business_base.py
+  python3 dev/verify_tenants.py
+Logs de pruebas en directorio Linux protegido de cada cliente.
+El paquete aún no contiene el conector de emisión e-CF ni las personalizaciones
+de OUTSOLUTECH. No usarlo como producto comercial terminado.
