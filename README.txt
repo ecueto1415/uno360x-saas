@@ -105,3 +105,16 @@ comparten /var/lib/uno360x-saas-dev/control/control.sqlite3.
 Demo real: python3 dev/automatic_signup_demo.py (solo WSL root).
 Verificación: python3 dev/verify_automatic.py.
 Sin DNS/TLS/pagos ni exposición pública. Ver docs/punto_4_aprovisionamiento_y_acceso.txt.
+
+Avance de etapas posteriores (no terminado para venta):
+- control/recovery.py y dev/backup_restore_rehearsal.py: copia cifrada y
+  restauración aislada con hashes y acceso real; solo laboratorio hasta 128 MiB.
+- control/billing_sandbox.py: suscripción simulada; sin precios/proveedor real.
+- control/setup.py: borradores y checklist, sin aplicación automática a Odoo.
+- control/fiscal_vault.py: custodia cifrada por empresa, pruebas sintéticas,
+  sin cadena DGII verificada ni emisión. No se usan certificados de producción.
+- dev/operations_status.py: reporte de operación local de solo lectura.
+- product/readiness.json: lanzamiento público bloqueado con pendientes explícitos.
+Estado completo: docs/avance_plan_completo_2026-10-31.txt.
+El plan comercial completo sigue pendiente; no confundir pruebas de laboratorio
+con certificación fiscal, integración de cobros real o producto listo para venta.

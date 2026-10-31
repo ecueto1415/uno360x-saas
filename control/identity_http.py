@@ -11,6 +11,7 @@ import json
 
 from .identity import IdentityService,IdentityError
 from .onboarding import Onboarding
+from .setup import Setup
 
 COOKIE = 'uno360x_lab_session'
 
@@ -114,6 +115,7 @@ class Handler(BaseHTTPRequestHandler):
             if not hmac.compare_digest(supplied,csrf_for(session)):
                 self._reply(403,{'error':'Solicitud no autorizada.'});return
             onboarding=Onboarding(service)
+            setup=Setup(service)
             private={
                 '/logout':lambda:service.logout(session),
                 '/companies':lambda:{'companies':service.companies(session)},
@@ -128,6 +130,8 @@ class Handler(BaseHTTPRequestHandler):
                 '/preparation/request':lambda:onboarding.request(session,data['tenant_id']),
                 '/preparation/status':lambda:onboarding.status(session,data['tenant_id']),
                 '/handoff/request':lambda:onboarding.issue_handoff(session,data['tenant_id']),
+                '/setup/profile':lambda:setup.save(session,data['tenant_id'],data['profile']),
+                '/setup/status':lambda:setup.status(session,data['tenant_id']),
             }
             if self.path not in private:
                 self._reply(404,{'error':'Ruta no disponible.'});return

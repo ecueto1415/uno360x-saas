@@ -1,0 +1,33 @@
+{
+  "assessed": "2026-10-31",
+  "public_release_allowed": false,
+  "scope": "isolated_local_laboratory",
+  "steps": {
+    "1": "baseline_consolidated",
+    "2": "packages_prepared_functional_limits_documented",
+    "3": "identity_core_verified_public_ui_pending",
+    "4": "local_provisioning_and_odoo_handoff_verified",
+    "5": "encrypted_restore_verified_commercial_infrastructure_pending",
+    "6": "sandbox_only_prices_and_provider_pending",
+    "7": "setup_drafts_and_pdf_review_prepared_public_ui_pending",
+    "8": "encrypted_local_certificate_custody_verified_real_adapter_pending",
+    "9": "partial_payroll_ai_and_profitability_not_complete",
+    "10": "readonly_operations_cli_visual_panel_pending",
+    "11": "61_control_tests_and_local_integration_verified_public_pilot_pending",
+    "12": "blocked_not_launched"
+  },
+  "required_before_public_release": [
+    "clean_supported_commercial_host_and_resource_budget",
+    "dns_https_and_mandatory_web_gateway_without_backend_bypass",
+    "separate_os_service_accounts_and_production_security_review",
+    "approved_visual_flows_and_mobile_browser_validation",
+    "approved_prices_limits_terms_and_payment_provider",
+    "real_mail_provider_for_verification_without_reusing_outsolutech_credentials",
+    "complete_payroll_rules_and_validated_business_processes",
+    "independent_jenifer_ai_credentials_and_provider_adapter",
+    "fiscal_issuer_adapter_certificate_chain_and_dgii_validation",
+    "external_backup_destination_portable_key_recovery_and_schedule",
+    "complete_admin_interface_monitoring_and_controlled_pilot"
+  ],
+  "outsolutech_production_changed": false
+}

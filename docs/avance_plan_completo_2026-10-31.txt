@@ -1,0 +1,113 @@
+UNO360X - AVANCE DEL PLAN COMPLETO Y LÍMITES DE EJECUCIÓN
+31 de octubre de 2026
+
+EL PLAN COMERCIAL COMPLETO NO ESTÁ TERMINADO
+Se avanzó en los componentes que pueden desarrollarse y probarse con datos
+ficticios. No se publican servicios incompletos ni se inventan precios,
+contrataciones, aprobaciones fiscales o credenciales que faltan.
+
+PUNTO 4 - VERIFICADO EN LABORATORIO
+Cuenta verificada, cola y preparación de dos instancias nuevas independientes.
+Entrada real a Odoo mediante usuario propio, con ticket de uso único y sin
+exponer la cookie del backend. Recuperación de una app detenida sin duplicar
+contenedores, bases ni archivos. API y trabajador comparten el mismo control.
+Ver docs/punto_4_aprovisionamiento_y_acceso.txt. Commit inicial bb33cfb.
+
+PUNTO 5 - RESPALDO Y RECUPERACIÓN PROBADOS
+control/recovery.py y dev/backup_restore_rehearsal.py:
+- Dump PostgreSQL y archivos de una empresa ficticia, con su app detenida
+  brevemente y bloqueo de trabajador para mantener la copia por empresa.
+- Sobre cifrado AES-GCM, autenticación de integridad y vínculo a la empresa.
+- Restauración en PostgreSQL/Odoo nuevos, con red y volúmenes separados.
+- 445 archivos verificados por hash; sesiones antiguas excluidas.
+- Clave de acceso de la copia restaurada rotada y sesión de usuario real probada.
+- Se detectó y corrigió la propiedad del directorio raíz del volumen importado;
+  el primer intento no se considera una restauración válida.
+- Los contenedores de recuperación quedan detenidos, conservando evidencia.
+- Control central respaldado con snapshot SQLite consistente y cifrado; copia temporal
+  restaurada con integridad comprobada, 2 cuentas y 14 archivos protegidos.
+  Sesiones y tickets invalidados únicamente en la copia de ensayo.
+Límite: utilidad de laboratorio, respaldo en memoria hasta 128 MiB. No sustituye
+una solución de gran volumen en producción. No hay copia externa, recuperación
+portátil de claves ni programación periódica comercial. Claves y respaldos
+siguen únicamente en almacenamiento Linux protegido de este equipo.
+No se contrató un host nuevo ni se modificó DNS o HTTPS de producción.
+
+PUNTO 6 - CICLO DE SUSCRIPCIÓN EN SANDBOX
+control/billing_sandbox.py: cotización ficticia configurable, checkout idempotente,
+validación de firma/importe/moneda de eventos, expiración y reembolso.
+Un pago tardío no reactiva una suscripción ya reembolsada. Sin precios definidos
+no se crea checkout. Los importes de pruebas NO son precios de UNO360X.
+No existe proveedor real, formulario de tarjetas, cargos ni autorización de
+producción. El sandbox no habilita acceso comercial.
+Faltan precios, monedas/condiciones aprobadas y proveedor de pagos.
+
+PUNTO 7 - CONFIGURACIÓN INICIAL Y PROPUESTA VISUAL
+control/setup.py: borrador de datos por empresa, permisos y checklist derivado
+de cuenta, membresías y preparación. Guardar datos no significa que estén
+aplicados a Odoo o verificados fiscalmente. Endpoints privados con CSRF.
+Se preparó un PDF de acceso/registro, confirmación/selección y configuración.
+No se aplicaron pantallas nuevas a la web: se conserva la aprobación visual
+previa establecida por Cueto. Falta implementar la UI aprobada y la aplicación
+controlada de parámetros al espacio, con prueba móvil de todo el recorrido.
+
+PUNTO 8 - CUSTODIA FISCAL LOCAL
+control/fiscal_vault.py y dev/fiscal_vault_demo.py:
+- Roles de propietario/administrador y pertenencia a empresa comprobados.
+- PKCS12, contraseña, correspondencia clave/certificado, vigencia y uso de firma.
+- Identificador fiscal obtenido de un resolvedor backend, no de la carga del
+  usuario, y coincidencia conservadora con atributos del certificado.
+- Certificado y contraseña cifrados por empresa/compañía/versión con AES-GCM.
+- Claves separadas, fichero protegido en WSL; renovación y expiración derivadas
+  de metadatos, historial conservado. No hay descarga pública de material privado.
+- Prueba con certificado sintético, cierre y reapertura del almacenamiento.
+Límite: no valida cadena de confianza ni aprobación DGII. El estado permanece
+pending_validation y la emisión deshabilitada. Faltan el servicio comercial de
+claves, endpoint de carga endurecido, formatos reales del emisor, conector y
+validaciones externas. No se leyó ni cambió el certificado actual de OUTSOLUTECH.
+
+PUNTO 9 - AÚN PARCIAL
+Siguen disponibles los paquetes y pruebas documentados del punto 2.
+No se convierte la aritmética de jornadas en una nómina legal completa.
+Faltan reglas de nómina configurables y validadas, flujos y reportes propios,
+rentabilidad integral y revisión funcional de las acciones heredadas.
+Jenifer conserva el núcleo de consultas con permisos; no hay LLM externo ni
+automatizaciones comerciales completas. No se usan las credenciales actuales
+de OUTSOLUTECH para clientes nuevos. Las credenciales independientes y el
+proveedor deben definirse antes de conectar IA o correo real.
+
+PUNTO 10 - OPERACIÓN INTERNA
+dev/operations_status.py produce una vista de lectura root-only del laboratorio:
+cuentas verificadas, membresías, trabajos, auditoría y resultado de restauración.
+No muestra tokens, contraseñas o certificados. No es un panel web terminado ni
+un monitor continuo; la interfaz administrativa y alertas externas están pendientes.
+
+PUNTO 11 - PRUEBAS
+61 pruebas del plano de control aprobadas en WSL, incluidas identidad, permisos,
+API, cola, acceso, cifrado, archivos de respaldo, custodia fiscal, sandbox de
+suscripción y checklist. Las pruebas de fiscal usan certificados sintéticos.
+Pruebas reales adicionales: dos altas Odoo, entrada por API/intermediario,
+restricciones de miembro, retirada, logout, aislamiento, recuperación de app
+y respaldo/restauración con sesión autenticada.
+No se ha realizado un piloto comercial ni una prueba móvil del nuevo recorrido
+público porque esas pantallas no se han implementado/publicado.
+
+PUNTO 12 - LANZAMIENTO BLOQUEADO
+product/readiness.json mantiene public_release_allowed=false.
+Faltan infraestructura limpia soportada, presupuesto de recursos, DNS/HTTPS y
+gateway web obligatorio; precios y proveedor de cobro; correo/IA independientes;
+terminar los procesos funcionales; validación fiscal; respaldos externos y
+recuperación de claves; aprobación visual y piloto.
+No se inventan estas decisiones ni se contrata infraestructura sin condiciones
+económicas definidas. Se deja preparado y documentado el trabajo de laboratorio.
+
+PRODUCCIÓN
+No se desplegó ninguno de estos módulos o servicios en la VM de OUTSOLUTECH.
+Sus usuarios, módulos, permisos, credenciales, correo, Jenifer y DGII siguen
+intactos. No se aplican límites SaaS a OUTSOLUTECH. No hay despliegue automático
+a producción desde GitHub.
+
+ARCHIVOS DE ENTREGA
+Código, pruebas y documentación en el repositorio uno360x-saas.
+PDF UNO360X_Flujos_acceso_y_configuracion_para_revision.pdf en outputs de este chat.
+Claves, dumps, respaldos y datos del laboratorio permanecen fuera de Git.
