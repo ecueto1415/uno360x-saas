@@ -1,0 +1,108 @@
+UNO360X - PUNTO 3 - CUENTAS Y ACCESO POR EMPRESA
+31 de octubre de 2026
+
+IMPLEMENTACIÓN DE LABORATORIO
+control/identity.py implementa cuentas, confirmación de correo, sesiones,
+recuperación, membresías, roles e invitaciones. Usa SQLite del plano de control,
+no las bases de datos operativas de Odoo.
+control/identity_http.py expone una API JSON exclusivamente en 127.0.0.1.
+No es un servidor público ni dispone de TLS. No utilizarlo para cuentas reales.
+No hay interfaz visual nueva aplicada; los flujos públicos requieren PDF previo
+y aprobación visual, tal como se acordó. El login actual de la web no se cambia.
+
+REGISTRO
+El usuario indica su correo y recibe un enlace de confirmación. La contraseña
+se establece al completar ese enlace, no antes: una reserva maliciosa del correo
+no puede fijar la contraseña de otra persona. Reenviar confirmación invalida
+el enlace anterior. Cuentas verificadas no reciben enlaces para sobrescribir
+la contraseña mediante registro.
+Las respuestas públicas de registro y recuperación son genéricas; no revelan
+si una cuenta existe ni muestran nombres o pertenencia a empresas.
+Esta versión admite correos ASCII y los normaliza a minúsculas, con etiquetas +.
+
+CONTRASEÑAS Y SESIONES
+Contraseñas de 12 a 128 caracteres, derivadas con scrypt y sal aleatoria por
+cuenta. No se guardan en texto legible ni se imprimen. Los parámetros actuales
+son de laboratorio; el dimensionamiento y endurecimiento públicos quedan
+pendientes antes de desplegar comercialmente.
+Sesiones opacas aleatorias; en base se conserva solo el digest. Caducidad ocho
+horas. Logout revoca la sesión. Cambiar contraseña mediante recuperación
+revoca todas las sesiones anteriores de la cuenta.
+La API usa cookie HttpOnly y SameSite Strict, sin Domain, y token CSRF para
+operaciones autenticadas. Solo acepta Host y Origin locales esperados, JSON,
+cuerpos de hasta 16 KiB, sin CORS y con respuestas no almacenables.
+La cookie local no lleva Secure porque no hay TLS. Es una limitación explícita
+del ensayo; un despliegue público necesita HTTPS y configuración distinta.
+
+ENLACES TEMPORALES
+Confirmación: una hora. Recuperación: treinta minutos. Invitación: dos días.
+Se conservan solo hashes, finalidad, destino, emisor y vencimiento.
+Son de un solo uso, con consumo transaccional. No se aceptan en parámetros
+de URL de la API; se reciben en el cuerpo JSON y no se registran en logs.
+Los tokens reales de los ensayos viven únicamente en memoria del buzón ficticio.
+El transporte está inyectado explícitamente; no existe SMTP por defecto.
+
+EMPRESA Y MEMBRESÍAS
+Solo una cuenta verificada con sesión puede reservar una empresa. La reserva
+y la membresía de propietario se crean en una misma transacción: no quedan
+empresas huérfanas si falla la creación de la membresía. Reintentos con la misma
+clave y mismos datos devuelven la misma empresa; cambios de datos se rechazan.
+La empresa queda reserved y access_enabled=False: no se aprovisiona ni cobra.
+Un usuario puede pertenecer a varias empresas y elegir solo entre membresías
+activas. El correo o su dominio no conceden acceso por sí solos.
+Seleccionar empresa devuelve su identidad y dirección prevista. No crea una
+sesión Odoo, no comparte contraseñas y no autentica aún en el espacio operativo.
+Ese traspaso y las instancias del alta automática se conectarán en el punto 4.
+
+ROLES DEL PLANO DE CONTROL
+Propietario: reserva inicial, invita miembros/administradores, cambia esos roles
+y retira membresías. No puede retirarse ni degradar la propiedad por este flujo.
+Administrador: invita y retira miembros, consulta el equipo. No crea otros
+administradores, no cambia roles ni retira propietarios/administradores.
+Miembro: lista y elige sus propias empresas; no administra invitaciones/equipo.
+Son roles del acceso SaaS; no equivalen automáticamente a grupos o privilegios
+administrativos dentro de Odoo. Ese mapa debe definirse y probarse aparte.
+
+INVITACIONES Y RETIRADA
+La aceptación requiere cuenta verificada y correo exacto del destinatario.
+Un enlace no sirve a otra cuenta. Debe conservarse la autoridad vigente del
+emisor: retirar o degradar al administrador invalida sus invitaciones pendientes.
+Una invitación tardía no eleva una membresía existente ni reactiva una retirada.
+La retirada bloquea la siguiente consulta/selección de esa empresa, sin quitar
+el acceso del usuario a otras empresas. El propietario puede revocar enlaces.
+
+CONTROLES Y AUDITORÍA
+Límites persistentes de intentos de acceso y solicitudes de enlaces; límite de
+peticiones por dirección local en la API. Antes de exponerlo se requiere una
+política de abuso pública, monitoreo, pruebas de carga y recuperación del control.
+Auditoría de verificación, acceso, reserva, invitación, roles y retirada mediante
+identificadores, evento y fecha; sin contraseñas, enlaces ni cookies.
+El servidor local suprime logs de peticiones que podrían contener secretos.
+
+VALIDACIÓN
+Pruebas del núcleo: correo no confirmado, enlaces vencidos/reutilizados,
+reenvío, contraseñas con sales distintas, límites persistentes, recuperación,
+revocación de sesiones, reserva atómica, idempotencia, aislamiento de empresas,
+invitaciones para destinatario equivocado, permisos y retiradas.
+También se prueba consumo concurrente de un mismo enlace: solo uno lo acepta.
+Pruebas HTTP: registro, confirmación, cookie, CSRF, Host/Origin, acceso a empresa,
+invitación, recuperación, logout y ausencia de datos en respuestas anónimas.
+control.identity_demo ejecuta dos empresas y un empleado ficticios; imprime
+únicamente resultados, nunca credenciales ni tokens.
+
+PUESTA EN MARCHA LOCAL
+Prueba sin dejar recursos: python -m control.identity_demo
+Pruebas automáticas: python -m unittest discover -s tests -v
+Servidor opcional solo WSL root: python3 dev/start_identity.py
+Escucha 127.0.0.1:18072. Estado privado en
+/var/lib/uno360x-saas-dev/identity, directorio 700, archivos 600.
+El buzón del servidor es volátil y no ofrece enlaces por una ruta pública.
+Para recorrerlo automáticamente se usan las pruebas HTTP o el demo.
+
+LÍMITES Y CONTINUIDAD
+No correo real, pagos, DNS, SSO Odoo, creación de instancias ni pantalla pública.
+No se conectó este control a las bases operativas de OUTSOLUTECH.
+Producción conserva todos sus módulos, usuarios, permisos y credenciales.
+No se modifican correo, Jenifer o DGII. La interfaz se presenta primero en PDF
+antes de aplicarla; el punto 4 conectará el alta y la preparación del espacio.
+No se declara el servicio listo para exposición pública ni lanzamiento comercial.

@@ -1,0 +1,37 @@
+UNO360X - RESULTADO DEL NÚCLEO DE CUENTAS Y ACCESO
+31/10/2026
+
+Implementado en laboratorio:
+- Registro y confirmación de correo antes de establecer contraseña.
+- Acceso, cierre de sesión y recuperación con revocación de sesiones.
+- Enlaces temporales de un solo uso, guardados por hash.
+- Reserva de empresa y propietario en una transacción, con reintentos idempotentes.
+- Membresías independientes y elección entre empresas autorizadas.
+- Invitaciones ligadas al destinatario verificado; roles y retirada de accesos.
+- API JSON exclusivamente local con cookies HttpOnly/SameSite, CSRF,
+  validación de Host/Origin y respuestas sin caché ni datos antes de autenticar.
+- Demo completo con buzón ficticio en memoria y datos temporales.
+
+Pruebas:
+37 pruebas automáticas totales aprobadas en Windows: las 12 anteriores y
+25 nuevas de cuentas y HTTP. Incluyen verificación concurrente de un enlace,
+reserva atómica con fallo forzado, aislamiento, privilegios, caducidad,
+recuperación y CSRF.
+Las cuatro pruebas HTTP se ejecutaron también en WSL: aprobadas.
+Demo completo aprobado tanto en Windows como en WSL.
+Las pruebas ORM de los paquetes Odoo no se repitieron: no se modifican addons.
+
+Límites actuales:
+No se modificó la web ni se publicó registro de clientes reales.
+No hay correo real, pago ni traspaso de sesión central hacia Odoo.
+Seleccionar empresa solo resuelve una membresía autorizada. La instancia
+operativa y el acceso Odoo se conectarán con el aprovisionamiento del punto 4.
+No se crearon nuevas instancias ni se cambiaron las dos existentes.
+La interfaz nueva requiere presentación PDF antes de aplicarla.
+El servidor de laboratorio no se considera listo para exposición pública.
+No se modificó producción, sus módulos, accesos o credenciales.
+
+Código:
+control/identity.py, control/identity_http.py, control/identity_demo.py.
+dev/start_identity.py permite un servidor opcional solo WSL local.
+docs/punto_3_cuentas_y_accesos.txt documenta comportamiento y límites.

@@ -60,3 +60,13 @@ comprueba recursos y genera un PDF real con registros temporales revertidos.
 No imprime contraseñas; lee únicamente claves del laboratorio en memoria.
 La generación de recursos puede escribir cachés de activos en el laboratorio.
 No se ejecuta ninguna orden de este flujo en la VM operativa.
+
+Identidad y acceso central de laboratorio:
+  python3 -m control.identity_demo
+El demo crea cuentas y dos reservas ficticias en una carpeta temporal. Buzón
+en memoria, sin mensajes reales, contraseñas ni tokens impresos. No crea Odoo.
+API opcional, desde WSL root:
+  python3 dev/start_identity.py
+Solo 127.0.0.1:18072. Estado en /var/lib/uno360x-saas-dev/identity protegido.
+No incluye UI, SMTP real ni traspaso de sesión a Odoo. Los endpoints privados
+requieren cookie de sesión y token CSRF. El servidor no se publica en Internet.

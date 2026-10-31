@@ -84,3 +84,16 @@ Punto 2 - paquetes portátiles:
 Documentación de alcance: docs/producto_paquetes_y_limites.txt.
 Inventario técnico sin código/valores: product/legacy_inventory.json.
 Los paquetes preparados no equivalen a un producto comercial terminado.
+
+Punto 3 - núcleo de cuentas y acceso:
+- control/identity.py: correo verificado, contraseña, sesiones y recuperación,
+  membresías, propietarios/administradores/miembros, invitaciones y retirada.
+- Reserva de empresa y membresía en una misma transacción de alta de empresa.
+- Tokens de uso único y sesiones guardados por hash; correo simulado en memoria.
+- control/identity_http.py: API JSON de laboratorio solo en 127.0.0.1, con
+  cookie HttpOnly/SameSite, CSRF y rechazo de Host/Origin ajenos. No publicar.
+- Prueba completa sin persistencia: python -m control.identity_demo
+- Servidor opcional en WSL root: python3 dev/start_identity.py
+- Ver docs/punto_3_cuentas_y_accesos.txt para permisos, límites y pruebas.
+No se cambió el login público. No hay UI nueva aplicada, SMTP real ni sesión
+Odoo compartida. El punto 4 conectará preparación de instancias y acceso.

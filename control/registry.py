@@ -37,6 +37,14 @@ class Registry:
         self.db.close()
 
     def reserve(self, slug, modules, request_id):
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            return self._reserve_in_transaction(slug, modules, request_id)
+
+    def _reserve_in_transaction(self, slug, modules, request_id):
+        """Internal helper for atomic account/company creation on this connection."""
+        if not self.db.in_transaction:
+            raise RuntimeError('Se requiere transacción de reserva.')
         slug = validate_slug(slug)
         if not isinstance(request_id, str) or not 1 <= len(request_id) <= 128:
             raise ValueError('Se requiere una clave de solicitud de hasta 128 caracteres.')
@@ -44,22 +52,19 @@ class Registry:
         if not set(modules) <= OPTIONAL_MODULES:
             raise ValueError('Módulo desconocido.')
         encoded = json.dumps(modules)
-        # BEGIN IMMEDIATE serializes competing writers before the idempotency check.
-        with self.db:
-            self.db.execute('BEGIN IMMEDIATE')
-            existing = self.db.execute('SELECT * FROM tenants WHERE request_id=?', (request_id,)).fetchone()
-            if existing:
-                if existing['slug'] != slug or existing['modules'] != encoded:
-                    raise ValueError('Solicitud repetida con datos diferentes.')
-                return self._public(existing)
-            tenant_id = uuid.uuid4().hex
-            try:
-                self.db.execute('INSERT INTO tenants VALUES (?,?,?,?,?,?)',
-                                (tenant_id, request_id, slug, f'{slug}.{BASE_DOMAIN}', encoded, 'reserved'))
-            except sqlite3.IntegrityError as exc:
-                raise ValueError('Subdominio ya reservado.') from exc
-            row = self.db.execute('SELECT * FROM tenants WHERE id=?', (tenant_id,)).fetchone()
-            return self._public(row)
+        existing = self.db.execute('SELECT * FROM tenants WHERE request_id=?', (request_id,)).fetchone()
+        if existing:
+            if existing['slug'] != slug or existing['modules'] != encoded:
+                raise ValueError('Solicitud repetida con datos diferentes.')
+            return self._public(existing)
+        tenant_id = uuid.uuid4().hex
+        try:
+            self.db.execute('INSERT INTO tenants VALUES (?,?,?,?,?,?)',
+                            (tenant_id, request_id, slug, f'{slug}.{BASE_DOMAIN}', encoded, 'reserved'))
+        except sqlite3.IntegrityError as exc:
+            raise ValueError('Subdominio ya reservado.') from exc
+        row = self.db.execute('SELECT * FROM tenants WHERE id=?', (tenant_id,)).fetchone()
+        return self._public(row)
 
     def resolve_registered(self, hostname):
         # Not an HTTP Host parser. Accept only a canonical exact hostname supplied
