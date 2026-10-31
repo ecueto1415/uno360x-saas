@@ -1,0 +1,36 @@
+DECISIONES DE PRODUCTO - 31/10/2026
+Procedencia: instrucciones directas de Cueto en el chat actual, posteriores
+al paquete de continuidad. Sustituyen el alta comercial solo administrada
+como objetivo final; no afirman que el autoservicio esté implementado.
+
+EXPERIENCIA OBJETIVO
+Elegir plan y módulos -> crear cuenta -> confirmar correo -> pago o prueba
+según condiciones pendientes -> preparación automática -> acceso al espacio.
+Precios, pruebas gratuitas, proveedor de pago y condiciones aún por definir.
+
+IDENTIDAD Y ACCESO
+Cada empresa tendrá espacio propio, base, archivos y credenciales separados.
+Dirección prevista: empresa.uno360x.com. DNS y HTTPS aún no configurados.
+Habrá también acceso general por correo que permita llegar al espacio propio.
+No mostrar pertenencia ni datos de empresas antes de autenticar al usuario.
+Un usuario con varias membresías verificadas elige empresa después de entrar.
+Invitación de empleados y comprobación de membresía; no deducir pertenencia
+solo por el dominio del correo. El correo no sustituye autenticación.
+El subdominio identifica el espacio; el aislamiento y los permisos lo protegen.
+
+LÍMITES ACTUALES
+La página pública ofrece solicitud de propuesta mientras no exista el alta
+automática completa. No anuncia pagos ni disponibilidad automática actuales.
+Primera etapa: Base con facturación electrónica, Nómina/RRHH, Jenifer IA,
+Proyectos/Servicios. La habilitación fiscal es independiente de la suscripción.
+No se alteran correo, Jenifer ni DGII de OUTSOLUTECH.
+Desarrollo en laboratorio con datos ficticios, fuera de producción.
+
+LABORATORIO DE DOS CLIENTES
+dev/tenants.py construye dos instancias ficticias en WSL, cada una con su
+red interna, PostgreSQL y volumen de Odoo propios. Esto facilita comprobar
+aislamiento; no decide la topología ni el costo de infraestructura comercial.
+Instala solo base Odoo y uno360x_tenant_config. Los módulos comerciales
+seleccionados son alcance deseado; no están instalados por ese script.
+Sin DNS, puertos publicados, invitaciones, integraciones o cobros.
+Claves aleatorias en almacenamiento Linux protegido, nunca en el repositorio.

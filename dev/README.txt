@@ -23,3 +23,15 @@ Reiniciar: volver a ejecutar start.py.
 No existe borrado automático ni reinicio automático tras arrancar Windows.
 No utilizar las credenciales predeterminadas del laboratorio con acceso público.
 La creación de usuarios reales, correo, IA y emisión fiscal están fuera de alcance.
+
+Dos clientes ficticios independientes:
+  python3 dev/tenants.py
+Ejecutar únicamente como root dentro del WSL existente. Reutiliza imágenes
+fijadas en images.json. Recursos uno360x-lab-empresa-alfa-* y
+uno360x-lab-empresa-beta-*, redes internas sin puertos publicados.
+Datos y claves: /var/lib/uno360x-saas-dev/tenants (root-only).
+Comprueba login HTTP interno, identidades, cron desactivado, roles limitados,
+ausencia de rol/base del otro cliente, claves distintas y bloqueo de red cruzado.
+Reejecutar reusa recursos; no borra datos. Una instalación fallida requiere
+revisión explícita. No imprime secretos ni copia datos de producción.
+Estas instancias no publican subdominios y no implementan autoservicio todavía.
