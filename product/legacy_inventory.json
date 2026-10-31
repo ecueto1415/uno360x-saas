@@ -1,0 +1,2310 @@
+{
+  "captured": "2026-10-31",
+  "purpose": "technical_inventory_no_operational_data",
+  "actions": [
+    {
+      "id": 12,
+      "model": "res.config",
+      "external_id": true,
+      "code_sha256": "98e5f18a795c72626477101bba19b312f285790cb001cb6460c7cdf1f9f014ad",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 35,
+      "model": "ir.autovacuum",
+      "external_id": true,
+      "code_sha256": "90b21c1749a609dd63ff3b8e1cda533921063bb113a0e5f39e25661a114902b5",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 36,
+      "model": "res.users.deletion",
+      "external_id": true,
+      "code_sha256": "75fa6c7f589095cc2fb1bd717f497567d33ae00590a8077f283f4992049e5794",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 51,
+      "model": "ir.demo_failure.wizard",
+      "external_id": true,
+      "code_sha256": "489bb734ffab7510e5a33b6c4167946440f72e2f43ae424bfefb2b18151c1c73",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 81,
+      "model": "res.partner",
+      "external_id": true,
+      "code_sha256": "dc5b1b3fc7bd26b1d2840f6c370035cd022fe6730d1abeac2777cade7255f688",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 82,
+      "model": "res.users",
+      "external_id": true,
+      "code_sha256": "eefcb4a4f00fb77fb4af4f158307f7cebd30186d91be6061558394f18227a4e1",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 86,
+      "model": "web_tour.tour",
+      "external_id": true,
+      "code_sha256": "e09c8877c69a3d311ff756cf06fb13ed73c2620aae955ac2cd1ed916739e9976",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 125,
+      "model": "mail.mail",
+      "external_id": true,
+      "code_sha256": "f2476440cbd3e14b11abe2df318d04585e4bbfd2204e22b6d4b067517f19b124",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 126,
+      "model": "publisher_warranty.contract",
+      "external_id": true,
+      "code_sha256": "266a63e01349c475ea9cbe46de0c9747cd4786952e7341a1f3bb44d5044e71b4",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 127,
+      "model": "mail.notification",
+      "external_id": true,
+      "code_sha256": "0e256f32c545cc7c744c0243e2e229fef02d328d3b1a1d53c01b2556ab950b0a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 128,
+      "model": "fetchmail.server",
+      "external_id": true,
+      "code_sha256": "892a8bdf282047e2cb73432cf42a1c73138546f8f33d9b36d4c0757309fafd77",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 129,
+      "model": "mail.scheduled.message",
+      "external_id": true,
+      "code_sha256": "010824b81dcda819a31b118213e1f0a3a9271b90ad4f9b10bf89b287bf9cb05f",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 130,
+      "model": "mail.message.schedule",
+      "external_id": true,
+      "code_sha256": "3b77d8717d8434dd2dab7c6a72905c6ee74b3e90825457b577cf221f69d56029",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 131,
+      "model": "mail.push",
+      "external_id": true,
+      "code_sha256": "f8b4d8dbc62efbfeb0195d4d06bf341fe0f1b691b643aebbb9a2f89e991fbcc0",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 132,
+      "model": "discuss.channel.member",
+      "external_id": true,
+      "code_sha256": "52574fcf73cb2e8c08322391731854939b56cf6cf8037b47a526cb39a08c68cb",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 133,
+      "model": "res.users.settings",
+      "external_id": true,
+      "code_sha256": "52574fcf73cb2e8c08322391731854939b56cf6cf8037b47a526cb39a08c68cb",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 151,
+      "model": "res.users",
+      "external_id": true,
+      "code_sha256": "37c917ebc7184bc77f225b13b97d0d5fd8a412fbdb86680f7f57e93efe1c6699",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 152,
+      "model": "res.users",
+      "external_id": true,
+      "code_sha256": "d80441c7b7c12d0202aba8697cfa15d20ae854efc7ec520d3e63a59e6004dfa0",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 153,
+      "model": "res.users",
+      "external_id": true,
+      "code_sha256": "42109e8fc478ab0b09ca83a6966499b252206973ecfafcbee148545e330ed330",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 154,
+      "model": "res.users",
+      "external_id": true,
+      "code_sha256": "b665aa51ed341b5c8e5c63450d91105a615e495153f9fde616c45a1b9f8fdd22",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 159,
+      "model": "res.partner",
+      "external_id": true,
+      "code_sha256": "dc36f80a4cc3de1c1fae521251c987896de10256bc25a1c1ef99f89866b9969a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 160,
+      "model": "res.users",
+      "external_id": true,
+      "code_sha256": "1ee2ac1f32de3549796fb96862c6ba5e77bc31566bef19392ce03efbee144645",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 163,
+      "model": "privacy.lookup.wizard.line",
+      "external_id": true,
+      "code_sha256": "e7002b5e04705067c25300bc839bb5152aa1961948ad043857930db66e9f374d",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 164,
+      "model": "privacy.lookup.wizard.line",
+      "external_id": true,
+      "code_sha256": "19c874de1ef3331746a78ea4727bd8305ba13690f4d7fb9e8c656d77dccf6f2c",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 171,
+      "model": "product.product",
+      "external_id": true,
+      "code_sha256": "8c5ce8fa95aa9ed7516662043274a492b09e49838ea06e1df71ca3cfabb8efa9",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 179,
+      "model": "product.template",
+      "external_id": true,
+      "code_sha256": "8c5ce8fa95aa9ed7516662043274a492b09e49838ea06e1df71ca3cfabb8efa9",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 187,
+      "model": "res.partner.autocomplete.sync",
+      "external_id": true,
+      "code_sha256": "0df7e3fb16e3c0fadb9496479485ba44a792c74b8fd562231d207edbf764cc51",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 189,
+      "model": "portal.wizard",
+      "external_id": true,
+      "code_sha256": "705bb7c1ed1287938f12ec9bce259bef607d6ede56809f841b1a417ebba9d55c",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 191,
+      "model": "sms.sms",
+      "external_id": true,
+      "code_sha256": "130bf940fc917aaf665c8ad3f635879729029bd9992150951d74f4800471d057",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 199,
+      "model": "sms.sms",
+      "external_id": true,
+      "code_sha256": "5def0854b9c3034aeed0a33038903d7de0d8acc0f5469d6dcd7e26b65c3e8b10",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 201,
+      "model": "snailmail.letter",
+      "external_id": true,
+      "code_sha256": "fef9b9c5aa36cfc81683692c226cc37c0332146027749ccf9342cf886766f499",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 205,
+      "model": "digest.digest",
+      "external_id": true,
+      "code_sha256": "160d255ffefe829ecfe1852e2f68a329f1c7eb2ca7a5753ebd0993b5cd2d8cd9",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 208,
+      "model": "payment.provider",
+      "external_id": true,
+      "code_sha256": "b6546af487888cff74a423647382e21064205ac246b5948ac4e3a3f4b37ce1ed",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 209,
+      "model": "payment.transaction",
+      "external_id": true,
+      "code_sha256": "c63df800b38783001030ed7a149b84fbe7d6942be547786c320060b8d1cdcae6",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 216,
+      "model": "account.move",
+      "external_id": true,
+      "code_sha256": "69df5c391567c9a637561747f470623d27a1be5fa5c796cdff842040e52f5dec",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 227,
+      "model": "account.payment",
+      "external_id": true,
+      "code_sha256": "2abe065306ff794d6b06840d486342c7658480d5d683c03393513d91295f0b4d",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 231,
+      "model": "account.move.line",
+      "external_id": true,
+      "code_sha256": "ab948b0cd0513f433597d8194b52bbf51043a0a689fa562bfb441cff0b90a8ba",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 235,
+      "model": "account.move.line",
+      "external_id": true,
+      "code_sha256": "5115502cb450a752b687e9020ac9021113d3fc10df7f58807d1cbdafe594a265",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 236,
+      "model": "account.move.line",
+      "external_id": true,
+      "code_sha256": "ddbdf9c9023cee83b504f7c888def2aa498a24e42246570e1d49eccce5825557",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 257,
+      "model": "account.move",
+      "external_id": true,
+      "code_sha256": "7e60b97d7a434fffb0576910bc5a32be6709aed39ac94ee7637c570431016cd5",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 258,
+      "model": "account.move",
+      "external_id": true,
+      "code_sha256": "f61009abee2e4f94a3d291e37a0181633263c0ce04f157003e503b74369b6e5a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 259,
+      "model": "account.move",
+      "external_id": true,
+      "code_sha256": "3eb604b4f514325fd83eb83992391df70efbcd8a04b399c8a13e090c4dcc64fd",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 260,
+      "model": "res.company",
+      "external_id": true,
+      "code_sha256": "c0b15b54eaeb19bffa1f9246a84cfd9009b5ad8ecfe04d93033b4662c892c912",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 262,
+      "model": "account.account",
+      "external_id": true,
+      "code_sha256": "979b45bfd99d8077755f39df397f8b66556204d94dc2adeb0a8595ff23d2c400",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 272,
+      "model": "res.company",
+      "external_id": true,
+      "code_sha256": "cd8bd5fa062fe8414c4719737d9213ea27cb9b7a77635891313908bb36a3057f",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 273,
+      "model": "res.company",
+      "external_id": true,
+      "code_sha256": "af1b2cb2ca0e2fd58713b5fd043a5f28866f99f1bc7c8adbc9beb47c1f3ef578",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 288,
+      "model": "account.move",
+      "external_id": true,
+      "code_sha256": "b4ca9ab34469c683c5c290b6462554d5971ca2c5873e4f4264d044de2cd1071e",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 289,
+      "model": "account.move",
+      "external_id": true,
+      "code_sha256": "bd90332e2b93acf9dfa818b72bb755c4cb79c96593ff4e1665d1a6f4e07a8049",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 314,
+      "model": "gamification.challenge",
+      "external_id": true,
+      "code_sha256": "ae6fcf61b5b6472d6ffc5aa18a1405c3336e1647583da59d044a34ad29aed06f",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 315,
+      "model": "gamification.karma.tracking",
+      "external_id": true,
+      "code_sha256": "373a3f36c3fcaa2f5991280508a8cf22c2169375cde68539f3256757265797cb",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 321,
+      "model": "survey.survey",
+      "external_id": true,
+      "code_sha256": "61d1c81558ebad8c8a5325fcbfa986781bb36da2d93814814ca13531543c063a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 344,
+      "model": "hr.employee",
+      "external_id": true,
+      "code_sha256": "1ab74a137818a8548144c1b6585cf41683ea360c868ede78bfd4c184cc614047",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 345,
+      "model": "mailing.mailing",
+      "external_id": true,
+      "code_sha256": "55e155994691e44be7661650ae0082e73961d7f4f9b768c2e8fb7270e045a119",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 346,
+      "model": "utm.campaign",
+      "external_id": true,
+      "code_sha256": "3c9832fe735c68b9e88ddb247604b9cb84370bbd9c2d4247c095c526d23e36e9",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 372,
+      "model": "project.project.stage",
+      "external_id": true,
+      "code_sha256": "b1fd830f89aef96fac5f0b95e41e82508d79da7aabcf9b0cc1592f8918a3adaa",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 376,
+      "model": "project.task.type",
+      "external_id": true,
+      "code_sha256": "b1fd830f89aef96fac5f0b95e41e82508d79da7aabcf9b0cc1592f8918a3adaa",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 390,
+      "model": "project.task",
+      "external_id": true,
+      "code_sha256": "c1ce814d6fceaf1a44892c5afead9ced019b432895ff563130a160caa107d348",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 391,
+      "model": "project.task",
+      "external_id": true,
+      "code_sha256": "d6b3656eddfb7235f19539c7aa8914fafb39c90ede1d2d66bb4034e4d2473aa5",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 407,
+      "model": "project.project",
+      "external_id": true,
+      "code_sha256": "46e2ca03d08536c371bacf584a3c94bbd46169fa305e5d79b6c769e522738a42",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 415,
+      "model": "hr.department",
+      "external_id": true,
+      "code_sha256": "ed58f7290a9a742b25996b184543db91708a3f89050695f180c0aeebdb7fd046",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 416,
+      "model": "hr.employee",
+      "external_id": true,
+      "code_sha256": "2a49d71a0b39f432849185b23662ffd502a53db880ce0c706d68427e0cae5d75",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 424,
+      "model": "project.task",
+      "external_id": true,
+      "code_sha256": "b4b1ac813acafe3b627db20d30a6ae62bc400e25ac37e85c4c75b1b378b8d5c8",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 443,
+      "model": "payment.transaction",
+      "external_id": true,
+      "code_sha256": "4a8e7c1a300c16ca4491ef403e9a215425f74adad176c39b45a43bf533431024",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 454,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "e86e208deaa5ac6b840eed62f43e2da1dc8c4d176eeeae565e4c425f89b13794",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 455,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "69df5c391567c9a637561747f470623d27a1be5fa5c796cdff842040e52f5dec",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 456,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "3d823ea1b3aaa3ace2c1b373ace12ac74f72c9205d246fd1a08606a3f6f3dd55",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 466,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "a9bc5f6ba9423c03bb00c35635ae0a80bc2ed4c7ca70abbeec53d67eade0e77a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 468,
+      "model": "sale.pdf.form.field",
+      "external_id": true,
+      "code_sha256": "212036e43ef0146de3b7dfe7bf1bbb0b7c7aef6170af7f74775b6cf49849987d",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 471,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "bef2ec2261936a7867a5f27d3cd09efbb0cddae406736f04de889e230dd71f60",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 473,
+      "model": "procurement.group",
+      "external_id": true,
+      "code_sha256": "49384fe35a10746cdbb618aaa69a30b102b69b7ca45f6cbbe68cfd482ec9bd70",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 508,
+      "model": "stock.quant",
+      "external_id": true,
+      "code_sha256": "50b5724b7bd4aea4b8afa9cb7ebffa0d5648c2b3eba725673de42b852fab1a02",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 509,
+      "model": "stock.quant",
+      "external_id": true,
+      "code_sha256": "0150a3416f4cd9bec721d8a5eb50f28ba637aac8ac43c6020a4b22781a4d639a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 513,
+      "model": "stock.quant",
+      "external_id": true,
+      "code_sha256": "8e181e4e459f70d0308ec9dfac30af423867cf54588ee254c8a141312a7207fc",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 514,
+      "model": "stock.quant",
+      "external_id": true,
+      "code_sha256": "b0c67d861331860505119c0bade2996afbf031c62cc658b9789db2c66cfafc6e",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 516,
+      "model": "stock.move.line",
+      "external_id": true,
+      "code_sha256": "1ec7cb8566100f3d5551ebdf4a5d0a47c22c29eb697606618b7704e26eeaaecd",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 523,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "e7806f6afff8a8eeb5e1ec9a6ccf1f3cf30103d8f8c9d11def0f9bf244f73871",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 524,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "5d1fcb9c33e3eab2f0080e1433ec40dfdd25d0cbe49774d866c0c7286a026b9e",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 525,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "aa7e2688cf9f29347efed2e24910315e8d06832617bee97260a88242cc345c31",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 526,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "4a9fbcef9eea9e7be80309d759b4837b60eed3979b0a1c57831b780781c1beb2",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 527,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "1db134f553e80328e3169847b55de497fadb18b64d3e60fd516ec167da4a51d4",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 529,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "0cb95f52e6ba70eb989a02512ad070c28d69e501560c009a9aeeda20310c0330",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 530,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "39e7319d45f2964f1e233c7b9a12373065d39467045dbf8749f7ec05e8177473",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 531,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "eedeb8f594fd610d2405bb20831a56c575d159226967702e62b1bad65c3df634",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 532,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "4e12ab82bfc35e61b75b19087a94f8f91a614f18a79589dd458b41c853c7c5ec",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 540,
+      "model": "stock.picking.type",
+      "external_id": true,
+      "code_sha256": "a6b6f9a89212838a29cfabce073adedf18d71a674bce517878294f543b830026",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 544,
+      "model": "stock.picking",
+      "external_id": true,
+      "code_sha256": "a418761646ead67db66dcc04da5ebb91c727618f4d39819aa63687ddd9384c3b",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 547,
+      "model": "product.template",
+      "external_id": true,
+      "code_sha256": "65c3d7c6600e273a2cc4a2980669fbf70587162766362b1dcc98922c3146d4c6",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 559,
+      "model": "stock.warehouse.orderpoint",
+      "external_id": true,
+      "code_sha256": "e5989bae4e8aa2812e0c28af9387bff54bbb50de5250467f9b2d8f7dbfbf4cc3",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 571,
+      "model": "purchase.order",
+      "external_id": true,
+      "code_sha256": "69df5c391567c9a637561747f470623d27a1be5fa5c796cdff842040e52f5dec",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 572,
+      "model": "purchase.order",
+      "external_id": true,
+      "code_sha256": "2f1e58a0ea72b4370d993b26fe033b51d27ebdc72be5039bee40378a933dba7d",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 580,
+      "model": "purchase.order",
+      "external_id": true,
+      "code_sha256": "408bd852cbc7cf682dc80bef3359b882bc7ad522b42871567339f4d14bd3b052",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 581,
+      "model": "purchase.order",
+      "external_id": true,
+      "code_sha256": "9bc55349060923491b9523678e210a858ca840c228af97599c98254d6a294bd3",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 583,
+      "model": "purchase.order",
+      "external_id": true,
+      "code_sha256": "2e289da2121ee20bc3c94f15dd50ba2fbb0166f8df960f5554703fe027fe7a73",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 585,
+      "model": "purchase.order",
+      "external_id": true,
+      "code_sha256": "c59bf3d47a9dbdf1baba17ade82d178b1faf074140539aaaf6efc316a45db03f",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 591,
+      "model": "calendar.alarm_manager",
+      "external_id": true,
+      "code_sha256": "e2d8efe64bed81a464c45d7b5be6457387d02c83b0c5ebd7b864b512e2efb12b",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 597,
+      "model": "crm.lead",
+      "external_id": true,
+      "code_sha256": "a6bc4cf6d1fad7c78ee54e3061bbaaeb7f63b5aa202d9809c771f7de3d2bca72",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 598,
+      "model": "crm.team",
+      "external_id": true,
+      "code_sha256": "1aecb798dd18523a9b00ec33144bac7e50a05f9df985a9dbc31a20ac5e4c3955",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 599,
+      "model": "crm.team",
+      "external_id": true,
+      "code_sha256": "58d33d3aa3e49f03b94832a7057576150c0ab6f8bf0e49a10d8b7f5fd402b033",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 600,
+      "model": "crm.team",
+      "external_id": true,
+      "code_sha256": "17e09f4ed6e46961cd8466c53935dfff71549654dd0e4bfd0ed3309e9d9320cb",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 632,
+      "model": "crm.lead",
+      "external_id": true,
+      "code_sha256": "9f0574dc23de8b0c18a7dc9df0ca1c35cbe92da9641bf8bd9916a92e6ca88c4c",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 633,
+      "model": "crm.lead",
+      "external_id": true,
+      "code_sha256": "01f6d85391ce6b9020808f85c28d55e01be3f987b95120a3815a8df8b9efbd58",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 674,
+      "model": "event.mail",
+      "external_id": true,
+      "code_sha256": "469fe4dbbbbace6e79ee6381fa6c426660aff2b2c6c9312a699e9f1cba21e637",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 678,
+      "model": "website",
+      "external_id": true,
+      "code_sha256": "c00783a16b31a372952e5d3b0756c8f014256c8a6e83c4ad7c035e59c5d00e56",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 680,
+      "model": "website.visitor",
+      "external_id": true,
+      "code_sha256": "ca3f71b34791e81dc2423afcd62d1fbe62c53523ff9f424a37e497e9f2396169",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 688,
+      "model": "website",
+      "external_id": true,
+      "code_sha256": "774fb053ad47a5f01d4ce31a230388803bcd2d65184c2a3dc013c07b36574e6c",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 689,
+      "model": "website",
+      "external_id": true,
+      "code_sha256": "fd1a31cf712f54c11b1a3ce1114e06e095d91cbad615fb94cd19e4a688f10a99",
+      "review_flags": [
+        "privileged_reads"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 701,
+      "model": "event.lead.request",
+      "external_id": true,
+      "code_sha256": "c2c8635aa9bd44f737b34cb4ae9ffd35aae6280070cc3007c7574c176985ed84",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 742,
+      "model": "product.product",
+      "external_id": true,
+      "code_sha256": "ab2544abdc9c75dbcbe3afe0db15273757f0098a6e7ccb3bdbd0ea9632a908da",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 743,
+      "model": "product.product",
+      "external_id": true,
+      "code_sha256": "c65d98d83695fe24f7b9078fb7f196410d089a4e0814f6e073dee6a6fbea8940",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 744,
+      "model": "product.product",
+      "external_id": true,
+      "code_sha256": "b44e9c7ad47497c15ebf2488682ab23632990a54cd9f26608d8b3994d5d7dd55",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 745,
+      "model": "product.product",
+      "external_id": true,
+      "code_sha256": "b350937bdcce8f2f712a2ab8fda6ce2f832b8271186fdcbaa7b9bc005c97c446",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 746,
+      "model": "product.product",
+      "external_id": true,
+      "code_sha256": "047e1a1e48f1c3f362c5a1bce89606ac4f4cacddbbc88c403488f553d9082c7b",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 747,
+      "model": "website",
+      "external_id": true,
+      "code_sha256": "a092e0ff770ed0ec0a3cbd3324cbc996b1c3d0401fe32cea5c9417b31e6cedfd",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 764,
+      "model": "product.product",
+      "external_id": true,
+      "code_sha256": "a96e5923501e4981cb7809ba41de3a03dd5639e5cfa826b8640687e85edae513",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 779,
+      "model": "pos.order",
+      "external_id": true,
+      "code_sha256": "8d43a5b4b99a9f5bbe4b2a4b661af2bc29b7b6be330a182bb95cd40c36f4ffcf",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 804,
+      "model": "hr.contract",
+      "external_id": true,
+      "code_sha256": "26e5f74348ac685b04c8b9a4919aa25b65586fb362d6fba53068eca25f06a9ce",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 809,
+      "model": "hr.leave.allocation",
+      "external_id": true,
+      "code_sha256": "10baf93a5022073be51cb3e973ee62d0d3f68ddef620045bffe821f57f13a87a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 810,
+      "model": "hr.leave",
+      "external_id": true,
+      "code_sha256": "38eb4c4a1466b1c3e2a92e1691c6842e977d79b7df496de827c2294320c13bf9",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 813,
+      "model": "hr.leave",
+      "external_id": true,
+      "code_sha256": "a6b2ed0a9c544cd6bd20a3d1a92b28d2b6d60a4060457e137cf8648ed02373db",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 814,
+      "model": "hr.leave",
+      "external_id": true,
+      "code_sha256": "c00bb122722128d6866150a7516a869f43771c5cd0b52feb9748a8beba46b57b",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 825,
+      "model": "hr.leave.allocation",
+      "external_id": true,
+      "code_sha256": "a6b2ed0a9c544cd6bd20a3d1a92b28d2b6d60a4060457e137cf8648ed02373db",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 836,
+      "model": "hr.leave.employee.type.report",
+      "external_id": true,
+      "code_sha256": "91e2d15d05fb8644ee4b71948ec978d4f01ab7f3a349d4c189ade458d17c5c5c",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 838,
+      "model": "hr.attendance",
+      "external_id": true,
+      "code_sha256": "030dda4ca2b3ba756067af9946a6c0fef1714746891708d4640129f624dda20a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 839,
+      "model": "hr.attendance",
+      "external_id": true,
+      "code_sha256": "1215ab21d8ef9fac2a57bda59cb8f1bcbfb66668daecffc5f8e11e5c15e3a544",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 840,
+      "model": "hr.attendance",
+      "external_id": true,
+      "code_sha256": "95b642b650f20184319b592527da5dee13fd2733d931c6fbd79ff4d7fa90383b",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 841,
+      "model": "hr.attendance",
+      "external_id": true,
+      "code_sha256": "d06ac670e82f88d5c8263febdf9a6226e5e22fcb58950cea41dffa19de5e3518",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 869,
+      "model": "account.move",
+      "external_id": true,
+      "code_sha256": "54cacf05850eacddcc14f30ae92c56665b231ef0f5e7548cb51eb4e05a0dc138",
+      "review_flags": [
+        "mail",
+        "fixed_company",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 872,
+      "model": "purchase.order",
+      "external_id": false,
+      "code_sha256": "45319cd6bad2557ab3ac6f0d241ba53749e5a46eed17e9c534a2ed21f8538c2f",
+      "review_flags": [
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 873,
+      "model": "purchase.order",
+      "external_id": false,
+      "code_sha256": "a0e6617ef7d0cb88342019126a888611f5461de3621bda0be64199f116f3bf08",
+      "review_flags": [
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 874,
+      "model": "purchase.order",
+      "external_id": false,
+      "code_sha256": "1f0d38a4655c521be44f28ac52103aaedc157aae6302987be4ca92028096789c",
+      "review_flags": [
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 877,
+      "model": "account.move",
+      "external_id": false,
+      "code_sha256": "a0a1baa9c60e303f3f45daaee46fec50db3a868e6fe350b9a2aea2408aedc961",
+      "review_flags": [
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 878,
+      "model": "base.automation",
+      "external_id": true,
+      "code_sha256": "97cc639fcafac7fc6cfbd60fb0b3f68d85963b389f7de8722ca6b908d6dc5c4a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 880,
+      "model": "account.move",
+      "external_id": false,
+      "code_sha256": "62c3f38db64f43e5c0be465b227134c78320aefe10c303f786c93d9323fefdb1",
+      "review_flags": [
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 882,
+      "model": "account.move",
+      "external_id": false,
+      "code_sha256": "8f3ccee60618b04cb157b699e61c4b0d6b5dc65058b1ce71210d37c2bc9fc649",
+      "review_flags": [
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 883,
+      "model": "account.move",
+      "external_id": false,
+      "code_sha256": "a981498ef27c06c4ee96c14aa0ce9a2bc1f8a099da80e78027a4fefd4637f6d0",
+      "review_flags": [
+        "mail",
+        "fixed_company",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 884,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "f3619ed8ac4c8ec3e6244ffcbe7d4a3b4ed7eb67cacdf8777f5ec8bd9d4faf90",
+      "review_flags": [
+        "privileged_reads",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 885,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "794aafeb4ae6fbf3c76b7cb400180d6a339545beedb374ab3776f6f34889adfa",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 886,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "0597543755316aaf3ca0771e5906e58806bfdd94118c7931d37bf448e7be362c",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 887,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "13ee995569ce126b364d485bcf3f250bdb1b2c825ab6b859a2b64aa559a64aa0",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 892,
+      "model": "x_outs_payroll_batch",
+      "external_id": true,
+      "code_sha256": "74cecc57cca6d84283b6047e35cf6ab108257c9626305de7b5439da7ac4b7661",
+      "review_flags": [
+        "privileged_reads",
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 893,
+      "model": "x_outs_payroll_batch",
+      "external_id": true,
+      "code_sha256": "e12826104233aff2484be0e54edce0788ca8caaa0dfc48121ebd0df4fae9a172",
+      "review_flags": [
+        "privileged_reads",
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 894,
+      "model": "x_outs_payroll_batch",
+      "external_id": true,
+      "code_sha256": "a27fefb6702b4e5f4763402a49aff700fb6093cba480790cdec81e1801aac275",
+      "review_flags": [
+        "privileged_reads",
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 895,
+      "model": "x_outs_payroll_batch",
+      "external_id": true,
+      "code_sha256": "8904ca8c2d73916f2a77c70bd936dcb1373e21f02f8c300b5ab3c3184df1c021",
+      "review_flags": [
+        "privileged_reads"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 896,
+      "model": "x_outs_payroll_line",
+      "external_id": true,
+      "code_sha256": "ae2444724a4a26d4822813bf055af16ee4e263f04a9b78de5f49fe2cc16c1f11",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 897,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "ccc5187e80323a8d40fc1dd8f11b8211b38c1f366d0a796009343387654c125f",
+      "review_flags": [
+        "privileged_reads"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 898,
+      "model": "x_outs_payroll_batch",
+      "external_id": true,
+      "code_sha256": "ef8aa96fec5d3991c0feaee15d83ea7f11a08c2fcb3d4d83263cebc98b60002e",
+      "review_flags": [
+        "privileged_reads",
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 899,
+      "model": "x_outs_payroll_batch",
+      "external_id": true,
+      "code_sha256": "8b91302a68e958a6960c17c9ddfbe0059c25378befc5ac9c0061c3488dd1e47d",
+      "review_flags": [
+        "privileged_reads",
+        "mail",
+        "fixed_company",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 904,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "32a794e5e8d91b9e2ded9a35cdc174ba2f02710113b8c755dfecf47e19a19a43",
+      "review_flags": [
+        "privileged_reads"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 914,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "28304f4b9acbf5ea9e269d37d161e171baa154999404bc6e9ef3b3db95fbc81a",
+      "review_flags": [
+        "privileged_reads",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 915,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "8ae802d19621f0fc4b796eec7a7e0b6b7c034f42f731a50eeecbfa604e2ad0fd",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 916,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "d25893a6d56e615bce1c3004660ace05dd8fe9da76e4093c3bcb22f8eb5a8f3b",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 917,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "576dc4c65a0ceee2758d4e5298c6dbe2ac5f1c20459246965a988fec3aa0197c",
+      "review_flags": [
+        "privileged_reads",
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 918,
+      "model": "x_outsolutech_weekend",
+      "external_id": true,
+      "code_sha256": "d28f477f2ca11204ce35ac00e6baca7397c991eb056441d27f4a2b7cce9f4e0a",
+      "review_flags": [
+        "privileged_reads",
+        "mail",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 920,
+      "model": "x_outs_project_incentive",
+      "external_id": true,
+      "code_sha256": "7cde060844462f8bcaf0ec0b72d9473d2bcd33368ece8851713a471c1dcf55b3",
+      "review_flags": [
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 921,
+      "model": "x_outs_project_incentive",
+      "external_id": true,
+      "code_sha256": "5544b41178252835fa10eb3e06c3295edfd1996db213d8d21f884f5afd5c7d48",
+      "review_flags": [
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 922,
+      "model": "x_outs_project_incentive",
+      "external_id": true,
+      "code_sha256": "c3e8a568c94842e9cbacd6dd9e4479772298a79d0a983a3a1cfb786a70e2d250",
+      "review_flags": [
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 923,
+      "model": "x_outs_project_incentive",
+      "external_id": true,
+      "code_sha256": "9f1f0bef2dc814e94745cea2ec940d3e9b4956c666edc5195b3cd060660ceaa0",
+      "review_flags": [
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 924,
+      "model": "x_outs_project_incentive",
+      "external_id": true,
+      "code_sha256": "a551de03f031b4a908fef5ecb65b90395badf86a88df85b20e1f137799a53f24",
+      "review_flags": [
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 925,
+      "model": "x_outs_project_incentive",
+      "external_id": true,
+      "code_sha256": "d65cbadf33408bcbd5910630bfcda52bbcb59a3fe53f911abc9ed41a7cfe31a6",
+      "review_flags": [
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 926,
+      "model": "x_outs_project_incentive",
+      "external_id": true,
+      "code_sha256": "68a988e7944a5753e56f935574cf5ec268aa6928eb0251f428530e86d49b7c67",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 927,
+      "model": "x_outs_project_incentive",
+      "external_id": true,
+      "code_sha256": "7add81b3f5af16b5b6bb63aa92eaa7f9d4ac95865410faf4885e57ea3f511809",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 928,
+      "model": "x_outs_payroll_line",
+      "external_id": true,
+      "code_sha256": "2c66d87290d26f522491a25a0d1a574ee3f585ce97c5bca2f281d44f9e74262e",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 932,
+      "model": "outsolutech.day.service",
+      "external_id": true,
+      "code_sha256": "ab9fb7167de87f865600b30990051e0e26eb5608f49f2c97a21b778c259b3ea9",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 934,
+      "model": "hr.employee",
+      "external_id": false,
+      "code_sha256": "c6b868fa5c18c44191e4e1da455622c5861fc82d38fffeea4e0e98b152ea530c",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 935,
+      "model": "outsolutech.day.service",
+      "external_id": false,
+      "code_sha256": "bf004075e40609cc86aefe0334b057b5e5f7ea8ecc742849c902da0eb277493b",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 936,
+      "model": "hr.employee",
+      "external_id": false,
+      "code_sha256": "0f7e9893866c361c6de820ec081c7261a0eeec89c9c39497ffe9cee3b6ccd218",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 937,
+      "model": "ir.actions.server",
+      "external_id": false,
+      "code_sha256": "67f5d49ae9dcdc8fb411f92e4b03ac0c602c76892f43cbad37525b8211698582",
+      "review_flags": [
+        "privileged_reads",
+        "fixed_company"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 938,
+      "model": "x_outs_payroll_line",
+      "external_id": true,
+      "code_sha256": "6298bb894ea9a4eaf3791d5516f61146a7ba80da1bac8215fa8c8de145f039ab",
+      "review_flags": [
+        "privileged_reads"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 939,
+      "model": "x_outsolutech_weekend",
+      "external_id": false,
+      "code_sha256": "79cd7c16883eb55fa736e78257c0da9f7adbd78ffbc1603066e87cd27b855c6d",
+      "review_flags": [
+        "privileged_reads",
+        "fixed_company",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 940,
+      "model": "x_outsolutech_weekend",
+      "external_id": false,
+      "code_sha256": "8aa38496baa134af4f0f097fb70148e9dd58b8ed588fcb3cbfeeb8b9965e3e47",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 941,
+      "model": "x_outs_payroll_line",
+      "external_id": false,
+      "code_sha256": "4b370e46998280bcc6b62c4f53551e1a234795fee15c482c95bf274afb82a160",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 942,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "38aa98c3f82c18297490cf14825424c608f380d6fc4542d21577b6868e77d145",
+      "review_flags": [
+        "privileged_reads",
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 944,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "20906da82fc4852b642aa19b842ee394c84bbf1e44d0fdc3dc80dc4f06dfc5de",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 947,
+      "model": "res.users",
+      "external_id": false,
+      "code_sha256": "6b5c80b5b2cda9a9871d5e3516982c84616db3aefd67ebae2f3c1d62c6f1c984",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 948,
+      "model": "res.users",
+      "external_id": false,
+      "code_sha256": "f4526dc763edb07345678f7a8a030deb65ed894f80af5659609b535eb5aa58a6",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 949,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "0bdfec0da2fe7379a556c5fdcbfd988e515bace7fd790bdc03133158a72c0937",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 950,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "e8162fecb6392a12e85f49a10ff258cb46c1f229386a428b45ac02fc4fe9aa5b",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 951,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "2ade708416663c31f64e44e70ec332e59fa70f11ab7a7cfe8da391424e1dc8e3",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 952,
+      "model": "account.move",
+      "external_id": false,
+      "code_sha256": "70ea057b04f4a87fe08d276b6000561615914267ae8543b7e82a57c7e924765e",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 953,
+      "model": "account.move",
+      "external_id": false,
+      "code_sha256": "acb860d998360e2796e61413f54bb02c4cd072915f3715d435145269ac439e95",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 954,
+      "model": "sale.order",
+      "external_id": false,
+      "code_sha256": "fcb5fd94e8f1bb4e04a2beed58f91afc75aa1048e8a43f56da16d596d1126f58",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 955,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "d535d15934104f269423c1d32f02896f3f2ff80eb9e723210331e59d9746f222",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 956,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "82216ae72a048d1c42b9bcda537f643388b477c2d6ba77121ce89c020eb0f022",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 957,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "3c5bafd59da42898012ac0e1aa7e8327de0ebfbb93629171191587ccbc41cf4a",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 958,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "540ee359afa809c34b75108821204280eb2130553c3405929d4aa6348b643c6a",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 959,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "4667b1691ce54819a0f7c8560730e8112cd18b54b2742d3490a10c37a0137235",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 960,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "4a58c66014d533b54d1448f17b4d56bb3ee48addf60e75b4357fa5bb414fb2d2",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 961,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "9bcaa0fb12726a2080177cc0b601a6015302440b66e851a72ab333ca3bc3a7d1",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 962,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "bfd6c35eeeaaf87720818e90f45457bdf9ceae59e2d105f5c9a5888d07cdb99c",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 963,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "41b9c1375715aa6574a9e6fbc560a68b19c1b8eaa86fd9aecd52fa067c4ee950",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 964,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "1bd2336d636332fd5acf0dc74c9e35aa469f45b24338eebd110e7c1506666e93",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 981,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "8a288064db5e4dc622ff32b19416cee314ef437715dc92452022d0437d834940",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 986,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "d469043e1ff7a344c84b8120a533ee426001a6e001d7b4e64c934108e49974fa",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 987,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "0555b3e6b107ea7b7362d66257aa7a353b16704674346597881264f4df7df253",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1005,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "9baa300bfdcabefe7d22a420cc5bf0c8f7f1ec24f808ee10ae0f5645102b74b5",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1006,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "7889a5ce336b2310f1058aec46e1f37a485bdc7bc768da0bf8d2fd946c4c1efb",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1021,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "9b3d1110f27366f8a921f4e19547814a5603ba74cd91abe917670a09ea134e28",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1022,
+      "model": "ir.attachment",
+      "external_id": true,
+      "code_sha256": "e159c08c5c592b3e4339da8ea374d4b164552b5de0d20a7e43b2796842b18d3d",
+      "review_flags": [
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1023,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "32128a7ac954db7c9b361e63174f0b2e63ea6092c9ad80ab9ca500a8450a0438",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1024,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "304ef1e47b26e3e3679779abbab3edb1903332c7c1a4b6351249549f8052afaf",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1025,
+      "model": "sale.order",
+      "external_id": true,
+      "code_sha256": "5422de9af9ff149d3c0b783fae5eadab1805ed08b8f0deac64b098c3df5f1a7a",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1026,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "eb5de18ad9bf5f56e0f85c28a4af01bdc667268d3c3e5cfb51e248d9cc673521",
+      "review_flags": [
+        "sql",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1029,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "1a253e9aa0cff121376f398a6759c653a8003ff838d349406f8a9b72c914107b",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1030,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "814ffe51eecbe89b832d552288402349ea78faf6bd5f5dcac1662a8a98a67832",
+      "review_flags": [
+        "sql",
+        "fixed_database",
+        "fixed_record_id"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1031,
+      "model": "res.company",
+      "external_id": false,
+      "code_sha256": "07f99ae9def29f8308bee8c3c68612879cb2cdd648eac6e7c63789b95888c5d4",
+      "review_flags": [
+        "sql",
+        "fixed_company",
+        "fixed_database"
+      ],
+      "packaging_decision": "excluded_pending_functional_review"
+    },
+    {
+      "id": 1033,
+      "model": "outsolutech.ecf.document",
+      "external_id": true,
+      "code_sha256": "0359d8faa252e12f53a9c1545a5a7eb6017228861ab74a95b53272383d370a15",
+      "review_flags": [],
+      "packaging_decision": "excluded_pending_functional_review"
+    }
+  ],
+  "manual_fields": [
+    {
+      "model": "account.payment",
+      "name": "x_ux_project_id",
+      "type": "many2one",
+      "relation": "project.project"
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_engagement_type",
+      "type": "selection",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_legal_afp",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_legal_isr",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_legal_sfs",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_payroll_base",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_payroll_deductions",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_payroll_email",
+      "type": "char",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_payroll_email_confirmed",
+      "type": "boolean",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_payroll_enabled",
+      "type": "boolean",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_outs_weekend_enabled",
+      "type": "boolean",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_uef_documents_panel",
+      "type": "html",
+      "relation": null
+    },
+    {
+      "model": "hr.employee",
+      "name": "x_uef_payroll_panel",
+      "type": "html",
+      "relation": null
+    },
+    {
+      "model": "project.project",
+      "name": "x_ux_budget_set",
+      "type": "boolean",
+      "relation": null
+    },
+    {
+      "model": "project.project",
+      "name": "x_ux_cost_budget",
+      "type": "monetary",
+      "relation": null
+    },
+    {
+      "model": "sale.order",
+      "name": "x_ux_quote_contact_id",
+      "type": "many2one",
+      "relation": "res.partner"
+    },
+    {
+      "model": "sale.order",
+      "name": "x_ux_quote_document_ids",
+      "type": "many2many",
+      "relation": "ir.attachment"
+    },
+    {
+      "model": "sale.order",
+      "name": "x_ux_quote_pdf_version_ids",
+      "type": "many2many",
+      "relation": "ir.attachment"
+    },
+    {
+      "model": "sale.order",
+      "name": "x_ux_quote_subject",
+      "type": "char",
+      "relation": null
+    },
+    {
+      "model": "sale.order",
+      "name": "x_ux_quote_version_count",
+      "type": "integer",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_approved_at",
+      "type": "datetime",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_approved_by",
+      "type": "many2one",
+      "relation": "res.users"
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_company_id",
+      "type": "many2one",
+      "relation": "res.company"
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_cutoff",
+      "type": "date",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_final_mail_id",
+      "type": "many2one",
+      "relation": "mail.mail"
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_issue",
+      "type": "text",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_line_ids",
+      "type": "one2many",
+      "relation": "x_outs_payroll_line"
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_name",
+      "type": "char",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_outs_technicians_summary",
+      "type": "html",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_state",
+      "type": "selection",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_summary_mail_id",
+      "type": "many2one",
+      "relation": "mail.mail"
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_summary_state",
+      "type": "selection",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_batch",
+      "name": "x_total",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_base",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_batch_id",
+      "type": "many2one",
+      "relation": "x_outs_payroll_batch"
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_company_id",
+      "type": "many2one",
+      "relation": "res.company"
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_cutoff",
+      "type": "date",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_deductions",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_email",
+      "type": "char",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_employee_id",
+      "type": "many2one",
+      "relation": "hr.employee"
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_incentive_ids",
+      "type": "one2many",
+      "relation": "x_outs_project_incentive"
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_incentive_total",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_legal_afp",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_legal_isr",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_legal_note",
+      "type": "text",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_legal_sfs",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_legal_version",
+      "type": "char",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_mail_id",
+      "type": "many2one",
+      "relation": "mail.mail"
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_mail_state",
+      "type": "selection",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_name",
+      "type": "char",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_net",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_notes",
+      "type": "text",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_other",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_reviewed",
+      "type": "boolean",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_state",
+      "type": "selection",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_weekend_amount",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_payroll_line",
+      "name": "x_weekend_ids",
+      "type": "many2many",
+      "relation": "x_outsolutech_weekend"
+    },
+    {
+      "model": "x_outs_project_incentive",
+      "name": "x_amount",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outs_project_incentive",
+      "name": "x_company_id",
+      "type": "many2one",
+      "relation": "res.company"
+    },
+    {
+      "model": "x_outs_project_incentive",
+      "name": "x_line_id",
+      "type": "many2one",
+      "relation": "x_outs_payroll_line"
+    },
+    {
+      "model": "x_outs_project_incentive",
+      "name": "x_name",
+      "type": "char",
+      "relation": null
+    },
+    {
+      "model": "x_outs_project_incentive",
+      "name": "x_project_id",
+      "type": "many2one",
+      "relation": "project.project"
+    },
+    {
+      "model": "x_outs_project_incentive",
+      "name": "x_reason",
+      "type": "text",
+      "relation": null
+    },
+    {
+      "model": "x_outs_project_incentive",
+      "name": "x_state",
+      "type": "selection",
+      "relation": null
+    },
+    {
+      "model": "x_outs_project_incentive",
+      "name": "x_tax_reviewed",
+      "type": "boolean",
+      "relation": null
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_amount",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_company_id",
+      "type": "many2one",
+      "relation": "res.company"
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_employee_id",
+      "type": "many2one",
+      "relation": "hr.employee"
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_name",
+      "type": "char",
+      "relation": null
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_notes",
+      "type": "text",
+      "relation": null
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_outs_public_employee_id",
+      "type": "many2one",
+      "relation": "hr.employee.public"
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_payable",
+      "type": "float",
+      "relation": null
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_payroll_date",
+      "type": "date",
+      "relation": null
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_payroll_line_id",
+      "type": "many2one",
+      "relation": "x_outs_payroll_line"
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_state",
+      "type": "selection",
+      "relation": null
+    },
+    {
+      "model": "x_outsolutech_weekend",
+      "name": "x_work_date",
+      "type": "date",
+      "relation": null
+    }
+  ],
+  "actions_total": 206,
+  "actions_without_external_id": 43,
+  "manual_fields_total": 76,
+  "automatic_import_allowed": false
+}

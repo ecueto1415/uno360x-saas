@@ -1,0 +1,89 @@
+UNO360X - PREPARACIÓN DEL PRODUCTO POR CLIENTE
+Fecha: 31/10/2026. Release de laboratorio 0.2.0-lab.
+
+OBJETIVO DEL PUNTO 2
+Preparar paquetes versionados e instalables, identificar dependencias y probar
+las capacidades portátiles antes de construir el alta automática. Esto no
+sustituye completar los módulos del punto 9 ni las integraciones de los puntos
+6 y 8. No es una autorización ni una declaración de lanzamiento comercial.
+
+CATÁLOGO
+Base obligatoria: uno360x_business_base, uno360x_quote_ui, uno360x_ecf_core.
+Nómina/RRHH: uno360x_payroll_hr.
+Jenifer IA: uno360x_jenifer_core.
+Proyectos/Servicios: uno360x_projects_services.
+product/catalog.json define el mapa. control/catalog.py obtiene una huella del
+catálogo, las versiones y el contenido de los paquetes para detectar cambios.
+Se probaron las ocho combinaciones posibles sin instalar extras no elegidos
+en el plan calculado. La instalación de QA sí incluye todos los paquetes en
+ambas empresas para detectar incompatibilidades; no es control de suscripciones.
+
+CAPACIDADES Y LÍMITES POR PAQUETE
+Base: contactos, ventas, cotizaciones, compras, inventario, cuentas y reportes
+estándar. Flujos de factura/cobro y compra/recepción probados.
+Cotizaciones: se conserva el diseño existente; campos, activos Owl, historial
+PDF y renovación se empaquetaron para 18.0. Se cambia tax_ids a tax_id por
+compatibilidad de upstream. No se mueve un botón de transporte que no existe
+en esta versión. Los controles nativos de entrega de stock siguen disponibles.
+Se reemplaza el bloqueo a una base fija por presencia de identidad UNO360X.
+No se modificó la vista ni el módulo de producción.
+Fiscal: preparación E31/E45 y comprobaciones criptográficas locales; no firma
+con certificados reales, no transmite ni consume secuencias reales. Certificados
+sintéticos solo en memoria para pruebas. El método transmit bloquea siempre.
+La validación restringida conserva las limitaciones de los XSD de origen;
+no equivale a aprobación ni certificación DGII. Falta el adaptador del punto 8.
+RRHH: empleados, contratos, asistencia y ausencias estándar. Se conservan las
+funciones aritméticas revisadas de jornadas, cortes y redondeo. No se trasladan
+salarios, destinatarios, nóminas reales, automatizaciones o excepciones del
+director. El motor completo de nómina y reglas legales requiere el punto 9;
+este paquete no emite una nómina legal ni ejecuta pagos de personal.
+Jenifer: consultas deterministas de CxC/CxP/cotizaciones con ACL y filtro de
+empresa del solicitante. Se excluyen identidad de correo, hooks de chat,
+servicios externos y claves de OUTSOLUTECH. No contiene conexión LLM activa.
+Integración IA, comunicación y automatizaciones se completan en el punto 9.
+Proyectos: tareas, subtareas, horas, costo horario, gastos, ventas y compras
+de proyecto mediante dependencias estándar. Se prueban horas y costo de trabajo.
+La rentabilidad integral y los flujos propios de OUTSOLUTECH requieren revisión
+funcional en el punto 9; no inferirlos del costo de dos horas de prueba.
+
+ORIGEN Y LICENCIAS
+Dependencias estándar del Odoo 18 upstream fijado en el laboratorio.
+Módulos propios de origen revisados con licencia LGPL-3 en sus manifiestos.
+Los archivos adoptados conservan comentarios y se documentan en source_provenance.json.
+No se trasladó el sistema operativo ni se ejecutaron scripts de producción.
+No se importaron addons de muestras de empleados ni XML de nómina con datos
+y referencias específicos de OUTSOLUTECH. Las copias originales de revisión
+no forman parte de Git. Los esquemas se preservan como material de prueba
+recibido; vigencia y condiciones de distribución deben validarse antes de
+publicar un conector fiscal comercial.
+
+PERSONALIZACIONES QUE NO SE IMPORTAN AUTOMÁTICAMENTE
+product/legacy_inventory.json registra 206 acciones mediante metadatos y hash,
+y 76 definiciones técnicas de campos, sin código, valores de registros ni datos
+personales. Cada acción queda excluida hasta su revisión funcional. Cuatro
+modelos manuales sin company_id requieren revisión antes de reutilizarlos.
+Esto evita convertir costumbres internas de OUTSOLUTECH en reglas para todos.
+
+ORDEN DE INSTALACIÓN Y ACTUALIZACIÓN
+1. Crear los clientes ficticios mediante dev/tenants.py.
+2. Ejecutar dev/install_product.py en WSL root. Solo toca Alfa y Beta.
+3. Verificar dev/verify_product.py y dev/verify_tenants.py.
+4. Comprobar runtime con dev/check_product_runtime.py.
+Las dependencias definen el orden interno; un paquete instalado usa -u y uno
+nuevo usa -i. El proceso exige una suite no vacía y cero fallos.
+La aplicación ficticia se detiene durante la actualización y se reinicia sin
+cron. No afecta a la VM, ni instala en OUTSOLUTECH.
+Los cambios futuros de esquema requieren respaldo y migración probada; no
+se presupone que desinstalar módulos sea una reversión segura de datos.
+
+GARANTÍA OPERATIVA DE ALCANCE
+OUTSOLUTECH conserva todos sus accesos, módulos y funciones actuales. No
+aplicarle límites de planes. Correo, Jenifer y DGII actuales quedan intactos.
+No existe despliegue automático a producción ni DNS público del laboratorio.
+Los nuevos flujos y cambios de diseño se presentan primero en PDF.
+
+CRITERIO DE SALIDA DE ESTA PREPARACIÓN
+Paquetes presentes con versiones y dependencias, catálogo de ocho combinaciones,
+pruebas repetibles en dos bases aisladas, inventario de extensiones excluidas
+y límites de cada capacidad documentados. Las funciones aún no implementadas
+permanecen declaradas como pendientes; no deben venderse como disponibles.

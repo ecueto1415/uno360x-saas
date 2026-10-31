@@ -1,0 +1,1 @@
+{'name': 'UNO360X - Núcleo fiscal sin transmisión', 'version': '18.0.0.1.0', 'license': 'LGPL-3', 'author': 'OUTSOLUTECH', 'depends': ['uno360x_tenant_config', 'account'], 'data': [], 'installable': True, 'application': False}

@@ -1,0 +1,112 @@
+{
+  "reviewed": "2026-10-31",
+  "source_license_manifests": "LGPL-3",
+  "note": "Only reviewed portable source files. No credentials, company records or production runtime loaded.",
+  "files": [
+    {
+      "original": "uno360x_quote_ui/__init__.py",
+      "target": "uno360x_quote_ui/__init__.py",
+      "original_sha256": "5fd10918e1361ad65b4b41bcd8fb525e659267f47c8c4334ae52530e58908e9e",
+      "target_sha256": "5fd10918e1361ad65b4b41bcd8fb525e659267f47c8c4334ae52530e58908e9e",
+      "adapted": false
+    },
+    {
+      "original": "uno360x_quote_ui/models/__init__.py",
+      "target": "uno360x_quote_ui/models/__init__.py",
+      "original_sha256": "2ec3e8088018a1d205ce1f395448d8e468aecc3403429885dfcb710f0d74a93d",
+      "target_sha256": "2ec3e8088018a1d205ce1f395448d8e468aecc3403429885dfcb710f0d74a93d",
+      "adapted": false
+    },
+    {
+      "original": "uno360x_quote_ui/models/sale_order.py",
+      "target": "uno360x_quote_ui/models/sale_order.py",
+      "original_sha256": "f529e18b751247fbaaa9bcf7b55cbd37f29db11cd0ae97b09cd943c1d1431c7a",
+      "target_sha256": "f529e18b751247fbaaa9bcf7b55cbd37f29db11cd0ae97b09cd943c1d1431c7a",
+      "adapted": false
+    },
+    {
+      "original": "uno360x_quote_ui/static/src/js/quote_fields.js",
+      "target": "uno360x_quote_ui/static/src/js/quote_fields.js",
+      "original_sha256": "b417f9e4f5afc2bf452e78529ff5c948b9d77040a314a6eadf8b720218fc80b4",
+      "target_sha256": "b417f9e4f5afc2bf452e78529ff5c948b9d77040a314a6eadf8b720218fc80b4",
+      "adapted": false
+    },
+    {
+      "original": "uno360x_quote_ui/static/src/js/quote_chatter.js",
+      "target": "uno360x_quote_ui/static/src/js/quote_chatter.js",
+      "original_sha256": "3986965ff4b948d9b8ff0e08a11339684016f13c0cdb3364288dacb7a629d63c",
+      "target_sha256": "3986965ff4b948d9b8ff0e08a11339684016f13c0cdb3364288dacb7a629d63c",
+      "adapted": false
+    },
+    {
+      "original": "uno360x_quote_ui/static/src/xml/quote_chatter.xml",
+      "target": "uno360x_quote_ui/static/src/xml/quote_chatter.xml",
+      "original_sha256": "69599db33d473e0e5992b1b1ce455693d1607e94277a20d8fbf986907ebaf4af",
+      "target_sha256": "69599db33d473e0e5992b1b1ce455693d1607e94277a20d8fbf986907ebaf4af",
+      "adapted": false
+    },
+    {
+      "original": "uno360x_quote_ui/data/quote_ui.xml",
+      "target": "uno360x_quote_ui/data/quote_ui.xml",
+      "original_sha256": "a9c218d0768ed9c522d274edad1131bc567d43121a7abae494118e03db9f0ebe",
+      "target_sha256": "1f6c9c608c8fb2ebe1f068bcf5c2d825fa59b7af6b07d405715478c7c8b078a7",
+      "adapted": true
+    },
+    {
+      "original": "outsolutech_ecf_flujo/builder.py",
+      "target": "uno360x_ecf_core/builder.py",
+      "original_sha256": "88f9164049d3448c5e23cff29f17598c41f1eff5dd410dd58a69b08a9d395c2e",
+      "target_sha256": "88f9164049d3448c5e23cff29f17598c41f1eff5dd410dd58a69b08a9d395c2e",
+      "adapted": false
+    },
+    {
+      "original": "outsolutech_ecf_flujo/crypto.py",
+      "target": "uno360x_ecf_core/crypto.py",
+      "original_sha256": "a7d00b976007ea52b720a78526aec7ed5c666c0088655ccdafc172c43f81204b",
+      "target_sha256": "a7d00b976007ea52b720a78526aec7ed5c666c0088655ccdafc172c43f81204b",
+      "adapted": false
+    },
+    {
+      "original": "outsolutech_ecf_flujo/preflight.py",
+      "target": "uno360x_ecf_core/preflight.py",
+      "original_sha256": "308dc265bddbeb236e2fc89930afe2f627cd939354e696c41a2719385e5eeb44",
+      "target_sha256": "308dc265bddbeb236e2fc89930afe2f627cd939354e696c41a2719385e5eeb44",
+      "adapted": false
+    },
+    {
+      "original": "outsolutech_ecf_flujo/schemas/ecf31.xsd",
+      "target": "uno360x_ecf_core/schemas/ecf31.xsd",
+      "original_sha256": "cc66cbc418ceefaa6437c97607308c3e0814d73070fbbf9e9a2a331d12cb8abc",
+      "target_sha256": "cc66cbc418ceefaa6437c97607308c3e0814d73070fbbf9e9a2a331d12cb8abc",
+      "adapted": false
+    },
+    {
+      "original": "outsolutech_ecf_flujo/schemas/ecf45.xsd",
+      "target": "uno360x_ecf_core/schemas/ecf45.xsd",
+      "original_sha256": "b462dbbef7fc1eb30aeccc87638db9fb9400f5257a0ae21e6a72024be43b5951",
+      "target_sha256": "b462dbbef7fc1eb30aeccc87638db9fb9400f5257a0ae21e6a72024be43b5951",
+      "adapted": false
+    },
+    {
+      "original": "outsolutech_daypay/models/calculations.py",
+      "target": "uno360x_payroll_hr/calculations.py",
+      "original_sha256": "cf2504b1819b5c1fe833281bb99f34416c810d00548e1429a2ac07608509fc90",
+      "target_sha256": "cf2504b1819b5c1fe833281bb99f34416c810d00548e1429a2ac07608509fc90",
+      "adapted": false
+    },
+    {
+      "original": "jenifer_outsolutech/models/query_parser.py",
+      "target": "uno360x_jenifer_core/models/query_parser.py",
+      "original_sha256": "f253ef2c40ccc2363655b1a2d378a3e206b4d06ceb7605a004aa2392912be100",
+      "target_sha256": "f253ef2c40ccc2363655b1a2d378a3e206b4d06ceb7605a004aa2392912be100",
+      "adapted": false
+    },
+    {
+      "original": "jenifer_outsolutech/models/jenifer_query.py",
+      "target": "uno360x_jenifer_core/models/query.py",
+      "original_sha256": "0052a91fbcfa7c9beacc204eb20cb6d953729ad043fc8ab7cd2a3a38443b51b7",
+      "target_sha256": "80e53742c0d8862682bae1c9cf4f32d66ce3aff6d48ea3c0f56ac0b303709cd6",
+      "adapted": true
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# Preserve the received schema content; upstream whitespace is not a code defect.
+addons/uno360x_ecf_core/schemas/*.xsd -whitespace

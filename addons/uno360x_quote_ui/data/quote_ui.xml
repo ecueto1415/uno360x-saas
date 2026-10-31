@@ -1,0 +1,292 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="field_quote_pdf_versions" model="ir.model.fields">
+    <field name="name">x_ux_quote_pdf_version_ids</field>
+    <field name="field_description">Versiones PDF del presupuesto</field>
+    <field name="model_id" ref="sale.model_sale_order"/>
+    <field name="ttype">many2many</field>
+    <field name="relation">ir.attachment</field>
+    <field name="relation_table">x_ux_quote_pdf_version_rel</field>
+    <field name="column1">order_id</field>
+    <field name="column2">attachment_id</field>
+    <field name="state">manual</field>
+    <field name="copied" eval="False"/>
+  </record>
+
+  <record id="action_save_pdf_version" model="ir.actions.server">
+    <field name="name">UNO360X - Guardar versión PDF del presupuesto</field>
+    <field name="model_id" ref="sale.model_sale_order"/>
+    <field name="state">code</field>
+    <field name="code">
+if not env['uno360x.tenant.identity'].sudo().search_count([]):
+    raise UserError('La instancia necesita una identidad UNO360X antes de guardar versiones.')
+if not record or len(record) != 1:
+    raise UserError('Abre un solo presupuesto guardado para crear su versión PDF.')
+record.read(['name', 'amount_total', 'currency_id', 'company_id'])
+if record.company_id not in env.companies:
+    raise UserError('Selecciona la compañía del presupuesto antes de guardar la versión.')
+pdf_content, output_type = env['ir.actions.report'].with_context(report_pdf_no_attachment=True)._render_qweb_pdf('sale.action_report_saleorder', res_ids=record.ids)
+if not pdf_content or output_type != 'pdf':
+    raise UserError('No se pudo generar el PDF; no se ha guardado una versión.')
+version_number = len(record.x_ux_quote_pdf_version_ids) + 1
+version_name = 'UNO360X %s - V%s.pdf' % (record.name, version_number)
+attachment = env['ir.attachment'].create({
+    'name': version_name,
+    'type': 'binary',
+    'raw': pdf_content,
+    'mimetype': 'application/pdf',
+    'res_model': 'sale.order',
+    'res_id': record.id,
+    'description': 'Copia PDF V%s del presupuesto %s. Estado al guardar: %s. Total: %s %s. Autor: %s.' % (version_number, record.name, record.state, record.amount_total, record.currency_id.name, env.user.display_name),
+})
+record.write({'x_ux_quote_pdf_version_ids': [(4, attachment.id)]})
+action = {'type': 'ir.actions.client', 'tag': 'reload'}
+    </field>
+  </record>
+
+  <record id="action_open_pdf_version" model="ir.actions.server">
+    <field name="name">UNO360X - Ver previo de versión PDF</field>
+    <field name="model_id" ref="base.model_ir_attachment"/>
+    <field name="state">code</field>
+    <field name="code">
+if not record or len(record) != 1 or record.res_model != 'sale.order':
+    raise UserError('Selecciona una versión PDF de un presupuesto.')
+record.read(['name', 'res_model', 'res_id'])
+order = env['sale.order'].browse(record.res_id).exists()
+order.read(['name'])
+if not order or record not in order.x_ux_quote_pdf_version_ids:
+    raise UserError('El documento no pertenece al historial de versiones de este presupuesto.')
+action = {'type': 'ir.actions.act_url', 'url': '/web/content/%s?download=false' % record.id, 'target': 'new'}
+    </field>
+  </record>
+
+  <record id="field_quote_version_count" model="ir.model.fields">
+<field name="name">x_ux_quote_version_count</field><field name="field_description">Versiones guardadas</field><field name="model_id" ref="sale.model_sale_order"/><field name="ttype">integer</field><field name="state">manual</field><field name="readonly" eval="True"/><field name="store" eval="False"/><field name="depends">x_ux_quote_pdf_version_ids</field><field name="compute">for record in self:
+    record['x_ux_quote_version_count'] = len(record.x_ux_quote_pdf_version_ids)</field>
+</record>
+<record id="field_quote_document_ids" model="ir.model.fields">
+<field name="name">x_ux_quote_document_ids</field><field name="field_description">Documentos del presupuesto</field><field name="model_id" ref="sale.model_sale_order"/><field name="ttype">many2many</field><field name="relation">ir.attachment</field><field name="relation_table">x_ux_quote_document_rel</field><field name="column1">order_id</field><field name="column2">attachment_id</field><field name="state">manual</field><field name="copied" eval="False"/>
+</record>
+<record id="action_save_quote" model="ir.actions.server"><field name="name">UNO360X - Guardar presupuesto</field><field name="model_id" ref="sale.model_sale_order"/><field name="state">code</field><field name="code">record.read(['name'])
+action = {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {'title': 'Presupuesto guardado', 'message': record.name, 'type': 'success', 'sticky': False}}</field></record>
+<record id="field_quote_contact_id" model="ir.model.fields"><field name="name">x_ux_quote_contact_id</field><field name="field_description">Contacto de la propuesta</field><field name="help">Persona de contacto del cliente para esta propuesta.</field><field name="model_id" ref="sale.model_sale_order"/><field name="ttype">many2one</field><field name="relation">res.partner</field><field name="state">manual</field><field name="on_delete">set null</field></record><record id="action_preview_quote_pdf" model="ir.actions.server"><field name="name">UNO360X - Vista previa PDF del presupuesto actual</field><field name="model_id" ref="sale.model_sale_order"/><field name="state">code</field><field name="code">if not record or len(record) != 1:
+    raise UserError('Abre un solo presupuesto para ver su PDF.')
+record.read(['name'])
+report = env.ref('sale.action_report_saleorder')
+action = {'type': 'ir.actions.act_url', 'url': '/report/pdf/%s/%s' % (report.report_name, record.id), 'target': 'new'}</field></record><record id="field_quote_subject" model="ir.model.fields"><field name="name">x_ux_quote_subject</field><field name="field_description">Descripción de la propuesta</field><field name="model_id" ref="sale.model_sale_order"/><field name="ttype">char</field><field name="state">manual</field></record><record id="view_pdf_versions_list" model="ir.ui.view"><field name="name">UNO360X - Historial PDF del presupuesto</field><field name="model">ir.attachment</field><field name="arch" type="xml"><list create="0" edit="0" delete="0" default_order="create_date desc,id desc"><field name="name" string="Versión"/><field name="create_date" string="Fecha"/><field name="create_uid" string="Preparado por"/><button name="%(action_open_pdf_version)d" type="action" string="Ver previo" icon="fa-file-pdf-o"/></list></field></record><record id="action_show_quote_versions" model="ir.actions.server"><field name="name">UNO360X - Ver todas las versiones</field><field name="model_id" ref="sale.model_sale_order"/><field name="state">code</field><field name="code">record.read(['name'])
+action = {'type': 'ir.actions.act_window', 'name': 'Versiones del presupuesto %s' % record.name, 'res_model': 'ir.attachment', 'view_mode': 'list', 'views': [(env.ref('uno360x_quote_ui.view_pdf_versions_list').id, 'list')], 'domain': [('id', 'in', record.x_ux_quote_pdf_version_ids.ids)], 'target': 'new', 'context': {'create': False}}</field></record><record id="view_quote_ui" model="ir.ui.view">
+    <field name="name">UNO360X - Presupuesto: diseño aprobado e impuestos</field>
+    <field name="model">sale.order</field>
+    <field name="inherit_id" ref="sale.view_order_form"/>
+    <field name="priority">380</field>
+    <field name="arch" type="xml">
+      <xpath expr="//form" position="attributes"><attribute name="class" add="ux_quote_form" separator=" "/></xpath>
+<xpath expr="//sheet" position="before"><style>
+.ux_quote_form{--ux-ink:#142b44;--ux-muted:#6b7e91;--ux-teal:#008c87;background:#f0f7fa!important;color:var(--ux-ink);}
+.ux_quote_form .o_control_panel{display:flex!important;flex-wrap:wrap;background:#f0f7fa!important;border-bottom:1px solid #dbe5eb;}
+.ux_quote_form .o_form_view_container{min-height:0!important;}
+.ux_quote_form .o_content{display:block!important;overflow:auto!important;min-height:0!important;}
+.ux_quote_form .o_form_renderer{display:grid!important;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);grid-template-areas:'crumb crumb' 'title actions' 'meta meta' 'lines lines' 'talk versions';align-content:start;align-items:start;gap:12px 16px;flex:none!important;width:100%!important;max-width:1500px!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;margin:0 auto;padding:18px 26px 26px;background:#f0f7fa!important;}
+.ux_quote_form .o_form_sheet_bg,.ux_quote_form .o_form_sheet{display:contents!important;}
+.ux_quote_form .ux_quote_breadcrumb{grid-area:crumb;font-size:12px;color:var(--ux-ink);padding:0;margin:0;}
+.ux_quote_form .ux_quote_breadcrumb a{color:var(--ux-ink);text-decoration:none;}
+.ux_quote_form .ux_quote_heading{grid-area:title;min-width:0;align-self:center;}
+.ux_quote_form .ux_quote_title_row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.ux_quote_form .ux_quote_heading h1{display:flex;align-items:baseline;gap:7px;font-size:26px;line-height:1.2;font-weight:750;color:#102344;margin:0;min-height:0!important;}
+.ux_quote_form .ux_quote_heading h1 .o_field_widget{margin:0!important;color:inherit;}
+.ux_quote_form .ux_quote_state,.ux_quote_form .ux_quote_version_badge{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:5px 12px;background:#e0e7ee;font-size:12px;white-space:nowrap;}
+.ux_quote_form .ux_quote_version_badge{background:#dcebff;color:#1551a0;}
+.ux_quote_form .ux_quote_version_badge .o_field_widget{margin:0!important;min-width:0;width:auto;}
+.ux_quote_form .ux_quote_subtitle{font-size:16px;color:#536a82;margin-top:6px;}
+.ux_quote_form .o_form_statusbar{grid-area:actions;position:static!important;display:block!important;padding:0!important;min-height:0!important;border:0!important;background:transparent!important;}
+.ux_quote_form .o_form_statusbar &gt; .o_field_statusbar{display:none!important;}
+.ux_quote_form .o_statusbar_buttons{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px!important;width:100%;}
+.ux_quote_form .o_statusbar_buttons .btn{font-size:12px;white-space:nowrap;padding:9px 10px;border:1px solid #dbe5eb;border-radius:6px;background:white;color:#152f4b;box-shadow:none;}
+.ux_quote_form .o_statusbar_buttons .ux_quote_pdf_action{grid-row:1;grid-column:1;}
+.ux_quote_form .o_statusbar_buttons .ux_quote_save_action{grid-row:1;grid-column:2;background:var(--ux-teal)!important;color:white!important;border-color:var(--ux-teal)!important;}
+.ux_quote_form .o_statusbar_buttons .ux_quote_send_action{grid-row:2;grid-column:1;}
+.ux_quote_form .o_statusbar_buttons .ux_quote_confirm_action{grid-row:2;grid-column:2;}
+.ux_quote_form .ux_quote_customer_card{grid-area:meta;display:grid;grid-template-columns:1fr 1fr;gap:0;background:white;border:1px solid #e3ebf0;border-radius:7px;padding:12px 20px;margin:0;}
+.ux_quote_form .ux_meta_column{display:grid;grid-template-columns:145px minmax(0,1fr);align-items:center;gap:5px 14px;min-width:0;}
+.ux_quote_form .ux_meta_column+ .ux_meta_column{border-left:1px solid #e0e8ed;padding-left:24px;margin-left:24px;}
+.ux_quote_form .ux_meta_column label{font-size:12px;font-weight:400;color:var(--ux-muted);margin:0;padding:0;}
+.ux_quote_form .ux_meta_column .o_field_widget{min-width:0;margin:0!important;font-size:13px;}
+.ux_quote_form .ux_meta_column .o_field_many2one_extra{display:none;}
+.ux_quote_form .o_input{border-radius:3px;border-color:transparent;color:#152f4b;}
+.ux_quote_form .o_input:hover,.ux_quote_form .o_input:focus{border-color:#acd7d4;}
+.ux_quote_form .o_form_sheet &gt; .o_notebook{grid-area:lines;margin:0!important;min-width:0;}
+.ux_quote_form .o_notebook .nav-tabs{gap:7px;border-bottom:1px solid #dce7ed!important;margin:0 0 10px!important;}
+.ux_quote_form .o_notebook .nav-link{border:0!important;border-radius:0!important;padding:9px 14px;background:transparent;color:#51657c;font-size:13px;}
+.ux_quote_form .o_notebook .nav-link.active{color:var(--ux-teal)!important;font-weight:700;border-bottom:3px solid var(--ux-teal)!important;background:transparent!important;}
+.ux_quote_form .o_notebook_content .tab-pane{padding:0!important;}
+.ux_quote_form .o_notebook_headers{margin:0!important;}
+.ux_quote_form .o_field_widget[name='order_line']{margin:0!important;}
+.ux_quote_form .o_list_renderer{border:1px solid #e0e9ef;border-radius:6px;background:white;overflow:auto;}
+.ux_quote_form .o_list_table{margin:0;}
+.ux_quote_form .o_list_table thead th{background:#f8fbfd!important;color:#354e70;font-size:12px;font-weight:650;padding-top:10px!important;padding-bottom:10px!important;}
+.ux_quote_form .o_list_table tbody td{padding-top:8px!important;padding-bottom:8px!important;vertical-align:top;border-color:#eaf0f4;font-size:13px;}
+.ux_quote_form .o_list_table tbody tr:has(&gt;td:only-child[colspan]):not(:has(a,button,input)){display:none;}
+.ux_quote_form .o_list_table td[name='tax_id']{min-width:130px;}
+.ux_quote_form .o_list_table td[name='price_unit'],.ux_quote_form .o_list_table td[name='price_subtotal']{min-width:110px;}
+.ux_quote_form .o_list_table .o_tag{background:#e5f5f1;color:#00867e;border:1px solid #c4e4df;border-radius:5px;}
+.ux_quote_form .o_field_x2many_list_row_add{padding-top:10px!important;padding-bottom:10px!important;}
+.ux_quote_form .o_field_x2many_list_row_add a:first-child{display:inline-block;border:1px solid var(--ux-teal);color:var(--ux-teal);padding:5px 12px;border-radius:4px;}
+.ux_quote_form .ux_quote_tax_help{font-size:11px;color:var(--ux-muted);padding:8px 14px;background:white;border-left:1px solid #e0e9ef;border-right:1px solid #e0e9ef;}
+.ux_quote_form .ux_quote_totals{background:white;border:1px solid #e0e9ef;border-top:0;border-radius:0 0 6px 6px;margin:0!important;padding:4px 14px 12px;}
+.ux_quote_form .ux_quote_totals &gt; .o_inner_group:first-child{display:none;}
+.ux_quote_form .oe_subtotal_footer{margin:0 0 0 auto!important;padding:8px 12px!important;gap:0!important;width:42%!important;min-width:280px;background:#f8fcfd;border:1px solid #e2eef0;border-radius:5px;}
+.ux_quote_form .oe_subtotal_footer .o_price_total{background:#e6f6f4;color:#008b86!important;font-size:18px!important;font-weight:750;}
+.ux_quote_form .o-mail-Form-chatter{grid-area:talk;align-self:start;min-width:0!important;width:100%!important;margin:0!important;border:1px solid #e1eaf0;border-radius:7px;background:white!important;flex:none!important;position:relative!important;height:auto!important;max-height:none!important;overflow:visible!important;}
+.ux_quote_form .o-mail-Chatter{padding:10px 14px!important;height:auto!important;max-height:none!important;overflow:visible!important;}
+.ux_quote_form .o-mail-Chatter-content{max-height:none!important;overflow:visible!important;}
+.ux_quote_form .o-mail-Chatter-top:before{content:'Conversación y seguimiento';display:block;flex-basis:100%;font-size:14px;font-weight:750;color:#102344;margin-bottom:3px;}
+.ux_quote_form .o-mail-Chatter-top{position:static!important;flex-wrap:wrap;gap:2px;}
+.ux_quote_form .o-mail-Chatter-topbar{flex-wrap:wrap;overflow:visible!important;}
+.ux_quote_form .o-mail-Chatter-topbar .btn{font-size:11px;padding:6px 8px;margin-top:4px!important;margin-bottom:4px!important;border-radius:4px;}
+.ux_quote_form .o-mail-Chatter-sendMessage{background:var(--ux-teal)!important;border-color:var(--ux-teal)!important;}
+.ux_quote_form .o-mail-Chatter .o-mail-Message{font-size:12px;}
+.ux_quote_form .ux_quote_versions_panel{grid-area:versions;min-width:0;padding:12px 14px;background:white;border:1px solid #e1eaf0;border-radius:7px;}
+.ux_quote_form .ux_quote_versions_panel h3{font-size:14px;font-weight:750;color:#102344;margin:0;}
+.ux_quote_form .ux_quote_panel_header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.ux_quote_form .ux_quote_panel_header .btn{font-size:11px;padding:4px 7px;white-space:nowrap;}
+.ux_quote_form .ux_quote_versions_panel .o_kanban_renderer{padding:0!important;background:transparent!important;display:block!important;}
+.ux_quote_form .ux_quote_versions_panel .o_kanban_record{width:100%!important;margin:0!important;border:0!important;border-bottom:1px solid #e5edf3!important;box-shadow:none!important;border-radius:0!important;min-height:0!important;}
+.ux_quote_form .ux_quote_versions_panel .o_kanban_record:first-child{background:#eaf4ff!important;border-radius:5px 5px 0 0!important;}
+.ux_quote_form .ux_version_card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding:10px 0;}
+.ux_quote_form .ux_version_card strong{font-size:12px;overflow-wrap:anywhere;}
+.ux_quote_form .ux_version_card .ux_version_date{font-size:11px;color:var(--ux-muted);}
+.ux_quote_form .ux_version_card button{grid-column:2;grid-row:1/3;align-self:center;font-size:11px;border:1px solid #dce7f0;border-radius:5px;padding:7px;background:white;color:#163152;}
+.ux_quote_form .ux_quote_panel_hint{font-size:11px;color:var(--ux-muted);margin-top:9px;}
+.ux_quote_form .btn-primary{background-color:var(--ux-teal);border-color:var(--ux-teal);}
+.ux_quote_form .ux_quote_versions_intro{padding:8px 0 12px;color:var(--ux-muted);font-size:13px;}
+@media(max-width:1100px){.ux_quote_form .o_form_renderer{padding:14px 18px;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);}.ux_quote_form .ux_quote_heading h1{font-size:23px;}.ux_quote_form .ux_quote_title_row{gap:6px;}.ux_quote_form .ux_meta_column{grid-template-columns:120px minmax(0,1fr);gap:5px 10px;}.ux_quote_form .ux_meta_column+.ux_meta_column{padding-left:16px;margin-left:16px;}}
+@media(max-width:767px){.ux_quote_form .o_form_renderer{display:flex!important;flex-direction:column!important;padding:12px;gap:12px;}.ux_quote_form .ux_quote_heading,.ux_quote_form .o_form_statusbar,.ux_quote_form .ux_quote_customer_card,.ux_quote_form .ux_quote_versions_panel{width:100%;}.ux_quote_form .ux_quote_customer_card{grid-template-columns:1fr;padding:12px;gap:8px;}.ux_quote_form .ux_meta_column+.ux_meta_column{border:0;border-top:1px solid #e1eaf0;padding:8px 0 0;margin:0;}.ux_quote_form .o_form_sheet&gt;.o_notebook{width:100%;}.ux_quote_form .o_notebook .nav-tabs{gap:0;}.ux_quote_form .o_notebook .nav-link{padding:8px 9px;font-size:12px;}.ux_quote_form .oe_subtotal_footer{width:100%!important;min-width:0;}.ux_quote_form .o-mail-Form-chatter{order:8;}.ux_quote_form .ux_quote_versions_panel{order:9;}}
+
+.ux_quote_form .ux_meta_column [name='ux_customer_slot'],.ux_quote_form .ux_meta_column [name='ux_payment_slot'],.ux_quote_form .ux_meta_column [name='ux_validity_slot']{min-width:0;width:100%;}
+.ux_quote_form .ux_meta_column .o_field_many2one,.ux_quote_form .ux_meta_column .o_field_res_partner_many2one{width:100%!important;}
+.ux_quote_form .o_field_widget[name='order_line'] .o_list_renderer{margin:0!important;width:100%!important;border:0!important;}
+.ux_quote_form .tab-pane:has(&gt; .ux_quote_totals){display:grid!important;grid-template-columns:minmax(0,1.4fr) minmax(280px,1fr);background:white;border:1px solid #e0e9ef;border-radius:6px;overflow:hidden;}
+.ux_quote_form .tab-pane:has(&gt; .ux_quote_totals)&gt;[name='order_line']{grid-column:1/-1;}
+.ux_quote_form .tab-pane:has(&gt; .ux_quote_totals)&gt;div:empty{display:none;}
+.ux_quote_form .ux_quote_tax_help{grid-column:1;grid-row:2;align-self:end;border:0;}
+.ux_quote_form .ux_quote_totals{grid-column:2;grid-row:2;border:0!important;width:100%!important;padding:8px 14px 12px;}
+.ux_quote_form .ux_quote_totals .oe_subtotal_footer{width:100%!important;}
+.ux_quote_form .oe_subtotal_footer table{width:100%;}
+.ux_quote_form .oe_subtotal_footer tr:has([name='amount_total']){background:#e6f6f4;color:#008b86;}
+.ux_quote_form .oe_subtotal_footer tr:has([name='amount_total']) td{padding:8px;}
+.ux_quote_form .oe_subtotal_footer [name='amount_total']{color:#008b86;font-size:18px!important;}
+.ux_quote_form .o_list_table .o_data_cell[name='tax_id']:not(:has(.o_tag,input))::before{content:'Sin impuesto ⌄';display:inline-block;padding:3px 8px;border:1px solid #c7dfe2;border-radius:4px;background:#fff;color:#476277;font-size:12px;pointer-events:none;}
+.ux_quote_form .o-mail-Form-chatter{padding-bottom:0!important;}
+.ux_quote_form .o-mail-Composer{margin-top:8px!important;border:1px solid #e0e9ef;border-radius:5px;padding:10px!important;}
+.ux_quote_form .o-mail-Composer-input{min-height:70px;}
+@media(max-width:767px){.ux_quote_form .tab-pane:has(&gt;.ux_quote_totals){grid-template-columns:minmax(0,1fr);}.ux_quote_form .ux_quote_tax_help{grid-row:3;}.ux_quote_form .ux_quote_totals{grid-column:1;grid-row:2;}}
+
+.ux_quote_form .o_list_table .o_data_row{height:auto!important;}
+.ux_quote_form .o_list_table .o_data_cell .o_field_widget{margin-bottom:0!important;}
+
+.ux_quote_form .ux_quote_versions_panel .o_kanban_record{padding:0 8px!important;}
+@media(max-width:767px){.ux_quote_form .ux_quote_breadcrumb{order:0;}.ux_quote_form .ux_quote_heading{order:1;}.ux_quote_form .o_form_statusbar{order:2;}.ux_quote_form .ux_quote_customer_card{order:3;}.ux_quote_form .o_form_sheet&gt;.o_notebook{order:4;}}
+
+.ux_quote_form .ux_quote_heading h1{font-size:29px;letter-spacing:-.5px;}
+.ux_quote_form .ux_quote_subtitle .o_field_widget{width:100%;margin:0!important;font-size:18px;}
+.ux_quote_form .ux_quote_subtitle .o_input{font-size:18px;color:#425b76;}
+.ux_quote_form .ux_meta_column label{font-size:13px;}
+.ux_quote_form .ux_meta_column .o_field_widget{font-size:14px;}
+.ux_quote_form .o_list_table tbody td{font-size:14px;}
+.ux_quote_form .o_list_table thead th{font-size:13px;}
+.ux_quote_form .o_list_table .o_data_cell[name='tax_id']::before{display:none!important;}
+.ux_quote_form .o_form_statusbar .o_statusbar_buttons .ux_quote_send_action{background:white!important;color:#152f4b!important;border-color:#dbe5eb!important;}
+.ux_quote_form .ux_quote_version_badge{padding:0;background:transparent;}
+.ux_quote_form .ux_quote_version_badge .o_field_widget{margin:0!important;}
+.ux_quote_version_trigger{border:0;border-radius:20px;background:#dcebff;color:#1456a5;padding:6px 13px;font-size:13px;}
+.ux_tax_trigger{display:inline-flex;justify-content:space-between;align-items:center;min-width:116px;border:1px solid #abcbd0;border-radius:5px;background:#fff;padding:5px 9px;color:#263b52;font-size:13px;white-space:nowrap;}
+.ux_quote_tax_select{display:inline-block;}
+.ux_quote_form .tab-pane:has(&gt; .ux_quote_totals),.ux_quote_form .o_list_renderer{overflow:visible;}
+.ux_quote_form .ux_quote_versions_panel h3,.ux_quote_form .o-mail-Chatter-top:before{font-size:15px;}
+.ux_quote_form .ux_version_card strong{font-size:13px;font-weight:400;}
+.ux_quote_form .ux_version_number{font-weight:700;}
+.ux_quote_form .ux_version_state{color:#1456a5;}
+.ux_quote_form .ux_quote_versions_panel .o_kanban_record:first-child .ux_version_number:after{content:' · Más reciente';color:#008b86;font-weight:500;}
+.ux_quote_form .o-mail-Chatter .o-mail-Chatter-sendMessage,.ux_quote_form .o-mail-Chatter .o-mail-Chatter-logNote,.ux_quote_form .o-mail-Chatter .o-mail-Chatter-activity{font-size:0!important;padding:7px 9px!important;}
+.ux_quote_form .ux_quote_chatter_label{font-size:12px!important;}
+.ux_quote_form .o-mail-Chatter .o-mail-Chatter-sendMessage{background:#008c87!important;color:white!important;border-color:#008c87!important;}
+.ux_quote_form .o-mail-Chatter .o-mail-Chatter-logNote,.ux_quote_form .o-mail-Chatter .o-mail-Chatter-activity{background:white!important;color:#16304b!important;border:1px solid #dce6ee!important;}
+.ux_quote_form .o-mail-Composer{grid-template-columns:minmax(0,1fr)!important;background:white;}
+.ux_quote_form .o-mail-Composer-sidebarMain{display:none;}
+.ux_quote_form .o-mail-Composer-coreMain,.ux_quote_form .o-mail-Composer-footer{grid-column:1/-1!important;}
+.ux_quote_form .o-mail-Composer-inputContainer{border:0!important;box-shadow:none!important;background:white!important;}
+.ux_quote_form .o-mail-Composer-input{font-size:13px;min-height:56px;padding:2px;}
+.ux_quote_form .o-mail-Composer-footer&gt;.d-flex&gt;.pt-1{order:3;margin-top:0!important;}
+.ux_quote_form .o-mail-Composer-footer&gt;.d-flex&gt;span{order:2;}
+.ux_quote_form .o-mail-Composer-footer&gt;.d-flex&gt;.o-mail-Composer-actions{order:1;}
+.ux_quote_form .o-mail-Composer-actions button[name='upload-files']{border:1px solid #dce6ee!important;border-radius:4px!important;font-size:12px;padding:5px 8px;color:#16304b;}
+.ux_quote_form .o-mail-Composer-send{background:#008c87!important;border-color:#008c87!important;padding:7px 16px;font-size:13px;}
+@media(max-width:767px){.ux_quote_form .ux_quote_heading h1{font-size:24px;}.ux_quote_form .ux_quote_subtitle .o_input{font-size:16px;}.ux_quote_form .o_list_renderer{overflow:auto;}}
+
+.ux_quote_form .o-mail-Composer-actions button[name='upload-files']::after{content:' Adjuntar';font-size:12px;}
+
+.ux_quote_form [name='order_line'] th[data-name='price_unit']{min-width:135px!important;width:135px!important;}
+.ux_quote_form [name='order_line'] th[data-name='tax_id']{width:150px!important;min-width:145px!important;}
+.ux_quote_form .o-mail-Chatter-top{position:relative!important;}
+.ux_quote_form .o-mail-Chatter-top:before{padding-right:130px;margin-bottom:7px;}
+.ux_quote_form .o-mail-Chatter-topbar .o-mail-Followers{position:absolute;top:0;right:0;}
+.ux_quote_form .o-mail-Followers-button{margin:0!important;font-size:12px!important;gap:4px;}
+.ux_quote_form .o-mail-Followers-button::before{content:'Seguidores';order:1;}
+.ux_quote_form .o-mail-Followers-button i{order:0;}
+.ux_quote_form .o-mail-Followers-counter{order:2;border-radius:10px;background:#e5f0ff;color:#174e91;padding:4px 6px;font-size:11px;}
+
+.ux_quote_form .o-mail-Composer-actions button[name='upload-files']{aspect-ratio:auto!important;width:auto!important;height:32px!important;min-height:0!important;align-self:center!important;white-space:nowrap!important;padding:5px 8px!important;}
+.ux_quote_form .o-mail-Composer-input::placeholder{color:#687d92!important;opacity:1!important;}
+.ux_quote_form .o-mail-Chatter .text-truncate:has(.o-mail-SuggestedRecipient){margin-left:0!important;}
+</style></xpath>
+<xpath expr="//header" position="inside">
+<button name="%(action_preview_quote_pdf)d" type="action" string="Vista previa PDF" icon="fa-file-pdf-o" class="ux_quote_pdf_action"/>
+<button name="action_ux_refresh_expired_quote" type="object" string="Actualizar cotización" icon="fa-refresh" class="ux_quote_refresh_action" invisible="not id or state not in ['draft', 'sent']" help="Si está vencida, cambia la fecha a hoy y renueva su plazo de validez original."/>
+<button name="%(action_save_quote)d" type="action" string="Guardar" icon="fa-save" class="ux_quote_save_action"/>
+</xpath>
+<xpath expr="//header/button[@name='action_preview_sale_order']" position="attributes"><attribute name="invisible">1</attribute></xpath>
+<xpath expr="//header/button[@name='action_quotation_send']" position="attributes"><attribute name="class" add="ux_quote_send_action" separator=" "/><attribute name="string">Enviar por correo</attribute><attribute name="icon">fa-envelope-o</attribute></xpath>
+<xpath expr="//header/button[@name='action_confirm']" position="attributes"><attribute name="class" add="ux_quote_confirm_action" separator=" "/><attribute name="string">Confirmar presupuesto</attribute><attribute name="icon">fa-check-circle-o</attribute></xpath>
+<xpath expr="//sheet/div[hasclass('oe_title')]" position="before">
+<div class="ux_quote_breadcrumb"><a href="/odoo/sales">Comercial</a> / Ventas / <strong>Presupuestos</strong></div>
+</xpath>
+<xpath expr="//sheet/div[hasclass('oe_title')]" position="replace">
+<div class="ux_quote_heading"><div class="ux_quote_title_row"><h1><span invisible="state == 'sale'">Presupuesto</span><span invisible="state != 'sale'">Pedido</span><field name="name" readonly="1"/></h1>
+<span class="ux_quote_state" invisible="state != 'draft'">Borrador</span><span class="ux_quote_state" invisible="state != 'sent'">Enviado</span><span class="ux_quote_state" invisible="state != 'sale'">Confirmado</span><span class="ux_quote_state" invisible="state != 'cancel'">Cancelado</span>
+<span class="ux_quote_version_badge"><field name="x_ux_quote_pdf_version_ids" widget="ux_quote_version_menu" readonly="1" nolabel="1"/></span></div>
+<div class="ux_quote_subtitle"><field name="x_ux_quote_subject" placeholder="Descripción de la propuesta"/></div></div>
+<div class="ux_quote_customer_card">
+<div class="ux_meta_column"><label for="partner_id" string="Cliente"/><div name="ux_customer_slot"/><label for="x_ux_quote_contact_id" string="Contacto"/><field name="x_ux_quote_contact_id" placeholder="Seleccionar contacto" domain="['|',('id','=',partner_id),('parent_id','=',partner_id)]" context="{'default_parent_id': partner_id}"/><label for="date_order" string="Fecha"/><field name="date_order" readonly="state in ['cancel','sale']"/></div>
+<div class="ux_meta_column"><label for="validity_date" string="Validez"/><div name="ux_validity_slot"/><label for="currency_id" string="Moneda"/><field name="currency_id" readonly="1"/><label for="payment_term_id" string="Condiciones de pago"/><div name="ux_payment_slot"/></div>
+</div>
+</xpath>
+<xpath expr="//div[@name='ux_customer_slot']" position="inside"><xpath expr="//group[@name='partner_details']/field[@name='partner_id']" position="move"/></xpath>
+<xpath expr="//div[@name='ux_validity_slot']" position="inside"><xpath expr="//group[@name='order_details']/field[@name='validity_date']" position="move"/></xpath>
+<xpath expr="//div[@name='ux_payment_slot']" position="inside"><xpath expr="//group[@name='order_details']/field[@name='payment_term_id']" position="move"/></xpath>
+<xpath expr="//page[@name='other_information']" position="inside"><group name="ux_additional_order_data" string="Direcciones, tarifa y proyecto"/><button name="action_preview_sale_order" type="object" string="Ver portal del cliente" class="btn-secondary"/><div name="ux_additional_actions"/></xpath>
+<xpath expr="//group[@name='ux_additional_order_data']" position="inside"><xpath expr="//group[@name='sale_header']" position="move"/></xpath>
+<xpath expr="//div[@name='ux_additional_actions']" position="inside"><xpath expr="//header/button[@name='action_cancel']" position="move"/></xpath>
+<xpath expr="//page[@name='order_lines']" position="attributes"><attribute name="string">Partidas</attribute></xpath>
+<xpath expr="//field[@name='order_line']/list/field[@name='product_template_id']" position="attributes"><attribute name="string">Descripción</attribute></xpath>
+<xpath expr="//field[@name='order_line']/list/field[@name='tax_id']" position="attributes"><attribute name="string">Impuestos</attribute><attribute name="optional">show</attribute><attribute name="widget">ux_quote_tax_select</attribute></xpath>
+<xpath expr="//field[@name='order_line']/list/field[@name='price_subtotal']" position="attributes"><attribute name="string">Importe</attribute></xpath>
+<xpath expr="//field[@name='order_line']/list/control/create[@name='add_product_control']" position="attributes"><attribute name="string">+ Añadir partida</attribute></xpath>
+<xpath expr="//field[@name='order_line']" position="after"><div class="ux_quote_tax_help">Cambia o quita el impuesto desde cada partida.</div></xpath>
+<xpath expr="//group[.//field[@name='tax_totals']][not(parent::group)]" position="attributes"><attribute name="class" add="ux_quote_totals" separator=" "/></xpath>
+<xpath expr="//sheet/notebook" position="inside">
+<page name="ux_quote_terms" string="Condiciones"/>
+<page name="ux_quote_documents" string="Documentos"><div class="ux_quote_versions_intro">Adjunta los documentos de esta propuesta.</div><field name="x_ux_quote_document_ids" widget="many2many_binary" nolabel="1"/></page>
+<page name="ux_quote_versions" string="Versiones"><div class="ux_quote_versions_intro">Cada copia PDF conserva el presupuesto tal como estaba al guardarse.</div><button name="%(action_save_pdf_version)d" type="action" string="Guardar versión PDF" icon="fa-file-pdf-o" class="btn-primary mb-3" invisible="not id"/><field name="x_ux_quote_pdf_version_ids" readonly="1" nolabel="1"><list create="0" edit="0" delete="0" default_order="create_date desc,id desc"><field name="name" string="Versión"/><field name="create_date" string="Fecha"/><field name="create_uid" string="Preparado por"/><button name="%(action_open_pdf_version)d" type="action" string="Ver previo" icon="fa-file-pdf-o"/></list></field></page>
+<page name="ux_quote_history" string="Historial"><div class="ux_quote_versions_intro">El detalle de cambios y las respuestas están en Conversación y seguimiento, debajo del presupuesto.</div><field name="message_ids" readonly="1" nolabel="1"><list create="0" edit="0" delete="0" default_order="date desc"><field name="date" string="Fecha"/><field name="author_id" string="Autor"/><field name="subtype_id" string="Tipo"/><field name="body" string="Mensaje" widget="html"/></list></field></page>
+<page name="ux_quote_details" string="Más detalles"><notebook name="ux_details_notebook"/></page>
+</xpath>
+<xpath expr="//page[@name='ux_quote_terms']" position="inside"><xpath expr="//sheet//field[@name='note']" position="move"/></xpath>
+<xpath expr="//notebook[@name='ux_details_notebook']" position="inside"><xpath expr="//page[@name='optional_products']" position="move"/><xpath expr="//page[@name='other_information']" position="move"/><xpath expr="//page[@name='customer_signature']" position="move"/></xpath>
+<xpath expr="//sheet" position="inside">
+<div class="ux_quote_versions_panel" id="ux_quote_versions_panel"><div class="ux_quote_panel_header"><h3>Versiones del presupuesto</h3><button name="%(action_show_quote_versions)d" type="action" string="Ver todas" class="btn-link" invisible="not id"/></div>
+<field name="x_ux_quote_pdf_version_ids" readonly="1" nolabel="1" mode="kanban"><kanban create="0" edit="0" delete="0" default_order="create_date desc,id desc"><field name="name"/><field name="create_date"/><templates><t t-name="card"><div class="ux_version_card"><strong><span class="ux_version_number" t-esc="'V' + record.name.raw_value.split(' - V').pop().replace('.pdf','')"/><span class="ux_version_state" t-if="(record.description.raw_value || '').includes('Estado al guardar: draft.')"> · Borrador</span><span class="ux_version_state" t-if="(record.description.raw_value || '').includes('Estado al guardar: sent.')"> · Enviada</span><span class="ux_version_state" t-if="(record.description.raw_value || '').includes('Estado al guardar: sale.')"> · Confirmada</span><span class="ux_version_state" t-if="(record.description.raw_value || '').includes('Estado al guardar: cancel.')"> · Cancelada</span></strong><div class="ux_version_date"><field name="create_date"/></div><button name="%(action_open_pdf_version)d" type="action" string="Ver previo" icon="fa-file-pdf-o"/></div></t></templates><field name="description"/></kanban></field>
+<div class="ux_quote_panel_hint">Consulta el PDF de cada versión. Guarda una copia antes de modificar o enviar.</div></div>
+</xpath>
+<xpath expr="//header/button[@name='action_confirm'][not(@id)]" position="attributes"><attribute name="class" add="ux_quote_confirm_action" separator=" "/><attribute name="string">Confirmar presupuesto</attribute><attribute name="icon">fa-check-circle-o</attribute></xpath></field>
+  </record>
+</odoo>

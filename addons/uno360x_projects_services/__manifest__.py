@@ -1,0 +1,1 @@
+{'name': 'UNO360X - Proyectos y Servicios', 'version': '18.0.0.1.0', 'license': 'LGPL-3', 'author': 'OUTSOLUTECH', 'depends': ['uno360x_business_base', 'project', 'hr_timesheet', 'sale_timesheet', 'project_purchase', 'hr_expense'], 'data': [], 'installable': True, 'application': False}

@@ -6,10 +6,11 @@ The registry remains reserved; a successful rehearsal never enables access.
 import hashlib
 import json
 import sqlite3
+from .catalog import installation_profile
 
 
 STEPS = ('database', 'filestore', 'secret_namespace', 'configuration', 'validation')
-PRODUCT_VERSION = '0.2-simulation'
+PRODUCT_VERSION = '0.3-packaging-lab'
 
 
 def build_plan(registry, hostname):
@@ -22,6 +23,7 @@ def build_plan(registry, hostname):
         'tenant_id': tenant['id'],
         'hostname': tenant['hostname'],
         'modules': tenant['modules'],
+        'installation': installation_profile(tenant['modules']),
         'resources': tenant['resources'],
         'access_enabled': False,
         'integrations': {'mail': False, 'jenifer': False, 'dgii': False},

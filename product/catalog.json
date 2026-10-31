@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "release": "0.2.0-lab",
+  "odoo_series": "18.0",
+  "production_deployment": false,
+  "base": [
+    "uno360x_business_base",
+    "uno360x_quote_ui",
+    "uno360x_ecf_core"
+  ],
+  "options": {
+    "payroll_hr": [
+      "uno360x_payroll_hr"
+    ],
+    "jenifer_ai": [
+      "uno360x_jenifer_core"
+    ],
+    "projects_services": [
+      "uno360x_projects_services"
+    ]
+  },
+  "gates": {
+    "payroll_statutory_engine": "requires_rule_configuration_and_validation",
+    "jenifer_external_ai": "provider_adapter_pending_disabled",
+    "fiscal_transmission": "not_implemented_blocked",
+    "fiscal_certificate_storage": "separate_stage_8",
+    "production_custom_actions": "not_imported"
+  },
+  "outsolutech": {
+    "preserve_all_access": true,
+    "apply_saas_limits": false
+  }
+}

@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<templates xml:space="preserve">
+  <t t-name="uno360x_quote_ui.ChatterLabels" t-inherit="mail.Chatter" t-inherit-mode="extension">
+    <xpath expr="//button[contains(@class, 'o-mail-Chatter-sendMessage')]" position="inside"><span t-if="props.threadModel === 'sale.order'" class="ux_quote_chatter_label"><i class="fa fa-envelope-o me-2"/>Enviar mensaje</span></xpath>
+    <xpath expr="//button[contains(@class, 'o-mail-Chatter-logNote')]" position="inside"><span t-if="props.threadModel === 'sale.order'" class="ux_quote_chatter_label"><i class="fa fa-file-text-o me-2"/>Nota interna</span></xpath>
+    <xpath expr="//button[contains(@class, 'o-mail-Chatter-activity')]" position="inside"><span t-if="props.threadModel === 'sale.order'" class="ux_quote_chatter_label"><i class="fa fa-calendar-check-o me-2"/>Programar actividad</span></xpath>
+  <xpath expr="//button[contains(@class, 'o-mail-Chatter-sendMessage')]" position="attributes"><attribute name="t-att-aria-label">props.threadModel === 'sale.order' ? 'Enviar mensaje' : undefined</attribute></xpath><xpath expr="//button[contains(@class, 'o-mail-Chatter-logNote')]" position="attributes"><attribute name="t-att-aria-label">props.threadModel === 'sale.order' ? 'Nota interna' : undefined</attribute></xpath><xpath expr="//button[contains(@class, 'o-mail-Chatter-activity')]" position="attributes"><attribute name="t-att-aria-label">props.threadModel === 'sale.order' ? 'Programar actividad' : undefined</attribute></xpath></t>
+  <t t-name="uno360x_quote_ui.ComposerLabels" t-inherit="mail.Composer" t-inherit-mode="extension">
+    <xpath expr="//textarea[contains(@class, 'o-mail-Composer-input')]" position="attributes"><attribute name="t-att-placeholder">props.composer?.thread?.model === 'sale.order' ? 'Escribe un mensaje…' : placeholder</attribute></xpath>
+    </t>
+</templates>

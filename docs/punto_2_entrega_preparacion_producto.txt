@@ -1,0 +1,62 @@
+UNO360X - ENTREGA DE PREPARACIÓN DEL PRODUCTO POR CLIENTE
+31 de octubre de 2026
+
+RESULTADO
+Preparados seis paquetes de laboratorio, con versiones, dependencias,
+catálogo por plan, código portable revisado y pruebas en dos clientes.
+La preparación técnica permite continuar con registro/acceso y aprovisionamiento.
+No equivale a tener todas las funciones comerciales terminadas.
+
+PAQUETES
+1. Base Empresarial estándar.
+2. Cotizaciones con diseño existente, renovación e historial PDF.
+3. Núcleo fiscal local E31/E45, sin transmisión ni credenciales reales.
+4. RRHH estándar y funciones aritméticas de jornadas/cortes.
+5. Consultas de Jenifer respetando permisos y empresas del solicitante.
+6. Proyectos, tareas, subtareas, horas y dependencias de costos/gastos/compras.
+Todos dependen directa o indirectamente de la identidad de instancia.
+
+VERIFICACIÓN
+18 pruebas ORM aprobadas por cliente, 36 ejecuciones entre Alfa y Beta.
+12 pruebas unitarias aprobadas, incluidas ocho combinaciones del catálogo.
+Formulario de cotizaciones compilado y recursos de interfaz HTTP 200.
+Generación real de PDF satisfactoria en ambos clientes, además de las pruebas
+rápidas con simulación del renderizador. Registros temporales revertidos.
+Login HTTP 200, aislamiento de red, roles y archivos verificado.
+Cero pedidos/facturas de prueba restantes, correo saliente cero, cron activo cero.
+Firmas XML probadas únicamente con certificados sintéticos generados en memoria.
+
+INVENTARIO Y PROTECCIÓN DE PRODUCCIÓN
+206 acciones con código y 76 campos manuales inventariados técnicamente.
+En Git solo metadatos y hashes de acciones; no código de esas acciones,
+salarios, datos de empleados, certificados o credenciales.
+Se excluyeron referencias fijas de base, identidad de correo y servicios
+externos de OUTSOLUTECH de los paquetes portátiles.
+No se aplicaron límites SaaS a OUTSOLUTECH ni se cambiaron sus accesos.
+Las consultas en producción fueron de lectura. Odoo, PostgreSQL y Nginx
+se comprobaron activos al cerrar la revisión. No se reiniciaron.
+
+CAPACIDADES QUE DEBEN COMPLETARSE EN ETAPAS POSTERIORES
+Punto 3/4: registro, membresías, acceso y creación automática conectada al alta.
+Punto 6: suscripciones y pagos; precios y condiciones aún pendientes.
+Punto 8: carga segura de certificados, configuración y adaptador fiscal;
+ningún resultado local implica aceptación DGII ni habilitación de emisión.
+Punto 9: motor integral de nómina y reglas legales configurables, integración
+LLM y automatizaciones de Jenifer, rentabilidad integral y flujos propios.
+No se afirma paridad total con todas las personalizaciones de Odoo 18.2.
+Las acciones heredadas no se trasladan automáticamente: se revisarán por función.
+Los nuevos flujos y rediseños se presentan primero en PDF.
+
+DOCUMENTACIÓN EN REPOSITORIO
+docs/producto_paquetes_y_limites.txt: alcance y límites por componente.
+docs/source_provenance.json: origen y huellas de 15 archivos adoptados.
+product/catalog.json: módulos incluidos por opción.
+product/legacy_inventory.json: inventario técnico de extensiones excluidas.
+dev/install_product.py: instalación/actualización y suite de pruebas solo WSL.
+dev/verify_product.py: verificación de instalación, pruebas y residuos.
+dev/check_product_runtime.py: pruebas API y generación real de PDF local.
+
+USO DEL PAQUETE ZIP
+Contiene los addons y documentación, sin bases, datos, credenciales ni imágenes
+de contenedores. Es para el laboratorio Odoo 18.0; no instalarlo en la VM
+operativa Odoo 18.2. No sustituye un despliegue comercial completo.

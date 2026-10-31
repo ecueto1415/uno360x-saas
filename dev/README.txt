@@ -48,3 +48,15 @@ Verificación posterior de solo lectura:
 Logs de pruebas en directorio Linux protegido de cada cliente.
 El paquete aún no contiene el conector de emisión e-CF ni las personalizaciones
 de OUTSOLUTECH. No usarlo como producto comercial terminado.
+
+Catálogo completo de paquetes portátiles para QA:
+  python3 dev/install_product.py
+  python3 dev/verify_product.py
+  python3 dev/check_product_runtime.py
+La primera orden instala/actualiza los seis paquetes y corre 18 pruebas ORM
+en cada empresa ficticia. verify_product.py consulta estado y logs sin cambios.
+check_product_runtime.py autentica al administrador ficticio por API local,
+comprueba recursos y genera un PDF real con registros temporales revertidos.
+No imprime contraseñas; lee únicamente claves del laboratorio en memoria.
+La generación de recursos puede escribir cachés de activos en el laboratorio.
+No se ejecuta ninguna orden de este flujo en la VM operativa.
