@@ -67,6 +67,11 @@ El demo crea cuentas y dos reservas ficticias en una carpeta temporal. Buzón
 en memoria, sin mensajes reales, contraseñas ni tokens impresos. No crea Odoo.
 API opcional, desde WSL root:
   python3 dev/start_identity.py
-Solo 127.0.0.1:18072. Estado en /var/lib/uno360x-saas-dev/identity protegido.
+Solo 127.0.0.1:18072. Estado en /var/lib/uno360x-saas-dev/control protegido.
 No incluye UI, SMTP real ni traspaso de sesión a Odoo. Los endpoints privados
 requieren cookie de sesión y token CSRF. El servidor no se publica en Internet.
+
+Punto 4: automatic_signup_demo.py, verify_automatic.py, run_preparation_worker.py,
+http_signup_smoke.py y recovery_rehearsal.py. Solo WSL root, recursos nuevos
+uno360x-auto-UUID, sin puertos publicados. La última orden detiene una app
+ficticia para ensayar recuperación. No ejecutar en la VM operativa.

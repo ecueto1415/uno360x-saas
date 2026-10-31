@@ -1,12 +1,13 @@
 {
   "schema_version": 1,
-  "release": "0.2.0-lab",
+  "release": "0.3.0-lab",
   "odoo_series": "18.0",
   "production_deployment": false,
   "base": [
     "uno360x_business_base",
     "uno360x_quote_ui",
-    "uno360x_ecf_core"
+    "uno360x_ecf_core",
+    "uno360x_auth_bridge"
   ],
   "options": {
     "payroll_hr": [

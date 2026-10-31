@@ -261,7 +261,12 @@ class IdentityService:
         match = next((r for r in choices if r['id']==tenant_id),None)
         if not match:
             raise IdentityError('Empresa no disponible para tu usuario.')
-        return dict(match,access_enabled=False,odoo_session_created=False)
+        ready=False
+        if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='preparation_jobs'").fetchone():
+            from .onboarding import Onboarding
+            try:ready=Onboarding(self).status(session,tenant_id)['local_ready']
+            except ValueError:pass
+        return dict(match,access_enabled=False,odoo_session_created=False,local_ready=ready,public_access=False)
 
     def _membership(self, account_id, tenant_id):
         row = self.db.execute('SELECT * FROM memberships WHERE account_id=? AND tenant_id=? AND active=1',

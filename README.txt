@@ -96,4 +96,12 @@ Punto 3 - núcleo de cuentas y acceso:
 - Servidor opcional en WSL root: python3 dev/start_identity.py
 - Ver docs/punto_3_cuentas_y_accesos.txt para permisos, límites y pruebas.
 No se cambió el login público. No hay UI nueva aplicada, SMTP real ni sesión
-Odoo compartida. El punto 4 conectará preparación de instancias y acceso.
+Odoo compartida públicamente. El punto 4 ya prueba la conexión en laboratorio.
+
+Punto 4:
+Cola control/onboarding.py, trabajador dev/auto_adapter.py, puente Odoo
+uno360x_auth_bridge y broker local control/access_broker.py. API y trabajador
+comparten /var/lib/uno360x-saas-dev/control/control.sqlite3.
+Demo real: python3 dev/automatic_signup_demo.py (solo WSL root).
+Verificación: python3 dev/verify_automatic.py.
+Sin DNS/TLS/pagos ni exposición pública. Ver docs/punto_4_aprovisionamiento_y_acceso.txt.

@@ -1,0 +1,75 @@
+UNO360X - PUNTO 4 - PREPARACIÓN AUTOMÁTICA Y ACCESO
+31/10/2026
+
+IMPLEMENTADO Y PROBADO EN WSL
+Cuenta verificada -> reserva y módulos -> cola -> trabajador independiente ->
+red, PostgreSQL, instalación, identidad y validación -> ready_local -> entrada
+a Odoo con usuario propio. No se usa el administrador técnico como cliente.
+Dos espacios nuevos: auto-empresa-alfa y auto-empresa-beta. No sustituyen las
+empresas de etapas anteriores ni se conectan a producción.
+
+COLA Y REINTENTOS
+control/onboarding.py conserva perfil, fingerprint, estado y etapa actual.
+La API solo encola; no ejecuta Podman ni recibe credenciales técnicas.
+Estados queued/running/failed/ready_local. Un bloqueo de archivo por empresa
+evita trabajadores simultáneos. Se reconcilian todos los pasos al reintentar,
+sin duplicar recursos ni borrar datos. Cambios de producto exigen migración.
+Errores públicos sin salida de procesos ni secretos.
+
+ADAPTADOR Y AISLAMIENTO
+dev/auto_adapter.py solo permite WSL root y recursos uno360x-auto-UUID.
+Valida etiquetas, imagen fijada, red interna y ausencia de puertos publicados.
+Cada espacio tiene base, rol limitado, archivos y claves independientes.
+Solo se instalan los paquetes del catálogo seleccionados. Correo, cron,
+pagos y emisión fiscal quedan desactivados.
+
+ACCESO
+Ticket central de un uso, hash en base, duración sesenta segundos, ligado a
+sesión/cuenta/empresa/trabajo. El intermediario vuelve a comprobar membresía.
+Aserción por instancia de treinta segundos, audiencia/usuario/nonce, HMAC
+con clave de esa instancia. uno360x_auth_bridge valida y consume nonce único.
+Se conserva política MFA nativa. No se copia la contraseña central a Odoo.
+Grupos de negocio según rol y módulos; nunca base.group_system para el cliente.
+El mapa inicial de permisos requiere revisión funcional antes del lanzamiento.
+Cookies Odoo solo en memoria del intermediario. Cada RPC comprueba sesión,
+membresía, rol y preparación; retirada o logout bloquean la siguiente llamada.
+No se afirma revocación universal de sesiones nativas ni desactivación del
+usuario en Odoo. Un gateway obligatorio debe impedir acceso directo al backend
+antes de publicar subdominios. Este intermediario prueba RPC, no un proxy web.
+
+ESTADO
+API y trabajador: /var/lib/uno360x-saas-dev/control/control.sqlite3
+Recursos y secretos: /var/lib/uno360x-saas-dev/automatic (fuera de Git).
+Se trasladó el estado experimental a la ruta canónica sin cambiar UUID.
+La separación actual es de procesos dentro del WSL root de laboratorio.
+Separación de usuarios OS, TLS, supervisión y exposición pública siguen en
+el endurecimiento previo al despliegue. No publicar el servidor de laboratorio.
+
+PRUEBAS
+48 pruebas del control aprobadas, incluidas once nuevas de cola/tickets/puente.
+Tres pruebas ORM del puente por cliente, seis ejecuciones adicionales.
+Acceso central a Odoo correcto; invitado solo en Alfa; configuración técnica
+denegada al miembro. Retirada y logout bloquean el intermediario existente.
+Claves, bases y archivos separados; conexión cruzada a PostgreSQL bloqueada.
+Sin pedidos/facturas de prueba restantes, correo saliente o cron activo.
+Se detuvo una app ficticia y recuperó con los mismos contenedores y volumen.
+Repetir el recorrido conserva identidades, trabajos y recursos.
+Smoke HTTP de API, cola, ticket y sesión nativa aprobado.
+
+COMANDOS SOLO WSL
+python3 dev/automatic_signup_demo.py
+python3 dev/run_preparation_worker.py [--job UUID]
+python3 dev/verify_automatic.py
+python3 dev/http_signup_smoke.py
+python3 dev/recovery_rehearsal.py
+El demo restaura explícitamente solo la membresía ficticia retirada por su
+ejecución previa. No es una API general para reactivar usuarios.
+El ensayo de recuperación detiene únicamente una app ficticia propia.
+
+LÍMITES
+No cambios en web, producción, accesos, DNS, correo, Jenifer o DGII.
+Ready_local no significa público, pagado ni listo para comercializar.
+El punto comercial debe comprobar suscripción/prueba y cuotas antes de crear
+recursos fuera del laboratorio. Falta gateway web completo, interfaz aprobada,
+TLS/DNS, infraestructura limpia soportada, monitoreo y respaldos.
+Se conservan los límites funcionales de Nómina, IA y fiscal del punto 2.

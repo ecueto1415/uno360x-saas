@@ -80,3 +80,12 @@ class IdentityHTTPTests(unittest.TestCase):
         self.assertNotIn('token',body);self.assertNotIn('companies',body)
         status,body,_=self.post('/reset/request',{'email':'absent@example.test'})
         self.assertEqual(status,200);self.assertNotIn('token',body)
+
+    def test_preparation_request_queues_without_privileged_work(self):
+        self.login()
+        _,company,_=self.post('/companies/create',{'slug':'empresa-queue','modules':[],'request_id':'queue'})
+        status,job,_=self.post('/preparation/request',{'tenant_id':company['id']})
+        self.assertEqual(status,200);self.assertEqual(job['status'],'queued')
+        self.assertFalse(job['completed_steps']);self.assertFalse(job['local_ready'])
+        self.assertEqual(job,self.post('/preparation/status',{'tenant_id':company['id']})[1])
+        self.assertNotEqual(self.post('/handoff/request',{'tenant_id':company['id']})[0],200)
