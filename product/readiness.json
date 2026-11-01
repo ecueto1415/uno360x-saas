@@ -32,9 +32,11 @@
   "outsolutech_production_changed": true,
   "public_design_preview": {
     "url": "https://uno360x.com/prueba-saas",
-    "mode": "browser_only_simulation",
-    "real_signup_enabled": false,
-    "linked_from_homepage": true
+    "mode": "redirect_to_controlled_real_signup",
+    "real_signup_enabled": true,
+    "linked_from_homepage": true,
+    "signup_scope": "allowlisted_operator_one_tenant",
+    "destination": "https://cuenta.uno360x.com/prueba/cuenta"
   },
   "production_change_scope": "approved_public_website_copy_and_separate_saas_runtime_https_ingress",
   "outsolutech_operational_configuration_changed": true,

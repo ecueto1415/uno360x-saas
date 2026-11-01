@@ -24,3 +24,5 @@ Actualización de cierre del piloto:
 - OUTSOLUTECH: odoo18 sigue PID 2195, NRestarts 0; hash de /etc/odoo18.conf intacto. No actualización de Ubuntu.
 
 Sigue pendiente el lanzamiento comercial general y los módulos adicionales. Esta entrega permite una prueba real de Base Empresarial mediante registro por correo; no declara completo el resto del SaaS.
+
+Corrección del enlace público: /prueba-saas y /saas/ ahora redirigen al registro real https://cuenta.uno360x.com/prueba/cuenta. La vista previa antigua ya no es el destino del botón de prueba. Se conserva diseño y href del botón existente; Nginx resuelve la transición. Configuración efectiva conservada en deployment/nginx-saas-access.conf, que sustituye el snippet completo del mismo nombre en VM. No se reinició Odoo ni se amplió el registro fuera de los correos del piloto.
