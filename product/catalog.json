@@ -25,7 +25,8 @@
     "jenifer_external_ai": "provider_adapter_pending_disabled",
     "fiscal_transmission": "not_implemented_blocked",
     "fiscal_certificate_storage": "separate_stage_8",
-    "production_custom_actions": "not_imported"
+    "production_custom_actions": "not_imported",
+    "point_of_sale": "included_in_base_requires_lab_functional_validation"
   },
   "outsolutech": {
     "preserve_all_access": true,

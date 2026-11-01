@@ -87,3 +87,10 @@ Paquetes presentes con versiones y dependencias, catálogo de ocho combinaciones
 pruebas repetibles en dos bases aisladas, inventario de extensiones excluidas
 y límites de cada capacidad documentados. Las funciones aún no implementadas
 permanecen declaradas como pendientes; no deben venderse como disponibles.
+
+DECISIÓN 01/11/2026: Punto de Venta (POS) incluido en la Base Empresarial,
+por lo tanto disponible en todas las combinaciones comerciales. Se declara
+point_of_sale como dependencia del paquete. Pendiente instalación y validación
+funcional en laboratorio: apertura/cierre, ventas, devoluciones, inventario y
+permisos. Equipos, pagos y emisión fiscal requieren validación específica.
+No se ha instalado ni actualizado ningún módulo en producción por este cambio.

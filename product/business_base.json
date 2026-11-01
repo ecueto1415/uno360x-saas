@@ -6,8 +6,13 @@
   "bundle_addon": "uno360x_business_base",
   "commercial_release_ready": false,
   "mandatory_addons": [
-    "uno360x_tenant_config", "contacts", "sale_management", "sale_stock",
-    "purchase_stock", "l10n_do"
+    "uno360x_tenant_config",
+    "contacts",
+    "sale_management",
+    "sale_stock",
+    "purchase_stock",
+    "l10n_do",
+    "point_of_sale"
   ],
   "capabilities": {
     "contacts": "standard_lab_candidate",
@@ -16,12 +21,21 @@
     "invoices_bills_and_payments": "standard_lab_candidate",
     "standard_reports": "installed_not_exhaustively_validated",
     "dominican_chart": "lab_validation_only",
-    "electronic_invoicing": "included_in_commercial_scope_adapter_pending"
+    "electronic_invoicing": "included_in_commercial_scope_adapter_pending",
+    "point_of_sale": "included_in_commercial_scope_lab_validation_pending"
   },
-  "optional_scopes": ["payroll_hr", "jenifer_ai", "projects_services"],
+  "optional_scopes": [
+    "payroll_hr",
+    "jenifer_ai",
+    "projects_services"
+  ],
   "excluded_from_automatic_installation": [
-    "production_data", "production_credentials", "production_server_actions",
-    "sample_employee_modules", "production_cron", "production_fiscal_certificates"
+    "production_data",
+    "production_credentials",
+    "production_server_actions",
+    "sample_employee_modules",
+    "production_cron",
+    "production_fiscal_certificates"
   ],
   "production_policy": {
     "apply_saas_plan_limits_to_outsolutech": false,
