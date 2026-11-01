@@ -44,3 +44,10 @@ class HTTPSPilotTests(unittest.TestCase):
  def test_reject_non_dedicated_origins(self):
   for origin in ['http://cuenta.uno360x.com','https://uno360x.com','https://cuenta.uno360x.com.evil.example','https://cuenta.uno360x.com/path']:
    with self.assertRaises(ValueError):checked_origin(origin)
+
+ def test_step_one_is_a_real_entry_route(self):
+  status,_,body=self.request('/prueba/inicio')
+  self.assertEqual(status,200)
+  self.assertIn(b'id="screen"',body)
+  _,_,script=self.request('/assets/app.js')
+  self.assertIn(b"case '/prueba/inicio':case '/prueba':plans();",script)

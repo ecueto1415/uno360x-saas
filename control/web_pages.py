@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / 'control' / 'web'
-APP_ROUTES = {'/prueba', '/prueba/cuenta', '/prueba/revisa-correo', '/prueba/confirmar',
+APP_ROUTES = {'/prueba', '/prueba/inicio', '/prueba/cuenta', '/prueba/revisa-correo', '/prueba/confirmar',
               '/prueba/restablecer', '/prueba/empresa', '/prueba/empresas', '/prueba/preparando',
               '/prueba/espacio', '/web/login', '/web/reset_password', '/web/signup'}
 

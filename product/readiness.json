@@ -36,7 +36,7 @@
     "real_signup_enabled": true,
     "linked_from_homepage": true,
     "signup_scope": "allowlisted_operator_one_tenant",
-    "destination": "https://cuenta.uno360x.com/prueba/cuenta"
+    "destination": "https://cuenta.uno360x.com/prueba/inicio"
   },
   "production_change_scope": "approved_public_website_copy_and_separate_saas_runtime_https_ingress",
   "outsolutech_operational_configuration_changed": true,
@@ -81,6 +81,8 @@
     "fictional_data_archived_before_operator_signup": true,
     "browser_native_odoo_verified": true,
     "registration_mobile_width": 390,
-    "registration_no_horizontal_overflow": true
+    "registration_no_horizontal_overflow": true,
+    "entry_url": "https://cuenta.uno360x.com/prueba/inicio",
+    "plan_to_registration_browser_verified": true
   }
 }
