@@ -1,0 +1,23 @@
+UNO360X - CRM Y 15 DIAS EN BASE EMPRESARIAL - 01/11/2026
+
+Petición explícita del usuario: añadir CRM y destacar los 15 días gratis.
+Base Empresarial incluye CRM de contactos/oportunidades, cotizaciones y ventas,
+POS, compras/inventario, cobros/pagos/reportes y facturación electrónica
+sujeta a habilitación fiscal por empresa. Oferta: 15 días sin tarjeta.
+
+Publicación limitada: lista del plan Base más texto de oferta y enlace
+/planes-y-precios -> /prueba-saas; diseño existente, sin cambios a menús.
+Aviso explícito: recorrido público todavía simulado, no crea cuentas reales.
+Vista previa actualizada desde el maestro y catálogo comercial sincronizado.
+Copia de planes anterior:
+/opt/uno360x-saas/backups/uno360x-base-description-RkrmkIXG/before.json
+Recursos de la vista previa actualizados: 2810/2811, página 22, vista 3885.
+
+CRM añadido a dependencias del módulo base, versión 18.0.0.3.0.
+Instalado solo en los dos clientes ficticios WSL; 18 pruebas existentes por
+cliente sin fallos. Nueva comprobación CRM en ambas bases: contacto,
+oportunidad, cotización vinculada, oportunidad ganada. Transacción revertida.
+No se instaló/actualizó ningún módulo operativo en producción, ni se
+cambiaron cuentas, permisos, credenciales o servicios.
+Verificación navegador: texto, enlace funcional y ancho móvil sin desborde.
+Diseño de caja UNO360X sigue pendiente de aprobación.

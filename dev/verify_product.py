@@ -15,7 +15,7 @@ def main():
     finally:db.close()
     assert {slug for tid,slug in rows}=={'empresa-alfa','empresa-beta'}
     modules=['uno360x_business_base','uno360x_quote_ui','uno360x_ecf_core',
-             'uno360x_payroll_hr','uno360x_jenifer_core','uno360x_projects_services','point_of_sale']
+             'uno360x_payroll_hr','uno360x_jenifer_core','uno360x_projects_services','point_of_sale','crm']
     result=[]
     for tid,slug in rows:
         sql="SELECT name,state FROM ir_module_module WHERE name IN (%s) ORDER BY name;" % ','.join("'%s'"%x for x in modules)

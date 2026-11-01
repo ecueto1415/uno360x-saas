@@ -12,7 +12,8 @@
     "sale_stock",
     "purchase_stock",
     "l10n_do",
-    "point_of_sale"
+    "point_of_sale",
+    "crm"
   ],
   "capabilities": {
     "contacts": "standard_lab_candidate",
@@ -22,7 +23,8 @@
     "standard_reports": "installed_not_exhaustively_validated",
     "dominican_chart": "lab_validation_only",
     "electronic_invoicing": "included_in_commercial_scope_adapter_pending",
-    "point_of_sale": "installed_two_isolated_lab_tenants_server_flows_validated"
+    "point_of_sale": "installed_two_isolated_lab_tenants_server_flows_validated",
+    "crm": "installed_two_isolated_lab_tenants_opportunity_quotation_won_validated"
   },
   "optional_scopes": [
     "payroll_hr",
@@ -42,6 +44,11 @@
     "change_existing_access_or_modules": false,
     "deploy_automatically": false
   },
-  "commercial_description": "Contactos, cotizaciones, ventas, punto de venta (POS), compras, inventario, cobros, pagos, reportes y facturación electrónica.",
-  "commercial_fiscal_note": "La emisión fiscal requiere configuración, validación y habilitación por empresa."
+  "commercial_description": "CRM (contactos y oportunidades), cotizaciones, ventas, punto de venta (POS), compras, inventario, cobros, pagos, reportes y facturación electrónica.",
+  "commercial_fiscal_note": "La emisión fiscal requiere configuración, validación y habilitación por empresa.",
+  "trial_offer": {
+    "days": 15,
+    "card_required": false,
+    "public_flow": "browser_simulation_until_real_signup_enabled"
+  }
 }
