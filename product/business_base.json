@@ -41,5 +41,7 @@
     "apply_saas_plan_limits_to_outsolutech": false,
     "change_existing_access_or_modules": false,
     "deploy_automatically": false
-  }
+  },
+  "commercial_description": "Contactos, cotizaciones, ventas, punto de venta (POS), compras, inventario, cobros, pagos, reportes y facturación electrónica.",
+  "commercial_fiscal_note": "La emisión fiscal requiere configuración, validación y habilitación por empresa."
 }

@@ -1,0 +1,21 @@
+UNO360X - DESCRIPCION DE BASE EMPRESARIAL - 01/11/2026
+
+Petición: describir lo que se ha incluido en Base Empresarial.
+Página /planes-y-precios: contactos y cotizaciones; ventas y punto de venta
+(POS); compras e inventario; cobros, pagos y reportes. Bloque de facturación
+electrónica y condición de habilitación por empresa preservados.
+Mismo alcance en texto del flujo /prueba-saas y en el catálogo maestro.
+No se añadió CRM de oportunidades: continúa pendiente de decisión explícita.
+
+Cambio de planes limitado a sustituir una lista de texto en vista 3884,
+uno360x.plans_public, idiomas en_US/es_ES. Reversibilidad exacta comprobada.
+Copia protegida de ambas arquitecturas originales:
+/opt/uno360x-saas/backups/uno360x-base-description-JtsFGVRQ/before.json
+
+Vista previa republicada desde control/web; página 22, vista 3885,
+recursos 2808/2809. Simulación sin alta real, contraseñas ni envío de correo.
+Sin reinicio, actualización de módulos, cambios de credenciales o permisos.
+Se verificaron huellas de portada y grupos del administrador durante publicación.
+Comprobación navegador: texto visible y sin desbordamiento a 390 px en ambas
+páginas. JavaScript válido y tres pruebas de catálogo aprobadas.
+Diseño de caja POS sigue pendiente de aprobación, sin implementar.
