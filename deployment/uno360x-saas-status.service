@@ -1,0 +1,33 @@
+[Unit]
+Description=UNO360X isolated prelaunch status
+After=network.target
+
+[Service]
+Type=simple
+User=uno360x-saas
+Group=uno360x-saas
+ExecStart=/usr/bin/python3 -I /srv/uno360x-saas/runtime/runtime_status.py
+WorkingDirectory=/var/lib/uno360x-saas
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+CapabilityBoundingSet=
+MemoryMax=128M
+CPUQuota=20%
+TasksMax=32
+LimitNOFILE=512
+
+[Install]
+WantedBy=multi-user.target

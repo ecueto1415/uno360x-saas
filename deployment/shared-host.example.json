@@ -15,7 +15,13 @@
   "max_active_pilot_tenants": 1,
   "cpu_quota_percent_proposed": 100,
   "memory_max_bytes_proposed": 2147483648,
-  "resource_limits_applied": false,
+  "resource_limits_applied": true,
   "mail_configured": false,
-  "os_upgrade": "deferred_by_user"
+  "os_upgrade": "deferred_by_user",
+  "container_runtime": "podman_rootless",
+  "container_probe_passed": true,
+  "https_origin_certificate": "uno360x-saas-origin",
+  "https_public_status_url": "https://uno360x.com/saas/",
+  "cloudflare_mode": "not_changed_no_authenticated_access",
+  "tenant_provisioning_service_deployed": false
 }

@@ -36,16 +36,25 @@
     "real_signup_enabled": false,
     "linked_from_homepage": true
   },
-  "production_change_scope": "approved_homepage_trial_block_link_and_browser_preview_only",
-  "outsolutech_operational_configuration_changed": false,
+  "production_change_scope": "approved_public_website_copy_and_separate_saas_runtime_https_ingress",
+  "outsolutech_operational_configuration_changed": true,
   "outsolutech_user_privileges_changed": false,
   "shared_host_preparation": {
     "authorized": true,
-    "stage": "private_account_directories_and_online_backup_prepared",
+    "stage": "rootless_container_runtime_and_origin_https_verified",
     "runtime_deployed": false,
     "public_signup_enabled": false,
     "ubuntu_upgrade": "deferred_by_user",
     "service_account": "uno360x-saas",
-    "production_odoo_restart": false
-  }
+    "production_odoo_restart": false,
+    "container_runtime_installed": true,
+    "container_probe_passed": true,
+    "status_service_deployed": true,
+    "status_url": "https://uno360x.com/saas/",
+    "origin_tls_verified": true,
+    "cloudflare_tls_mode_verified": false,
+    "tenant_provisioning_service_deployed": false
+  },
+  "odoo_service_configuration_changed": false,
+  "nginx_ingress_configuration_changed": true
 }

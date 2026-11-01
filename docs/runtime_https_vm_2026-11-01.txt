@@ -1,0 +1,55 @@
+UNO360X - RUNTIME AISLADO Y HTTPS EN VM COMPARTIDA - 01/11/2026
+
+ALCANCE EJECUTADO
+1. Podman 5.0.3 instalado desde paquetes exactos del archivo oficial Ubuntu,
+   con SHA256 comparado contra metadatos locales APT. Cero actualizaciones
+   de paquetes existentes: 17 nuevos, sin cambiar la versión de Ubuntu.
+2. Usuario exclusivo uno360x-saas, UID 996, sin sudo ni grupo operativo.
+   Rootless verificado, cgroup v2/systemd, almacenamiento propio en
+   /var/lib/uno360x-saas/.local/share/containers/storage.
+3. user-996.slice: CPUQuota 100% de un núcleo, CPUWeight 20,
+   MemoryHigh 1536M, MemoryMax 2G, TasksMax 512. Estado HTTP independiente:
+   máximo 128M/20% CPU, proceso no privilegiado, solo 127.0.0.1:18082,
+   NoNewPrivileges, ProtectSystem/ProtectHome y salida limitada a loopback.
+4. Contenedor efímero de prueba con imagen oficial PostgreSQL fijada por
+   digest de laboratorio. Sin red ni puertos, solo lectura, sin capabilities,
+   sin rutas de producción montadas; pasó y fue retirado. No arrancó una base.
+5. Servicio uno360x-saas-status habilitado para reinicio de la VM. Solo
+   informa preparación; no recoge cuentas/contraseñas y rechaza POST con 503.
+
+HTTPS
+https://uno360x.com/saas/ y /saas/estado, a través del Nginx existente.
+La página pública habitual y /prueba-saas siguen apuntando al mismo Odoo.
+Se añadió únicamente un include al vhost HTTP existente; rutas operativas
+preservadas. Nuevo vhost 443 replica sus rutas, con certificado Let's Encrypt
+válido para uno360x.com y erp.uno360x.com; vencimiento 30/01/2027.
+Verificado HTTPS directo al origen con validación de cadena/nombre, sin -k,
+y HTTP 200 en ambos hosts para /web/login y /saas/estado.
+Certbot.timer activo; renovación simulada satisfactoria del certificado de
+uno360x.com antes de ampliarlo a erp. La ampliación real a ambos nombres pasó.
+Hook de renovación: nginx -t y recarga de Nginx. Ningún reinicio de Odoo.
+Cookies y Authorization de visitantes no se reenvían al servicio de estado.
+
+CLOUDFLARE
+El usuario autorizó revisar/cambiar a Completo (estricto) si hacía falta.
+Dashboard abierto una vez: requiere iniciar sesión; sin acceso autenticado.
+No se cambió Cloudflare y no se comprobó su modo. HTTPS visitante/origen
+probados separadamente no acreditan cifrado del salto Cloudflare -> VM.
+Cuando se recupere acceso, comprobar modo y usar Completo (estricto), dado
+que ambos nombres ya tienen certificado válido. No cambiar DNS por esto.
+
+PRESERVACION
+Odoo mantiene PID 2195 y cero reinicios; PostgreSQL y Nginx activos.
+/etc/odoo18.conf permanece con la huella de referencia; privilegios del
+administrador, correo, Jenifer y DGII no se cambiaron. Nginx se recargó de
+forma gradual para activar las rutas/certificado, conservando negocio/login.
+Backup previo específico de Nginx:
+/opt/uno360x-saas/backups/https-preparation-20261101T163053Z
+
+LIMITES
+Esto prepara el motor de ejecución y un endpoint de estado, no despliega
+el aprovisionador comercial ni el gateway de usuarios de Odoo en la VM.
+El control real sigue probado en WSL. Faltan conectar esos servicios,
+correo nuevo, prueba de ingreso autenticado/aislamiento y respaldo externo.
+Alta pública desactivada. Ubuntu aplazado y diseño POS pendiente de aprobación.
+Tres pruebas nuevas del endpoint de estado aprobadas.

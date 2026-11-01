@@ -42,3 +42,9 @@ online con lectura de catálogos, sin reinicios, paquetes, puertos o DNS.
 La restauración del respaldo de producción aún no se ha ensayado.
 El runtime, límites de recursos propuestos, correo, TLS y gateway público
 siguen pendientes; el sitio público permanece como simulación.
+
+RUNTIME Y HTTPS 01/11/2026
+Ver docs/runtime_https_vm_2026-11-01.txt. Podman rootless instalado y probado;
+servicio de estado independiente y HTTPS de origen activados. No se desplegó
+el aprovisionador comercial ni se habilitaron registros. Cloudflare requiere
+acceso de cuenta para comprobar Completo (estricto); no se cambió su modo.
