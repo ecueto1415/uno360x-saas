@@ -1,0 +1,15 @@
+{
+  "single_source": "https://github.com/ecueto1415/uno360x-saas",
+  "integration_branch": "main",
+  "shared_unit": "versioned_code_and_installed_modules",
+  "tenant_data": "independent_database_filestore_and_credentials",
+  "operational_database_is_not_a_template": true,
+  "release_identity": "immutable_git_commit_and_artifact_sha256",
+  "tenant_version_must_be_recorded": true,
+  "rollout_strategy": "validated_batches_with_per_tenant_backup_and_migration",
+  "on_failure": "stop_rollout_preserve_previous_release_and_use_validated_recovery",
+  "paid_modules_enabled_by_upgrade": false,
+  "outsolutech_existing_privileges_preserved": true,
+  "automatic_push_to_production": false,
+  "implementation_status": "shared_source_and_preview_builder_ready_commercial_rollout_runner_pending"
+}

@@ -29,5 +29,13 @@
     "external_backup_destination_portable_key_recovery_and_schedule",
     "complete_admin_interface_monitoring_and_controlled_pilot"
   ],
-  "outsolutech_production_changed": false
+  "outsolutech_production_changed": true,
+  "public_design_preview": {
+    "url": "https://uno360x.com/prueba-saas",
+    "mode": "browser_only_simulation",
+    "real_signup_enabled": false
+  },
+  "production_change_scope": "new_website_preview_page_and_own_assets_only",
+  "outsolutech_operational_configuration_changed": false,
+  "outsolutech_user_privileges_changed": false
 }

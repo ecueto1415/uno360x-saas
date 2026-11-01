@@ -1,0 +1,54 @@
+UNO360X - MÁSTER DE CÓDIGO Y VISTA DE PRUEBA PUBLICADA
+1 de noviembre de 2026
+
+VISTA DISPONIBLE
+https://uno360x.com/prueba-saas
+Se publicó una nueva página independiente del inicio y del login operativo.
+Es una simulación del recorrido: Base Empresarial + 3 módulos opcionales,
+registro, correo simulado, configuración básica y vista de empresa lista.
+No crea cuentas o bases reales, no solicita contraseñas y no envía correos.
+Los datos de ejemplo se manejan en el navegador. Usar solo datos ficticios.
+El aviso de simulación permanece visible. No hay enlace nuevo en el menú público.
+
+La página usa la UI del repositorio maestro mediante un generador. No es una
+segunda implementación manual del diseño. La capa de API simulada reemplaza
+la comunicación con servicios reales. Los scripts se encapsulan para no
+alterar variables globales de Odoo/jQuery. Se detectó y corrigió ese conflicto
+durante la revisión de la nueva página; no se reemplazaron recursos globales.
+
+PUBLICACIÓN EN EL ODOO EXISTENTE
+Base conectada al servicio diario: Outsolutech_prueba.
+Nueva página 22, vista 3885 (uno360x.signup_preview_public).
+Recursos vigentes: adjuntos 2806 y 2807. Los anteriores se conservan para revisión.
+Se comprobaron hashes de las vistas de inicio y los grupos del administrador
+antes/después. No se actualizaron módulos ni se reinició Odoo.
+La cuenta ecueto@outsolutech.com es Administrator (ID 2): activa, Ajustes y
+administración de accesos habilitados, 67 grupos sin cambios.
+No se cambiaron credenciales, correo, Jenifer o DGII.
+
+deployment/publish_preview.py solo permite crear esta página o actualizar
+su propia vista con la opción explícita --update-own-preview. Conserva la
+arquitectura previa en una carpeta privada del servidor al actualizar.
+Para retirar la vista de prueba basta despublicar la página 22; no requiere
+modificar inicio, menús, login ni datos comerciales.
+
+MÁSTER PARA CLIENTES
+Un solo repositorio y una base de código versionada: main en uno360x-saas.
+Cada empresa conserva su propia base, archivos y credenciales. No se usa
+la base operativa de OUTSOLUTECH como plantilla o base compartida de clientes.
+Una versión se identifica por commit y hash del artefacto. Cada cliente deberá
+registrar qué versión tiene. Las actualizaciones solo afectan módulos que
+le correspondan y no habilitan módulos pagados por el hecho de actualizar.
+Orden de distribución: pruebas -> respaldo -> migración por cliente ->
+verificación -> siguiente grupo. Ante fallo, detener distribución y recuperar
+con el procedimiento validado. OUTSOLUTECH conserva sus privilegios propios.
+product/release_policy.json recoge esta política. El motor comercial de
+actualización por lotes todavía está pendiente; no hay despliegue automático
+a todos los clientes por cada push a GitHub.
+
+ALTA REAL
+No se ha activado públicamente. El gateway real se probó en laboratorio;
+faltan su adaptación/aislamiento para el servidor, operación y correo real.
+No hay correo contratado bajo UNO360X y no se contrató ningún servicio nuevo.
+La vista permite revisar el diseño ahora sin ese requisito y sin simular que
+el SaaS comercial ya está habilitado.
