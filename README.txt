@@ -118,3 +118,11 @@ Avance de etapas posteriores (no terminado para venta):
 Estado completo: docs/avance_plan_completo_2026-10-31.txt.
 El plan comercial completo sigue pendiente; no confundir pruebas de laboratorio
 con certificación fiscal, integración de cobros real o producto listo para venta.
+
+Diseño aprobado e implementado localmente - 01/11/2026:
+control/web y control/web_pages.py conservan portada/menús y añaden el flujo
+de prueba de 15 días sin tarjeta. control/trials.py conserva configuración,
+crea una empresa por cuenta sin duplicar y registra el plazo al quedar lista.
+El servidor local entrega verificación a un buzón privado, sin correo real.
+Ver docs/diseno_prueba_15_dias_2026-11-01.txt para rutas, pruebas y límites.
+No se publicó en uno360x.com. Sigue pendiente el gateway web completo Odoo.

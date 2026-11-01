@@ -1,0 +1,89 @@
+UNO360X - IMPLEMENTACIÓN LOCAL DEL DISEÑO APROBADO
+1 de noviembre de 2026
+
+ALCANCE
+Se implementaron la portada con prueba gratis, login y recorrido de registro
+aprobados en los PDF. Se mantienen los enlaces Soluciones, Planes y precios,
+Cómo funciona, Contacto, Iniciar sesión y Solicitar demo. También se mantienen
+los dos botones y las secciones de la portada. No se publicó en uno360x.com.
+
+PANTALLAS
+/                         Copia local del inicio + bloque de prueba gratis.
+/planes-y-precios         Base + módulos; la selección pasa al registro.
+/web/login                Identidad actual y acceso por correo.
+/web/reset_password       Solicitud de recuperación.
+/prueba                   Base obligatoria y 3 módulos opcionales.
+/prueba/cuenta            Nombre, correo y consentimiento de laboratorio.
+/prueba/revisa-correo     Reenvío/corrección del correo.
+/prueba/confirmar         Token en fragmento, retirado de la URL al abrir.
+/prueba/restablecer       Cambio mediante token de recuperación.
+/prueba/empresa           Nombre, país y moneda de la empresa.
+/prueba/preparando        Estado real de la cola y preparación.
+/prueba/espacio           Vista inicial local y días restantes.
+
+COMPORTAMIENTO
+Base Empresarial siempre incluida; Nómina/RR. HH., Jenifer IA y
+Proyectos/Servicios opcionales. Los precios comerciales siguen por definir.
+No se pide tarjeta ni se realizan cargos. El borrador inicial se conserva en
+el control para recuperarlo después de confirmar el correo. El navegador no
+guarda contraseñas, tokens de sesión o enlaces de verificación en su storage.
+Nombre, correo y selección se conservan en sessionStorage durante el recorrido.
+
+Una empresa de prueba por cuenta: reintentos con los mismos datos recuperan
+la misma empresa y trabajo, sin duplicar recursos. No sustituye un sistema
+comercial de prevención de abuso o control de identidad.
+El trabajador registra el inicio solo al llegar a ready_local. El plazo es
+exactamente 15 días de 24 horas; repetir la preparación no lo reinicia.
+Al vencer se bloquean nuevos handoffs y RPC del broker; los datos no se borran.
+Los clientes antiguos sin registro de prueba quedan fuera de esta política.
+
+SEGURIDAD Y LÍMITES
+Servidor ligado a 127.0.0.1:18072, Host/Origin estrictos, cookie HttpOnly y
+SameSite, CSRF, recursos locales con lista fija de rutas, sin CORS ni CDN.
+HTTP solo en loopback; el uso público necesita HTTPS y cookies Secure.
+Nunca se ejecutan órdenes Podman desde un endpoint: la API solo encola.
+Los enlaces se guardan en /var/lib/uno360x-saas-dev/control/mailbox, con
+permisos Linux 0700/0600, fuera de Git y sin endpoint de buzón HTTP.
+Ese buzón es una ayuda de desarrollo; falta el transporte de correo real.
+
+La vista inicial NO es el cliente web completo de Odoo ni un gateway. La
+autenticación nativa se verificó aparte con el broker. Nombre/país/moneda
+guardados en el control todavía no se aplican automáticamente a res.company.
+Las funciones fiscales e IA conservan sus restricciones documentadas.
+La copia local del formulario de demo no envía datos a producción: muestra
+campos deshabilitados y un enlace explícito al formulario público existente.
+Condiciones y privacidad son textos de laboratorio; no términos comerciales.
+
+VERIFICACIÓN
+- 68 pruebas del control aprobadas en WSL. Después de los ajustes finales,
+  se repitieron las 5 de pruebas gratis y las 7 HTTP, todas aprobadas.
+- JavaScript comprobado con node --check.
+- Navegador: portada, selección, resumen, registro, login, empresa, estado real,
+  vista inicial y salida. Selección desde Planes y precios conservada.
+- Navegador móvil: 390px y comprobación de ancho a 320px; menú completo.
+- Empresa ficticia creada desde la UI con Nómina/RR. HH. y Proyectos/Servicios.
+  Preparada por el trabajador real; 15 días desde ready_local y sesión nativa
+  Odoo probados, sin usuario administrador técnico.
+- verify_automatic.py comprueba las 3 empresas, sus módulos exactos, ausencia
+  de puertos públicos, secretos/volúmenes separados y red cruzada bloqueada.
+  Se ejecutó sin sondas temporales concurrentes para comprobar la topología
+  estable de dos contenedores por red. Tres pruebas ORM de bridge por empresa.
+
+OPERACIÓN LOCAL
+Desde la raíz del repo en WSL root:
+  python3 dev/start_identity.py
+Abre http://127.0.0.1:18072/. Para procesar la cola desde otro proceso:
+  python3 dev/run_preparation_worker.py
+La API no inicia automáticamente un trabajador privilegiado. El trabajador
+de este laboratorio es una orden separada; no hay servicio comercial continuo.
+Prueba específica de la empresa creada en UI:
+  python3 dev/trial_ui_smoke.py
+La utilidad espera el fixture ficticio documentado y cambia su contraseña
+de prueba por una aleatoria protegida, sin mostrarla ni tocar otras cuentas.
+
+PENDIENTE PARA PUBLICAR
+Gateway web completo con comprobación de permisos/expiración, aplicación
+controlada de parámetros a Odoo, trabajador como servicio, correo real,
+infraestructura limpia y HTTPS, políticas/precios y demás validaciones del plan.
+La aprobación del diseño no equivale a lanzamiento comercial.
+OUTSOLUTECH y sus usuarios, correo, Jenifer y DGII no fueron modificados.

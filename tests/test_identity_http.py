@@ -89,3 +89,31 @@ class IdentityHTTPTests(unittest.TestCase):
         self.assertFalse(job['completed_steps']);self.assertFalse(job['local_ready'])
         self.assertEqual(job,self.post('/preparation/status',{'tenant_id':company['id']})[1])
         self.assertNotEqual(self.post('/handoff/request',{'tenant_id':company['id']})[0],200)
+
+    def test_approved_ui_and_home_preserve_navigation_without_remote_assets(self):
+        for path in ('/','/prueba','/prueba/empresa','/web/login','/planes-y-precios','/condiciones','/privacidad'):
+            with self.opener.open(self.base+path,timeout=20) as response:
+                html=response.read().decode()
+                self.assertEqual(response.status,200)
+                for label in ('Soluciones','Planes y precios','Cómo funciona','Contacto','Iniciar sesión','Solicitar demo'):
+                    self.assertIn(label,html)
+                self.assertNotIn('https://cdn.',html)
+                self.assertIn("script-src 'self'",response.headers['Content-Security-Policy'])
+        for path in ('/assets/app.js','/assets/app.css','/assets/plans.js'):
+            with self.opener.open(self.base+path,timeout=20) as response:self.assertEqual(response.status,200)
+        for path in ('/assets/../identity.py','/assets/no-such-file','/mailbox'):
+            with self.assertRaises(urllib.error.HTTPError):self.opener.open(self.base+path,timeout=20)
+
+    def test_trial_flow_preserves_selection_and_does_not_start_while_queued(self):
+        self.assertEqual(self.post('/trial/register',{'name':'Prueba HTTP','email':'trial-http@example.test','modules':['projects_services'],'consent':True})[0],200)
+        token=self.messages[-1]['token']
+        self.assertEqual(self.post('/verify',{'token':token,'password':PASSWORD})[0],200)
+        _,body,_=self.post('/login',{'email':'trial-http@example.test','password':PASSWORD});self.csrf=body['csrf_token']
+        self.assertEqual(self.post('/trial/draft',{})[1]['modules'],['projects_services'])
+        data={'name':'Empresa de prueba','country':'DO','currency':'DOP','modules':['projects_services']}
+        status,trial,_=self.post('/trial/create',data)
+        self.assertEqual(status,200);self.assertEqual(trial['status'],'queued')
+        self.assertIsNone(trial['started']);self.assertFalse(trial['card_required']);self.assertFalse(trial['automatic_charge'])
+        self.assertEqual(self.post('/trial/create',data)[1]['tenant_id'],trial['tenant_id'])
+        self.assertEqual(self.post('/trial/status',{'tenant_id':trial['tenant_id']})[0],200)
+        self.assertEqual(self.post('/trial/create',data,headers={'X-CSRF-Token':'wrong'})[0],403)

@@ -1,6 +1,6 @@
 """Loopback-only JSON API for identity laboratory tests, never production hosting.
 
-No UI, SMTP, DNS, TLS, Odoo session sharing or automatic provisioning.
+Approved local UI; no SMTP, DNS, TLS, full Odoo web gateway or public hosting.
 Run only through a caller supplying a local database and delivery sink.
 """
 import hashlib
@@ -12,6 +12,8 @@ import json
 from .identity import IdentityService,IdentityError
 from .onboarding import Onboarding
 from .setup import Setup
+from .trials import Trials
+from .web_pages import asset
 
 COOKIE = 'uno360x_lab_session'
 
@@ -62,6 +64,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self._origin_ok():
             self._reply(403,{'error':'Origen no autorizado.'});return
+        resource=asset(self.path)
+        if resource:
+            content_type,encoded=resource
+            self.send_response(200)
+            self.send_header('Content-Type',content_type+'; charset=utf-8')
+            self.send_header('Content-Length',str(len(encoded)))
+            self.send_header('Cache-Control','no-store')
+            self.send_header('X-Content-Type-Options','nosniff')
+            self.send_header('Referrer-Policy','no-referrer')
+            self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+            self.end_headers();self.wfile.write(encoded);return
         if self.path=='/health':
             self._reply(200,{'mode':'local-laboratory','public_ready':False});return
         if self.path!='/session':
@@ -97,6 +110,7 @@ class Handler(BaseHTTPRequestHandler):
             if not permitted:
                 self._reply(429,{'error':'Espera antes de volver a intentarlo.'});return
             public={
+                '/trial/register':lambda:Trials(service).register(data['email'],data['name'],data['modules'],data['consent']),
                 '/register':lambda:service.register(data['email']),
                 '/verify':lambda:service.complete_registration(data['token'],data['password']),
                 '/reset/request':lambda:service.request_reset(data['email']),
@@ -118,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
             setup=Setup(service)
             private={
                 '/logout':lambda:service.logout(session),
-                '/companies':lambda:{'companies':service.companies(session)},
+                '/companies':lambda:Trials(service).companies(session),
                 '/companies/create':lambda:service.create_company(session,data['slug'],data.get('modules',[]),data['request_id']),
                 '/companies/select':lambda:service.select_company(session,data['tenant_id']),
                 '/invitations/create':lambda:service.invite(session,data['tenant_id'],data['email'],data.get('role','member')),
@@ -132,6 +146,9 @@ class Handler(BaseHTTPRequestHandler):
                 '/handoff/request':lambda:onboarding.issue_handoff(session,data['tenant_id']),
                 '/setup/profile':lambda:setup.save(session,data['tenant_id'],data['profile']),
                 '/setup/status':lambda:setup.status(session,data['tenant_id']),
+                '/trial/draft':lambda:Trials(service).draft(session),
+                '/trial/create':lambda:Trials(service).create(session,data['name'],data['country'],data['currency'],data['modules']),
+                '/trial/status':lambda:Trials(service).status(session,data['tenant_id']),
             }
             if self.path not in private:
                 self._reply(404,{'error':'Ruta no disponible.'});return

@@ -1,5 +1,6 @@
 """Read existing automatic lab instances and verify isolation; no provisioning."""
 import json
+from itertools import combinations
 import re
 import sqlite3
 import sys
@@ -16,7 +17,7 @@ def main():
     db.row_factory=sqlite3.Row
     try:
         jobs=db.execute('SELECT j.*,t.slug,t.modules FROM preparation_jobs j JOIN tenants t ON t.id=j.tenant_id ORDER BY t.slug').fetchall()
-        assert {r['slug'] for r in jobs}=={'auto-empresa-alfa','auto-empresa-beta'}
+        assert {'auto-empresa-alfa','auto-empresa-beta'} <= {r['slug'] for r in jobs}
         results=[];snapshots=[]
         for job in jobs:
             assert job['status']=='ready_local'
@@ -37,11 +38,11 @@ def main():
             results.append({'company':job['slug'],'status':'ready_local','installed_own_packages':len(s['installation']['addons']),
                             'bridge_orm_tests':int(counts[-1][2]),'unselected_options_installed':False,
                             'central_users_have_settings_access':False,'public_ports':False})
-        a,b=snapshots
-        assert adapter.bridge_key(a)!=adapter.bridge_key(b)
-        assert (adapter.names(a)['directory']/'database-password').read_text()!=(adapter.names(b)['directory']/'database-password').read_text()
-        assert adapter.names(a)['files']!=adapter.names(b)['files']
-        for current,other in [(a,b),(b,a)]:
+        for a,b in combinations(snapshots,2):
+            assert adapter.bridge_key(a)!=adapter.bridge_key(b)
+            assert (adapter.names(a)['directory']/'database-password').read_text()!=(adapter.names(b)['directory']/'database-password').read_text()
+            assert adapter.names(a)['files']!=adapter.names(b)['files']
+        for current,other in [(a,b) for pair in combinations(snapshots,2) for a,b in (pair,pair[::-1])]:
             target=adapter.names(other)
             ip=inspect(target['database'])['NetworkSettings']['Networks'][target['network']]['IPAddress']
             probe="import socket\ns=socket.socket();s.settimeout(2)\ntry:\n s.connect((%r,5432))\nexcept OSError:\n print('BLOCKED')\nelse:\n raise SystemExit(1)\nfinally:\n s.close()"%ip

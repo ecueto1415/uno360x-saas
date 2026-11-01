@@ -21,6 +21,8 @@ class BackendSession:
         service=self.onboarding.identity
         account=service._account(self.central_session)
         member=service._membership(account['id'],self.claims['tenant_id'])
+        from .trials import check_trial_access
+        check_trial_access(service, self.claims['tenant_id'])
         if account['id']!=self.claims['account_id'] or member['role']!=self.claims['role']:
             raise IdentityError('El acceso cambió; vuelve a entrar a tu espacio.')
         if not self.onboarding.status(self.central_session,self.claims['tenant_id'])['local_ready']:

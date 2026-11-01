@@ -68,7 +68,9 @@ en memoria, sin mensajes reales, contraseñas ni tokens impresos. No crea Odoo.
 API opcional, desde WSL root:
   python3 dev/start_identity.py
 Solo 127.0.0.1:18072. Estado en /var/lib/uno360x-saas-dev/control protegido.
-No incluye UI, SMTP real ni traspaso de sesión a Odoo. Los endpoints privados
+Incluye la UI aprobada de prueba gratis; sin SMTP real ni gateway web Odoo.
+Los enlaces se guardan en control/mailbox, bajo el estado privado Linux.
+Los endpoints privados
 requieren cookie de sesión y token CSRF. El servidor no se publica en Internet.
 
 Punto 4: automatic_signup_demo.py, verify_automatic.py, run_preparation_worker.py,

@@ -104,6 +104,11 @@ class Onboarding:
                     self.db.execute('INSERT OR IGNORE INTO preparation_steps VALUES (?,?)',(job_id,step))
             with self.db:
                 self.db.execute("UPDATE preparation_jobs SET status='ready_local',current_step=NULL,updated=? WHERE id=?",(self.identity.clock(),job_id))
+                if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():
+                    from .trials import TRIAL_SECONDS
+                    now = self.identity.clock()
+                    self.db.execute('UPDATE trial_workspaces SET started=?,expires=? WHERE tenant_id=? AND started IS NULL',
+                                    (now, now + TRIAL_SECONDS, snapshot['tenant_id']))
                 self.identity._audit('preparation_ready_local',tenant=snapshot['tenant_id'])
         return {'job_id':job_id,'status':'ready_local','public_access':False}
 
@@ -116,6 +121,8 @@ class Onboarding:
             if not job:raise PreparationError('El espacio todavía no está listo.')
             if not self.status(session,tenant_id)['local_ready']:
                 raise PreparationError('El espacio requiere una migración.')
+            from .trials import check_trial_access
+            check_trial_access(self.identity, tenant_id)
             if not self.identity._allow('handoff',account['id'],maximum=20,window=60):
                 raise IdentityError('Espera antes de volver a intentarlo.')
             ticket=secrets.token_urlsafe(32)
@@ -133,6 +140,8 @@ class Onboarding:
             if not row or row['used'] or row['expires']<=self.identity.clock() or row['account_id']!=account['id'] or row['session_digest']!=digest(session):
                 raise IdentityError('Acceso inválido o vencido.')
             member=self.identity._membership(account['id'],row['tenant_id'])
+            from .trials import check_trial_access
+            check_trial_access(self.identity, row['tenant_id'])
             job=self.db.execute("SELECT * FROM preparation_jobs WHERE id=? AND status='ready_local'",(row['job_id'],)).fetchone()
             if not job:raise PreparationError('El espacio no está disponible.')
             if not self.status(session,row['tenant_id'])['local_ready']:
