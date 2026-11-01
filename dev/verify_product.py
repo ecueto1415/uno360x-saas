@@ -42,6 +42,9 @@ def main():
             audit_sql=f"SELECT count(*) FROM pos_order WHERE session_id={session_id} AND state='done' AND amount_total=450 AND account_move IS NULL; SELECT count(*) FROM account_move WHERE id={move_id}; SELECT count(*) FROM account_bank_statement_line WHERE pos_session_id={session_id} AND move_id IN (SELECT id FROM account_move) AND amount=450;"
             audit=run('exec','uno360x-lab-'+slug+'-db','psql','-U','postgres','-d','tenant_'+tid[:16],'-Atc',audit_sql).stdout.strip().splitlines()
             assert audit==['1','1','1'],audit
+        rd_sql="SELECT count(*) FROM pos_session s JOIN pos_config c ON c.id=s.config_id JOIN res_company co ON co.id=c.company_id JOIN res_currency r ON r.id=co.currency_id WHERE c.name='CAJA DEMO RD - LABORATORIO' AND r.name='DOP' AND s.state='closed' AND s.move_id IS NULL AND NOT EXISTS (SELECT 1 FROM pos_order o WHERE o.session_id=s.id);"
+        rd_closed=int(run('exec','uno360x-lab-'+slug+'-db','psql','-U','postgres','-d','tenant_'+tid[:16],'-Atc',rd_sql).stdout.strip())
+        expected[7]=str(int(expected[7])+rd_closed)
         assert values==expected,values
         result.append({'company':slug,'installed_packages':len(modules),'orm_tests':int(counts[-1][2]),
                        'pos_tests':int(pos_counts[-1][2]),'errors':0,'failures':0,'transactional_test_residue':False,'archived_visual_fixture':bool(fixture),

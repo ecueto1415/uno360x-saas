@@ -1,0 +1,22 @@
+UNO360X - ESPAÑOL Y PESOS DOMINICANOS EN LABORATORIO
+01/11/2026
+
+Configurado solo en Empresa Alfa, instancia ficticia WSL:
+- Traducciones es_DO instaladas; usuario de laboratorio con idioma es_DO.
+- Nueva empresa UNO360X DEMO RD - LABORATORIO, moneda DOP, país DO,
+  plan contable do y almacén ficticio. No es otro cliente ni el modelo
+  comercial de aislamiento: es una empresa interna de una base desechable.
+- Caja CAJA DEMO RD - LABORATORIO, dos productos ficticios sin impuestos.
+- Configuración original USD y venta visual anterior preservadas intactas.
+- Verificación navegador: Buscar productos, Cliente, Cant., Precio, Pago,
+  artículo RD$ 100.00 y cierre 0 órdenes / RD$ 0.00, diferencia cero.
+- Sin ventas ni asientos DOP; sesión de comprobación cerrada; siguiente
+  sesión vacía retirada. Caja DOP disponible para la siguiente prueba.
+- Sin correo, cron desactivado, proxy loopback retirado y pestaña cerrada.
+- Sin conexión SSH a producción y sin cambios al Odoo de uso diario.
+
+Propuesta PDF v1: caja, cobro/recibo y móvil. Marca textual UNO360X,
+colores #1B3546 y #12877C, fuente Segoe UI y fondos claros. Es propuesta,
+no interfaz aplicada; requiere aprobación del usuario antes de implementarla.
+Archivo de aprobación: UNO360X_POS_Propuesta_identidad_v1.pdf.
+Pendientes: aplicar diseño aprobado, pruebas de equipos y validación fiscal.
