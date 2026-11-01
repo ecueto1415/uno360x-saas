@@ -1,20 +1,20 @@
 {
   "assessed": "2026-11-01",
   "public_release_allowed": false,
-  "scope": "isolated_local_laboratory",
+  "scope": "public_verified_base_trial_on_isolated_shared_host_runtime",
   "steps": {
     "1": "baseline_consolidated",
     "2": "packages_prepared_functional_limits_documented",
-    "3": "controlled_https_identity_and_native_odoo_browser_entry_verified",
-    "4": "local_provisioning_and_odoo_handoff_verified",
+    "3": "public_verified_email_signup_and_shared_https_gateway_verified",
+    "4": "two_real_isolated_tenants_provisioned_and_cross_access_denied",
     "5": "encrypted_restore_verified_commercial_infrastructure_pending",
     "6": "sandbox_only_prices_and_provider_pending",
-    "7": "approved_trial_ui_and_basic_company_parameters_applied_local",
+    "7": "approved_common_workspace_deployed_versioned_and_native_ui_verified",
     "8": "encrypted_local_certificate_custody_verified_real_adapter_pending",
     "9": "partial_payroll_ai_and_profitability_not_complete",
     "10": "readonly_operations_cli_visual_panel_pending",
-    "11": "94_linux_tests_passed_controlled_https_browser_crm_verified",
-    "12": "blocked_not_launched"
+    "11": "99_linux_tests_plus_capacity_and_worker_expiry_regressions_passed",
+    "12": "public_base_trial_enabled_full_commercial_launch_pending"
   },
   "required_before_public_release": [
     "supported_host_operating_system_and_isolated_runtime_resource_budget",
@@ -32,10 +32,10 @@
   "outsolutech_production_changed": true,
   "public_design_preview": {
     "url": "https://uno360x.com/prueba-saas",
-    "mode": "redirect_to_controlled_real_signup",
+    "mode": "redirect_to_verified_public_trial",
     "real_signup_enabled": true,
     "linked_from_homepage": true,
-    "signup_scope": "allowlisted_operator_one_tenant",
+    "signup_scope": "any_valid_receiving_email_with_verification",
     "destination": "https://cuenta.uno360x.com/prueba/inicio"
   },
   "production_change_scope": "approved_public_website_copy_and_separate_saas_runtime_https_ingress",
@@ -43,9 +43,9 @@
   "outsolutech_user_privileges_changed": false,
   "shared_host_preparation": {
     "authorized": true,
-    "stage": "controlled_https_pilot_available",
+    "stage": "public_base_trial_with_resource_admission",
     "runtime_deployed": true,
-    "public_signup_enabled": false,
+    "public_signup_enabled": true,
     "ubuntu_upgrade": "deferred_by_user",
     "service_account": "uno360x-saas",
     "production_odoo_restart": false,
@@ -60,7 +60,7 @@
     "private_pilot_tenant": null,
     "public_odoo_gateway_deployed": true,
     "email_delivery_verified": true,
-    "runtime_scope": "controlled_allowlisted_https_pilot_one_tenant",
+    "runtime_scope": "two_active_isolated_tenants_additional_preparations_queued",
     "worker_restart_reconciliation_verified": true,
     "email_provider": "Resend",
     "identity_url": "https://cuenta.uno360x.com/prueba/cuenta",
@@ -73,9 +73,9 @@
   "odoo_service_configuration_changed": false,
   "nginx_ingress_configuration_changed": true,
   "controlled_pilot": {
-    "public_general_signup": false,
+    "public_general_signup": true,
     "operator_signup": true,
-    "max_active_tenants": 1,
+    "max_active_tenants": 2,
     "base_crm_pos": true,
     "optional_modules_enabled": false,
     "fictional_data_archived_before_operator_signup": true,
@@ -84,5 +84,26 @@
     "registration_no_horizontal_overflow": true,
     "entry_url": "https://cuenta.uno360x.com/prueba/inicio",
     "plan_to_registration_browser_verified": true
+  },
+  "public_registration_enabled": true,
+  "public_trial": {
+    "verification_required": true,
+    "days": 15,
+    "starts_when_ready": true,
+    "card_required": false,
+    "automatic_charge": false,
+    "any_receiving_email": true,
+    "max_active_tenants": 2,
+    "capacity_overflow": "queued_without_starting_trial",
+    "expired_compute": "stopped_data_preserved",
+    "shared_gateway": "https://piloto.uno360x.com",
+    "base_crm_pos": true,
+    "other_modules": "conditional_approved_ui_functionality_still_in_preparation"
+  },
+  "current_rollout_operational_odoo": {
+    "restarted": false,
+    "configuration_changed": false,
+    "privileges_changed": false,
+    "marketing_copy": "nginx_response_only_no_database_write"
   }
 }

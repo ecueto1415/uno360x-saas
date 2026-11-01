@@ -11,5 +11,7 @@
   "paid_modules_enabled_by_upgrade": false,
   "outsolutech_existing_privileges_preserved": true,
   "automatic_push_to_production": false,
-  "implementation_status": "shared_source_and_preview_builder_ready_commercial_rollout_runner_pending"
+  "implementation_status": "per_tenant_backup_migration_runner_implemented_common_workspace_deployed",
+  "current_master_release": "0.4.0-workspace",
+  "publication_policy": "explicitly_authorized_tested_immutable_release_rollout"
 }
