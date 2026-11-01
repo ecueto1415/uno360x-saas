@@ -11,7 +11,7 @@ class CatalogTests(unittest.TestCase):
             for chosen in itertools.combinations(options,count):
                 with self.subTest(chosen=chosen):
                     plan=installation_profile(chosen)
-                    self.assertEqual(set(plan['addons']),{'uno360x_business_base','uno360x_quote_ui','uno360x_ecf_core','uno360x_auth_bridge'}|{options[x] for x in chosen})
+                    self.assertEqual(set(plan['addons']),{'uno360x_business_base','uno360x_quote_ui','uno360x_ecf_core','uno360x_auth_bridge','uno360x_workspace'}|{options[x] for x in chosen})
                     self.assertFalse(plan['production_deployment'])
 
     def test_order_is_irrelevant_unknown_scope_rejected(self):

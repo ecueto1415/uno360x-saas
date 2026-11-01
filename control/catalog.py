@@ -23,7 +23,7 @@ def installation_profile(modules):
             raise ValueError('Paquete no instalable.')
         tree=hashlib.sha256()
         for file in sorted((ROOT/'addons'/addon).rglob('*')):
-            if file.is_file() and '__pycache__' not in file.parts and file.suffix in {'.py','.xml','.js','.csv','.xsd'}:
+            if file.is_file() and '__pycache__' not in file.parts and file.suffix in {'.py','.xml','.js','.csv','.xsd','.css','.scss','.svg'}:
                 tree.update(file.relative_to(ROOT/'addons'/addon).as_posix().encode())
                 tree.update(b'\0')
                 # Git may normalize LF/CRLF across Windows and Linux.

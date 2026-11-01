@@ -1,0 +1,3 @@
+/* Common UNO360X palette; keep the native POS payment flow. */
+.pos {--primary:#138a73;--primary-rgb:19,138,115;--bs-primary:#138a73;--bs-primary-rgb:19,138,115;--o-brand-primary:#138a73;--o-brand-odoo:#11283b;--o-brand-secondary:#11283b;accent-color:#138a73}
+.pos .btn-primary {background:#138a73;border-color:#138a73;color:white}.pos .btn-primary:hover{background:#0d6c59;border-color:#0d6c59}

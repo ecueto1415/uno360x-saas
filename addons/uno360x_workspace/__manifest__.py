@@ -1,0 +1,1 @@
+{'name': 'UNO360X - Entorno común', 'version': '18.0.1.0.0', 'license': 'LGPL-3', 'depends': ['uno360x_business_base', 'web'], 'data': ['views/workspace.xml'], 'assets': {'point_of_sale._assets_pos': ['uno360x_workspace/static/src/css/pos.css']}, 'installable': True, 'application': False}

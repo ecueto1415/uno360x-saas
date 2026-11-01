@@ -29,3 +29,9 @@ class ContainerBoundaryTests(unittest.TestCase):
   with self.assertRaises(RuntimeError):
    with adapter.lock('b'*32):pass
   self.assertFalse((self.state/('b'*32)).exists())
+
+ def test_version_update_keeps_owned_resources_and_rejects_other_tenants(self):
+  updated=dict(self.s,installation={'fingerprint':'e'*64},resource_fingerprint='d'*64)
+  self.assertEqual(self.a.labels(updated),self.a.labels(self.s))
+  other=dict(updated,tenant_id='f'*32)
+  self.assertNotEqual(self.a.labels(other),self.a.labels(updated))

@@ -1,0 +1,25 @@
+UNO360X - Entorno común y despliegue de versiones
+
+Código maestro: repositorio ecueto1415/uno360x-saas, rama main. Los cuatro escenarios comparten el módulo uno360x_workspace. Nunca se clona la base de OUTSOLUTECH para distribuir el diseño.
+
+Versión de producto: 0.4.0-workspace. Apariencia basada en el PDF aprobado Interior_Apegado_Produccion_v2: Resumen, Comercial, Finanzas, Operaciones, Equipo, Jenifer IA y Reportes. Los grupos adicionales dependen de los módulos instalados y los permisos del usuario. Las opciones concretas de los planes siguen abiertas a afinación.
+
+El resumen consulta datos reales con el usuario solicitante, sin sudo en modelos de negocio. El catálogo de módulos utiliza sudo exclusivamente para consultar el estado de los paquetes instalados. El menú enlaza las acciones nativas conservando sus submenús. Las solicitudes de idioma y Jenifer exigen CSRF; las consultas de Jenifer siguen siendo de solo lectura y no usan credenciales externas.
+
+Pruebas previas: 96 tests de control Linux; 5 tests Odoo en WSL con los tres módulos opcionales; prueba de menú, CRM real y vista móvil de 390 px sin desbordamiento. Los tests comprueban exclusión de usuarios públicos y ausencia de datos financieros para perfiles sin acceso.
+
+Flujo de actualización:
+1. Cambiar el código común, versionar el catálogo y aprobar pruebas en laboratorio.
+2. Crear una entrega inmutable con SHA256 y referencia Git, sin secretos.
+3. Desplegar la entrega en /srv/uno360x-saas/releases. master-current identifica la versión SaaS actual; worker-current y https-pilot-current usan la misma entrega.
+4. Planificar clientes: como usuario uno360x-saas, ejecutar deployment/workspace_release.py TENANT. Por defecto solo informa; --apply realiza la actualización revisada del entorno común.
+5. Pausar únicamente los servicios SaaS y el contenedor de aplicación del cliente. Resguardar control.sqlite3, SQL del cliente y volumen de archivos antes de instalar/actualizar el módulo.
+6. Validar módulos, acceso y datos. Registrar tenant_releases, conservar fechas de prueba y habilitar el cliente con la misma base, archivos, credenciales y clave del puente.
+
+Las etiquetas de pertenencia de los recursos conservan su fingerprint inicial mediante resource_fingerprint. La versión de software avanza de forma independiente: evita reasignar o recrear volúmenes de negocio en cada actualización.
+
+La herramienta rechaza cambios no revisados en módulos de negocio distintos del entorno común. Las actualizaciones funcionales más amplias requieren su migración y pruebas propias; no se aplican por copiar una base de datos o editar producción a mano.
+
+Respaldo y reversión: los archivos privados before.json, control-before.sqlite3, tenant.sql, files.tar y tenant-state quedan bajo /var/lib/uno360x-saas/release-backups/TENANT/FECHA. Ante un fallo se detiene la publicación del cliente y se conserva el respaldo. La recuperación usa únicamente los recursos identificados del cliente SaaS y la entrega previa, nunca el servicio o las bases de OUTSOLUTECH.
+
+Estado inicial de despliegue: un cliente real, magiccomputer. La ampliación del registro/capacidad continúa siendo independiente de la entrega visual. La emisión fiscal, reglas completas de nómina y proveedor IA mantienen sus validaciones pendientes. El diseño aprobado no habilita esas integraciones por sí solo.
