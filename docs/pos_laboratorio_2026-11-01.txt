@@ -1,0 +1,24 @@
+UNO360X — POS en Base Empresarial — 01/11/2026
+
+Instalado point_of_sale mediante la dependencia del paquete base actualizado
+solo en Empresa Alfa y Empresa Beta, clientes ficticios del laboratorio WSL.
+No se conectó ni modificó producción, sus usuarios o credenciales.
+
+Verificación por cliente:
+- 18 pruebas existentes del producto: sin errores ni fallos.
+- 10 pruebas transaccionales: 3 de Base Empresarial, 5 de TestPoSStock y
+  TestPosSimpleOrders.test_01/test_02 del Odoo 18 instalado.
+- Incluyen ventas en efectivo y banco simulado, apertura/cierre contable,
+  inventario/valoración, devolución y compatibilidad del usuario de inventario
+  sin permisos POS para crear productos ajenos al POS.
+- Las pruebas revierten sus transacciones. Verificación SQL posterior:
+  cero órdenes POS, sesiones POS, ventas, compras, facturas y correos pendientes.
+- Cron desactivado; clientes reiniciados; redes privadas sin puertos públicos.
+
+Reproducción: dev/install_product.py, dev/check_pos.py y dev/verify_product.py,
+exclusivamente WSL root del laboratorio. Logs en el almacenamiento local
+protegido de cada cliente: product-tests.log y pos-tests.log.
+
+Límites: pruebas de servidor; no equivalen a revisión de interfaz de caja,
+impresoras, escáneres, pagos bancarios reales ni emisión fiscal DGII.
+No se declara listo el lanzamiento comercial y no se actualizó la web pública.

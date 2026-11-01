@@ -22,7 +22,7 @@
     "standard_reports": "installed_not_exhaustively_validated",
     "dominican_chart": "lab_validation_only",
     "electronic_invoicing": "included_in_commercial_scope_adapter_pending",
-    "point_of_sale": "included_in_commercial_scope_lab_validation_pending"
+    "point_of_sale": "installed_two_isolated_lab_tenants_server_flows_validated"
   },
   "optional_scopes": [
     "payroll_hr",

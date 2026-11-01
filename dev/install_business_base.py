@@ -8,10 +8,10 @@ import sys
 from tenants import run, inspect
 
 
-def main(modules=None, min_tests=3, log_name='business-base-tests.log'):
+def main(modules=None, min_tests=3, log_name='business-base-tests.log', test_tags=None):
     modules=modules or ['uno360x_business_base']
     allowed={'uno360x_business_base','uno360x_quote_ui','uno360x_ecf_core',
-             'uno360x_payroll_hr','uno360x_jenifer_core','uno360x_projects_services'}
+             'uno360x_payroll_hr','uno360x_jenifer_core','uno360x_projects_services','point_of_sale'}
     assert set(modules)<=allowed
     if os.name != 'posix' or os.geteuid() != 0:
         raise SystemExit('Solo root dentro del WSL de laboratorio.')
@@ -49,7 +49,7 @@ def main(modules=None, min_tests=3, log_name='business-base-tests.log'):
             result=run('run','--rm',*common,image,'odoo','-c','/etc/odoo/odoo.conf',
                        *flags,
                        '--without-demo=all','--stop-after-init',
-                       '--test-enable','--test-tags',','.join('/'+name for name in modules),check=False)
+                       '--test-enable','--test-tags',test_tags or ','.join('/'+name for name in modules),check=False)
             logpath.write_text(result.stdout+'\n'+result.stderr)
             log=logpath.read_text()
             summary=[line for line in log.splitlines() if 'failed' in line and 'test' in line]
