@@ -41,7 +41,7 @@
   "outsolutech_user_privileges_changed": false,
   "shared_host_preparation": {
     "authorized": true,
-    "stage": "rootless_container_runtime_and_origin_https_verified",
+    "stage": "private_vm_automatic_provisioning_verified",
     "runtime_deployed": false,
     "public_signup_enabled": false,
     "ubuntu_upgrade": "deferred_by_user",
@@ -53,7 +53,11 @@
     "status_url": "https://uno360x.com/saas/",
     "origin_tls_verified": true,
     "cloudflare_tls_mode_verified": false,
-    "tenant_provisioning_service_deployed": false
+    "tenant_provisioning_service_deployed": true,
+    "tenant_provisioning_service": "uno360x-saas-worker",
+    "private_pilot_tenant": "5a4ed983d8c243a58054841c908ae820",
+    "public_odoo_gateway_deployed": false,
+    "email_delivery_verified": false
   },
   "odoo_service_configuration_changed": false,
   "nginx_ingress_configuration_changed": true

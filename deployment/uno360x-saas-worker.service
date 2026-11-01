@@ -1,0 +1,20 @@
+[Unit]
+Description=UNO360X private tenant preparation worker
+After=network-online.target user@996.service
+Requires=user@996.service
+[Service]
+Type=simple
+User=uno360x-saas
+Group=uno360x-saas
+WorkingDirectory=/var/lib/uno360x-saas
+Environment=XDG_RUNTIME_DIR=/run/user/996
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/996/bus
+ExecStart=/usr/bin/python3 /srv/uno360x-saas/worker-current/deployment/run_shared_worker.py
+Restart=on-failure
+RestartSec=10
+UMask=0077
+MemoryMax=192M
+CPUQuota=20%
+TasksMax=64
+[Install]
+WantedBy=multi-user.target

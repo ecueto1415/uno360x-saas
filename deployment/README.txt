@@ -48,3 +48,10 @@ Ver docs/runtime_https_vm_2026-11-01.txt. Podman rootless instalado y probado;
 servicio de estado independiente y HTTPS de origen activados. No se desplegó
 el aprovisionador comercial ni se habilitaron registros. Cloudflare requiere
 acceso de cuenta para comprobar Completo (estricto); no se cambió su modo.
+
+APROVISIONAMIENTO PRIVADO EN VM
+Ver docs/aprovisionador_vm_2026-11-01.txt. SharedHostAdapter y el servicio
+uno360x-saas-worker solo crean el piloto privado. seed_private_signup.py usa
+datos ficticios y verificación en memoria; no habilita el alta pública.
+verify_shared_signup.py prueba preparación, propietario, moneda, idioma y
+reintento sin duplicar ni reiniciar los 15 días. Nunca exponer puertos Odoo/PG.

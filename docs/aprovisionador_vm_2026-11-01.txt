@@ -1,0 +1,46 @@
+UNO360X - CREACION AUTOMATICA PRIVADA EN VM - 01/11/2026
+
+Trabajador uno360x-saas-worker, usuario exclusivo sin sudo, Podman rootless.
+Cola privada /var/lib/uno360x-saas/control/control.sqlite3. El proceso HTTP
+solo registra/valida y encola; el trabajador separado prepara el cliente.
+Ninguna ruta pública se conectó a esa API y el correo sigue ficticio.
+
+Cliente ficticio 5a4ed983d8c243a58054841c908ae820 creado automáticamente:
+- Registro por HTTP loopback, verificación mediante buzón en memoria.
+- PostgreSQL propio, rol limitado, contraseña y clave de puente nuevas.
+- Archivos/volúmenes propios, red interna, cero puertos publicados.
+- Instalación desde el maestro con CRM, POS y autenticación de puente.
+- Configuración DO/DOP, español es_DO, propietario creado sin Ajustes técnicos.
+- HTML nativo de Odoo autenticado y permisos CRM/POS comprobados dentro
+  de la aplicación privada, sin abrir acceso público ni usar al administrador.
+- Quince días contados desde que termina la preparación.
+- Repetición real del trabajador idempotente: tres contenedores propios
+  (DB, inicializador finalizado y app); sin duplicar empresa o reiniciar plazo.
+- Prueba TCP desde el contenedor hacia 140.82.47.80:8069 bloqueada.
+
+El trabajador reconcilia los clientes preparados al iniciar, para recuperar
+sus contenedores tras reinicio; no borra datos. Piloto limitado a un cliente
+por el presupuesto de 1 CPU/2GB. Una segunda identidad se rechaza antes de
+crear su carpeta. No implica un límite comercial aprobado de los planes.
+
+Se extrajo la implementación compartida a control/container_adapter.py.
+LocalAdapter conserva su restricción WSL/root. SharedHostAdapter exige
+usuario uno360x-saas y runtime rootless, usa prefijo uno360x-pilot-, rechaza
+recursos ajenos, imágenes distintas, redes inesperadas o puertos publicados.
+El servicio privado lee imágenes fijadas por ID desde configuración protegida.
+
+Verificación: 89 pruebas de control aprobadas en WSL, incluidas límites de
+recursos ajenos, rutas inválidas, puertos y capacidad; ensayo real privado VM.
+No se cambiaron credenciales de correo/Jenifer/DGII ni privilegios de Cueto.
+Odoo operativo separado se mantiene, sin reinicios.
+
+PENDIENTES PARA EL PUBLICO
+Correo real y entrega verificada; API/entrada HTTPS de identidad y gateway
+Odoo autenticado en la VM; términos, límites/operación y controles de abuso.
+El adaptador privado rechaza devolver una URL backend directa. No publicar
+puertos para sortear ese bloqueo. /prueba-saas sigue siendo simulación.
+Cloudflare continúa sin acceso de cuenta; su modo TLS no se modificó.
+Ubuntu sigue aplazado. Diseño de caja UNO360X pendiente de aprobación.
+
+Regresión del alta completa WSL tras extraer el adaptador compartido:
+registro/entrada nativa, DO/DOP/es_DO, CRM/POS, caducidad y logout aprobados.
