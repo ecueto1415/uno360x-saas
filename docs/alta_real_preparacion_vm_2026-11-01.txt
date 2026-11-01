@@ -1,0 +1,48 @@
+UNO360X - ALTA REAL Y PREPARACION PRIVADA DE VM - 01/11/2026
+
+El usuario autorizó preparar el SaaS en la misma VM 140.82.47.80 mientras
+crea un correo nuevo, y pospuso explícitamente actualizar Ubuntu.
+La autorización no implica activar el registro público antes de las pruebas.
+
+VM: cuenta de sistema uno360x-saas, sin login, grupo propio, sin sudo ni
+pertenencia a grupos de Odoo/PostgreSQL. Directorios propios /srv/uno360x-saas,
+/var/lib/uno360x-saas y /etc/uno360x-saas. Política de staging sin secretos.
+No se instalaron paquetes, contenedores, servicios públicos ni puertos.
+No se cambió Ubuntu, DNS, Nginx, Odoo, PostgreSQL o credenciales existentes.
+CPU/memoria de shared-host.example.json son propuesta, aún no aplicados.
+
+Respaldo online local protegido:
+/opt/uno360x-saas/backups/shared-host-preparation-20261101T161940Z
+Contiene dumps de Outsolutech_prueba y OUTSOLUTECH, ambos filestores y
+configuraciones de Odoo/Nginx. Catálogos pg_restore legibles y SHA256 registrados.
+No es respaldo externo ni restauración ensayada. Filestore copiado en vivo,
+sin garantizar instantánea atómica con cada transacción de la base.
+Odoo PID 2195 antes/después; servicios activos, hashes de config iguales.
+
+CORRECCION EN EL ALTA AUTOMATICA LOCAL
+Propietario/admin de cliente recibe point_of_sale.group_pos_manager junto
+con sus permisos comerciales. No recibe base.group_system. Para perfil DO,
+el aprovisionador carga es_DO y el usuario nuevo lo usa. DOP se aplica desde
+los datos declarados de la empresa. Sin copiar datos o claves de OUTSOLUTECH.
+
+ENSAYO REAL, EXCLUSIVAMENTE WSL
+Nuevo control privado /var/lib/uno360x-saas-dev/real-signup-rehearsal.
+Cuenta ficticia latest-base-rehearsal@example.test; clave aleatoria solo local.
+Cliente bdac87e9dc404447bffaae33fd97c30b, base/volúmenes/red/claves propios.
+Registro HTTP y verificación con buzón ficticio; creación idempotente;
+aprovisionamiento real desde el maestro actual, CRM/POS instalados;
+entrada al HTML nativo Odoo, usuario no técnico, es_DO, DO/DOP;
+permisos reales de CRM y POS; 15 días desde readiness; vencimiento bloquea
+acceso sin borrar datos; logout revoca acceso. Expiración de prueba restaurada
+tras el ensayo. Servidores HTTP/gateway temporales cerrados al terminar.
+Reporte privado verification.json; sin correo real, DNS ni cobros.
+
+PENDIENTE ANTES DEL ACCESO PUBLICO
+Runtime Linux soportado y separado, ingreso HTTPS validado sin acceso directo
+a bases/apps, correo nuevo con entrega verificada, límites de recursos,
+respaldo externo/restauración y condiciones del piloto. Ubuntu 24.10 está
+fuera de soporte; actualización aplazada por el usuario, sin ejecutarla.
+La web /prueba-saas sigue como simulación y el alta pública está desactivada.
+Diseño de la caja UNO360X sigue pendiente de aprobación.
+
+VALIDACION ADICIONAL: 82 pruebas de control aprobadas en Linux WSL. En Windows, una prueba de transporte tuvo una interrupción de conexión; la suite Linux completa terminó sin fallos.

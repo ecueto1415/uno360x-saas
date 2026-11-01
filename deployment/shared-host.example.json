@@ -1,0 +1,21 @@
+{
+  "environment": "shared_host_private_staging",
+  "server_address": "140.82.47.80",
+  "public_signup_enabled": false,
+  "saas_account": "uno360x-saas",
+  "release_root": "/srv/uno360x-saas/releases",
+  "state_root": "/var/lib/uno360x-saas",
+  "configuration_root": "/etc/uno360x-saas",
+  "protected_services": [
+    "odoo18",
+    "postgresql@16-main",
+    "nginx"
+  ],
+  "protected_database": "Outsolutech_prueba",
+  "max_active_pilot_tenants": 1,
+  "cpu_quota_percent_proposed": 100,
+  "memory_max_bytes_proposed": 2147483648,
+  "resource_limits_applied": false,
+  "mail_configured": false,
+  "os_upgrade": "deferred_by_user"
+}

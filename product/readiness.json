@@ -17,7 +17,7 @@
     "12": "blocked_not_launched"
   },
   "required_before_public_release": [
-    "clean_supported_commercial_host_and_resource_budget",
+    "supported_host_operating_system_and_isolated_runtime_resource_budget",
     "production_gateway_ingress_dns_tls_and_no_backend_bypass_validation",
     "separate_os_service_accounts_and_production_security_review",
     "public_host_browser_and_full_odoo_gateway_validation",
@@ -38,5 +38,14 @@
   },
   "production_change_scope": "approved_homepage_trial_block_link_and_browser_preview_only",
   "outsolutech_operational_configuration_changed": false,
-  "outsolutech_user_privileges_changed": false
+  "outsolutech_user_privileges_changed": false,
+  "shared_host_preparation": {
+    "authorized": true,
+    "stage": "private_account_directories_and_online_backup_prepared",
+    "runtime_deployed": false,
+    "public_signup_enabled": false,
+    "ubuntu_upgrade": "deferred_by_user",
+    "service_account": "uno360x-saas",
+    "production_odoo_restart": false
+  }
 }

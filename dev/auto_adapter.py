@@ -186,6 +186,10 @@ if p['company_profile']:
   assert not env['account.move'].search_count([]) and not env['sale.order'].search_count([]) and not env['purchase.order'].search_count([])
  currency.active=True
  company.write({'name':profile['name'],'country_id':country.id,'currency_id':currency.id})
+ lang=env['res.lang'].with_context(active_test=False).search([('code','=','es_DO')])
+ assert len(lang)==1
+ if not lang.active:
+  env['base.language.install'].create({'lang_ids':[(6,0,lang.ids)],'overwrite':False}).lang_install()
 env.ref('base.user_admin').with_context(no_reset_password=True).write({'login':'operator_'+p['tenant'],'password':p['operator_password']})
 env['ir.cron'].search([]).write({'active':False})
 env.cr.commit()
@@ -223,7 +227,7 @@ print('UNO360X_OK')
             raise RuntimeError('Identidad de acceso inválida.')
         groups=['base.group_user','sales_team.group_sale_salesman']
         if claims['role'] in ('owner','admin'):
-            groups+=['sales_team.group_sale_manager','purchase.group_purchase_manager','stock.group_stock_manager','account.group_account_manager']
+            groups+=['sales_team.group_sale_manager','purchase.group_purchase_manager','stock.group_stock_manager','account.group_account_manager','point_of_sale.group_pos_manager']
             if 'uno360x_payroll_hr' in s['installation']['addons']:groups+=['hr.group_hr_manager','hr_attendance.group_hr_attendance_manager','hr_holidays.group_hr_holidays_manager']
             if 'uno360x_projects_services' in s['installation']['addons']:groups+=['project.group_project_manager','hr_timesheet.group_timesheet_manager']
         p=dict(claims,groups=groups,password=secrets.token_urlsafe(32))
@@ -239,6 +243,8 @@ user=users.search([('uno360x_account_id','=',p['account_id'])])
 values={'name':p['email'],'email':p['email'],'login':'saas_'+p['account_id'],
  'uno360x_account_id':p['account_id'],'active':True,'company_id':company.id,
  'company_ids':[(6,0,[company.id])],'groups_id':[(6,0,group_ids)]}
+if company.country_id.code=='DO' and env['res.lang'].search([('code','=','es_DO')]):
+ values['lang']='es_DO'
 if user:
  assert len(user)==1
  user.write(values)

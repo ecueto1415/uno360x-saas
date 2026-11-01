@@ -32,3 +32,13 @@ Los pendientes funcionales, fiscales y comerciales del plan general siguen
 vigentes; un piloto no equivale a certificar o lanzar todo el producto.
 
 No se ha contratado una VM nueva, cambiado DNS o modificado producción.
+
+ACTUALIZACION 01/11/2026 - HOST COMPARTIDO AUTORIZADO
+El usuario autorizó preparar el SaaS en la VM actual y pospuso Ubuntu.
+shared-host.example.json documenta ese modo privado; no es un permiso para
+publicar ni una variante silenciosa del piloto separado de preflight.py.
+prepare_shared_host.py crea cuenta sin login, carpetas propias y respaldo
+online con lectura de catálogos, sin reinicios, paquetes, puertos o DNS.
+La restauración del respaldo de producción aún no se ha ensayado.
+El runtime, límites de recursos propuestos, correo, TLS y gateway público
+siguen pendientes; el sitio público permanece como simulación.
