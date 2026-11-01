@@ -33,9 +33,10 @@
   "public_design_preview": {
     "url": "https://uno360x.com/prueba-saas",
     "mode": "browser_only_simulation",
-    "real_signup_enabled": false
+    "real_signup_enabled": false,
+    "linked_from_homepage": true
   },
-  "production_change_scope": "new_website_preview_page_and_own_assets_only",
+  "production_change_scope": "approved_homepage_trial_block_link_and_browser_preview_only",
   "outsolutech_operational_configuration_changed": false,
   "outsolutech_user_privileges_changed": false
 }

@@ -1,0 +1,41 @@
+UNO360X - INICIO APROBADO ENLAZADO A LA VISTA DE PRUEBA
+1 de noviembre de 2026
+
+PUBLICADO
+https://uno360x.com/
+Botón Probar gratis por 15 días -> /prueba-saas.
+Se añadió el bloque del diseño aprobado: 15 días gratis para conocer UNO360X,
+Sin tarjeta de crédito, botón turquesa sobre el fondo azul actual.
+Un aviso pequeño aclara que es una vista previa sin cuentas reales.
+
+ALCANCE EXACTO
+Se modificó únicamente la vista uno360x.homepage_public (ID 3811), en en_US
+y es_ES: un bloque de contenido y sus estilos propios, limitados al contenedor
+de la portada. Los menús, botones existentes, textos, secciones, formulario
+de demo y pie no se sustituyeron. Se comprobó que, al retirar los dos bloques
+añadidos, la arquitectura coincide exactamente con la copia anterior.
+La página /prueba-saas tampoco fue modificada por este cambio.
+
+PROTECCIÓN OPERATIVA
+No se instalaron o actualizaron módulos, no se reinició Odoo y no se cambió
+la configuración de Odoo o nginx. Sus hashes coinciden con la referencia
+capturada antes de las publicaciones. Odoo, PostgreSQL y nginx siguen activos.
+ecueto@outsolutech.com conserva sus 67 grupos. No se cambiaron credenciales,
+correo, Jenifer, DGII, registros comerciales ni reglas de acceso.
+
+COPIA Y REVERSIÓN
+Copia privada del contenido anterior, con hashes por idioma:
+/opt/uno360x-saas/backups/uno360x-home-C2vmbJyV/home_before.json
+Para revertir solo esta portada: verificar los hashes del archivo, restaurar
+architectures[en_US] y architectures[es_ES] a la vista 3811 con el contexto de
+idioma correspondiente, confirmar la transacción y señalizar la caché de Odoo.
+No hace falta restaurar la base completa ni reiniciar el servicio.
+
+VERIFICACIÓN
+Dos pruebas específicas aprobaron conservación exacta del contenido y rechazo
+de inserciones duplicadas o portadas desconocidas.
+Navegador: portada en 1440px y 390px; el botón abre el selector de la vista
+de prueba. En móvil no hay desbordamiento horizontal. Menús y accesos existentes
+conservados. Las pruebas del recorrido simulado de /prueba-saas siguen vigentes.
+La nueva prueba no crea empresas ni envía correos. El alta comercial continúa
+pendiente de la adaptación de servicios y configuración de envío independiente.

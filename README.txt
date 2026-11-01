@@ -135,3 +135,9 @@ dev/run_preparation_worker.py --watch atiende nuevas altas en el laboratorio.
 Correo SMTP independiente preparado y probado con mocks, todavía no configurado.
 Estado vigente y límites: docs/gateway_local_2026-11-01.txt.
 No se publicó ni se habilitó acceso comercial. Producción sigue intacta.
+
+Portada aprobada enlazada a la simulación - 01/11/2026:
+Se añadió el bloque de prueba gratis a la portada pública, conservando todo
+el contenido anterior. El botón lleva a /prueba-saas, que sigue siendo una
+vista de diseño sin cuentas reales. Copia previa y alcance exacto documentados
+en docs/inicio_enlazado_2026-11-01.txt. Sin actualización o reinicio de Odoo.
