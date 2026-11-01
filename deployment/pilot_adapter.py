@@ -1,15 +1,39 @@
 """Private broker adapter. Tenant HTTP is published to host loopback only."""
-import json
+import json,socket
 from deployment.shared_adapter import SharedHostAdapter
 from deployment.https_pilot import checked_origin
 class PilotAdapter(SharedHostAdapter):
  def backend(self,s):
+  import fcntl
+  with (self.state/'proxy-ports.lock').open('a') as lock:
+   fcntl.flock(lock,fcntl.LOCK_EX)
+   return self._backend_locked(s)
+ def _backend_locked(self,s):
   n=self.names(s);self.check_container(n['app'],s)
   proxy=n['prefix']+'-proxy'
+  port_file=n['directory']/'proxy-port'
+  if port_file.is_symlink():raise RuntimeError('Unexpected proxy state')
+  if port_file.exists():port=int(port_file.read_text())
+  elif self.exists('container',proxy):
+   info=self.inspect(proxy)
+   if not all(info['Config']['Labels'].get(k)==v for k,v in self.labels(s).items()):raise RuntimeError('Foreign proxy')
+   binding=info['HostConfig']['PortBindings'].get('18069/tcp',[])
+   if len(binding)!=1 or binding[0]['HostIp']!='127.0.0.1':raise RuntimeError('Invalid proxy publication')
+   port=int(binding[0]['HostPort']);self.protected(port_file,str(port))
+  else:
+   port=None
+   for candidate in range(18190,18230):
+    probe=socket.socket()
+    try:probe.bind(('127.0.0.1',candidate));port=candidate;break
+    except OSError:pass
+    finally:probe.close()
+   if port is None:raise RuntimeError('No loopback proxy slot')
+   self.protected(port_file,str(port))
+  if not 18190<=port<18230:raise RuntimeError('Invalid private proxy port')
   if not self.exists('container',proxy):
    self.run('run','-d','--name',proxy,'--network',n['network'],*self.label_args(s),
-    '--cpus','0.1','--memory','64m','--pids-limit','48','--read-only','--cap-drop','all',
-    '--security-opt','no-new-privileges','-p','127.0.0.1:18190:18069',
+    '--cpus','0.1','--memory','32m','--pids-limit','48','--read-only','--cap-drop','all',
+    '--security-opt','no-new-privileges','-p','127.0.0.1:%s:18069'%port,
     '-v',str(self.root/'deployment'/'tenant_socket_proxy.py')+':/proxy.py:ro',
     '--entrypoint','python3',self.images['odoo:18.0'],'/proxy.py',n['app'])
   info=self.inspect(proxy)
@@ -17,9 +41,9 @@ class PilotAdapter(SharedHostAdapter):
   if info['Image'].removeprefix('sha256:')!=self.images['odoo:18.0'].removeprefix('sha256:'):raise RuntimeError('Unexpected proxy image')
   if set(info['NetworkSettings']['Networks'])!={n['network']}:raise RuntimeError('Unexpected proxy network')
   ports=info['HostConfig']['PortBindings']
-  if ports!={'18069/tcp':[{'HostIp':'127.0.0.1','HostPort':'18190'}]}:raise RuntimeError('Unexpected proxy publication')
+  if ports!={'18069/tcp':[{'HostIp':'127.0.0.1','HostPort':str(port)}]}:raise RuntimeError('Unexpected proxy publication')
   if not info['State']['Running']:self.run('start',proxy)
-  return 'http://127.0.0.1:18190'
+  return 'http://127.0.0.1:'+str(port)
  def configure_company(self,s,profile,origin):
   checked_origin(origin)
   super().configure_company(s,profile,'http://127.0.0.1:18184')

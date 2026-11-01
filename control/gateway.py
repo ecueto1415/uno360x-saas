@@ -211,8 +211,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def reply(self, status, body=b'', headers=()):
         self.send_response(status)
+        self.send_header('Connection','close')
+        self.close_connection=True
         for key,value in headers:
             self.send_header(key, value)
+        if self.path=='/__launch' and status==303 and getattr(self.server,'secure_cookie',''):
+            self.send_header('Clear-Site-Data','"cache", "storage"')
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control', 'no-store')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')

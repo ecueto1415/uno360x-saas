@@ -28,7 +28,7 @@ class Trials:
         ''')
 
     def register(self, email, name, modules, consent, consent_version='lab-review-v1'):
-        if consent_version not in ('lab-review-v1','pilot-invitation-v1'):raise ValueError('Condiciones no reconocidas.')
+        if consent_version not in ('lab-review-v1','pilot-invitation-v1','public-trial-v1'):raise ValueError('Condiciones no reconocidas.')
         email = email_key(email)
         if not isinstance(name, str) or not 1 <= len(name.strip()) <= 150:
             raise ValueError('Indica tu nombre.')

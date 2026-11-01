@@ -51,3 +51,17 @@ class HTTPSPilotTests(unittest.TestCase):
   self.assertIn(b'id="screen"',body)
   _,_,script=self.request('/assets/app.js')
   self.assertIn(b"case '/prueba/inicio':case '/prueba':plans();",script)
+
+ def test_public_signup_accepts_multiple_mail_domains_without_allowlist(self):
+  self.server.public_signup=True;self.server.consent_version='public-trial-v1'
+  for email in ['new.customer@gmail.com','new.customer@outlook.com','new.customer@company.example']:
+   status,_,_=self.request('/trial/register',{'email':email,'name':'Public test','modules':[],'consent':True})
+   self.assertEqual(status,200)
+  self.assertEqual(len(self.mail),3)
+  self.assertEqual(self.request('/verify',{'token':self.mail[-1]['token'],'password':'Public test password 2026!'})[0],200)
+  self.assertEqual(self.request('/login',{'email':'new.customer@company.example','password':'Public test password 2026!'})[0],200)
+ def test_public_copy_and_reserved_addresses_are_safe(self):
+  self.server.public_signup=True
+  _,_,html=self.request('/prueba/inicio');self.assertNotIn('Acceso por invitación',html.decode())
+  self.assertEqual(self.request('/trial/register',{'email':'fake@example.test','name':'Fake','modules':[],'consent':True})[0],400)
+  self.assertFalse(self.mail)

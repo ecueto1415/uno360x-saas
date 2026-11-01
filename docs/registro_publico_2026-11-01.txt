@@ -1,0 +1,17 @@
+UNO360X - Apertura de registro por correo
+
+Objetivo: permitir Gmail, Outlook y correos empresariales sin lista de invitación. Toda cuenta requiere confirmar un enlace temporal y crear su contraseña antes de preparar una empresa. Los 15 días se cuentan desde que el cliente queda listo, sin tarjeta ni cargos automáticos.
+
+Control de recursos: esta VM compartida conserva el límite de 1 CPU y 2 GiB del usuario de contenedores SaaS. Se admiten dos empresas activas con contenedores independientes y límites por aplicación/base/proxy de 640/192/32 MiB. Los registros adicionales pueden confirmar su cuenta y quedan en cola de preparación cuando no hay cupo; nunca se marcan listos ni se inicia su prueba mientras esperan. El vencimiento detiene solo los contenedores del cliente y conserva sus volúmenes, credenciales y datos. Ampliar capacidad es una decisión de infraestructura separada de los planes comerciales.
+
+Acceso compartido: cuenta.uno360x.com centraliza identidad; piloto.uno360x.com sirve el acceso autenticado a cada empresa. Cada cookie contiene solo un identificador opaco. El servidor selecciona el backend a partir del acceso de un uso, valida sesión, pertenencia y vencimiento en cada solicitud, y nunca acepta una base de datos o backend desde parámetros del navegador. Se conservan PostgreSQL, archivos, credenciales, red y clave de autenticación independientes por cliente.
+
+Al cambiar de acceso se limpia caché/almacenamiento del origen de aplicaciones. Las respuestas no se almacenan; el service worker no guarda datos offline. Las cookies nativas de Odoo permanecen únicamente en el proceso del gateway. Se limita el número de solicitudes simultáneas para proteger la memoria del servicio.
+
+El broker asigna un puerto privado distinto a cada proxy, exclusivamente en 127.0.0.1. Las etiquetas de tenant, entorno e imagen se validan antes de operar. El candado de admisión global se libera antes de instalar: una nueva alta no mantiene bloqueado el acceso de otro cliente durante la instalación.
+
+Correo: se mantiene el transporte exclusivo Resend y el origen de confirmación cuenta.uno360x.com. No se modifica correo de OUTSOLUTECH, Jenifer ni DGII. La cuota contratada del proveedor sigue siendo aplicable; abrir registro no crea un buzón ni contrata otro plan.
+
+Alcance inicial público: prueba de Base Empresarial con CRM y POS. La interfaz común admite los cuatro escenarios; los módulos adicionales y las opciones finales de cada plan se afinan por separado. No se habilitan integraciones fiscales, pagos ni IA externa por abrir el registro.
+
+Despliegue: configuración public_signup y shared_gateway en /etc/uno360x-saas/https-pilot.json; admisión en resource-policy.json. La configuración de ejemplo sigue apagada hasta validación y activación explícita. Se verifica la coexistencia de dos clientes y se retira el cliente ficticio antes de habilitar el ingreso general.

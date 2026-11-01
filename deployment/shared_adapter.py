@@ -5,23 +5,61 @@ from pathlib import Path
 from control.container_adapter import ContainerAdapter
 ROOT=Path(__file__).resolve().parents[1]
 STATE=Path('/var/lib/uno360x-saas/tenants')
+class CapacityUnavailable(RuntimeError):pass
+
 class SharedHostAdapter(ContainerAdapter):
  def __init__(self):
   if os.name!='posix' or os.geteuid()==0 or pwd.getpwuid(os.geteuid()).pw_name!='uno360x-saas':
    raise RuntimeError('Exclusive unprivileged SaaS account required')
   images=json.loads(Path('/etc/uno360x-saas/images.json').read_text())
   super().__init__(STATE,images,ROOT,'private-pilot','uno360x-pilot-')
+  policy=Path('/etc/uno360x-saas/resource-policy.json')
+  self.max_active=int(json.loads(policy.read_text()).get('max_active_tenants',1)) if policy.exists() else 1
+  if self.max_active not in (1,2):raise RuntimeError('Resource admission policy exceeds this VM budget')
+  self.database_limits=['--cpus','0.25','--memory','192m']
+  self.database_command=['postgres','-c','shared_buffers=32MB','-c','max_connections=40','-c','maintenance_work_mem=32MB']
   info=json.loads(self.run('info','--format','json').stdout)
   if not info['host']['security']['rootless']:raise RuntimeError('Rootless runtime required')
+ def common(self,s):
+  args=super().common(s);args[args.index('--memory')+1]='640m';args[args.index('--cpus')+1]='0.5';return args
+ def _allocated(self,except_tid):
+  directories=[p.name for p in self.state.iterdir() if p.is_dir() and re.fullmatch('[a-f0-9]{32}',p.name) and p.name!=except_tid]
+  control=Path('/var/lib/uno360x-saas/control/control.sqlite3')
+  if not control.exists():return len(directories)
+  db=sqlite3.connect('file:'+str(control)+'?mode=ro',uri=True)
+  try:
+   if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():return len(directories)
+   count=0
+   for tid in directories:
+    row=db.execute('SELECT expires FROM trial_workspaces WHERE tenant_id=?',(tid,)).fetchone()
+    if row and row[0] and row[0]<=time.time():
+     # Expiration frees a slot only after owned compute is actually stopped.
+     names=[self.prefix+tid+'-'+suffix for suffix in ('db','app','proxy')]
+     if not any(self.exists('container',name) and self.inspect(name)['State']['Running'] for name in names):continue
+    count+=1
+   return count
+  finally:db.close()
  @contextmanager
  def lock(self,tid):
   import fcntl
   if not re.fullmatch('[a-f0-9]{32}',tid):raise ValueError('Invalid tenant')
   with (self.state/'capacity.lock').open('a') as capacity:
-   fcntl.flock(capacity,fcntl.LOCK_EX|fcntl.LOCK_NB)
-   others=[p for p in self.state.iterdir() if p.is_dir() and re.fullmatch('[a-f0-9]{32}',p.name) and p.name!=tid]
-   if others:raise RuntimeError('Private pilot capacity is one tenant')
-   with super().lock(tid):yield
+   fcntl.flock(capacity,fcntl.LOCK_EX)
+   directory=self.state/tid
+   if directory.is_symlink():raise RuntimeError('Unexpected tenant path')
+   if not directory.exists() and self._allocated(tid)>=getattr(self,'max_active',1):raise CapacityUnavailable('Compute capacity is queued')
+   directory.mkdir(mode=0o700,exist_ok=True)
+  # Do not hold the global admission lock during another tenant's installation.
+  with super().lock(tid):yield
+ def stop_expired(self,s):
+  with self.lock(s['tenant_id']):
+   names=self.names(s)
+   for suffix in ('app','db','proxy'):
+    name=names['prefix']+'-'+suffix
+    if not self.exists('container',name):continue
+    info=self.inspect(name)
+    if not all(info['Config']['Labels'].get(k)==v for k,v in self.labels(s).items()):raise RuntimeError('Foreign expired resource')
+    if info['State']['Running']:self.run('stop',name)
  def identity(self,s):
   super().identity(s)
   db=sqlite3.connect('file:/var/lib/uno360x-saas/control/control.sqlite3?mode=ro',uri=True)

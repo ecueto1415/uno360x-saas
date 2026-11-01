@@ -21,6 +21,8 @@ def main():
  if set(target['addons'])-set(old['installation']['addons'])-{'uno360x_workspace'}:raise RuntimeError('Unexpected new business module')
  for name,version in old['installation']['addons'].items():
   if name!='uno360x_workspace' and target['addons'].get(name)!=version:raise RuntimeError('Unreviewed business change: '+name)
+ if row['fingerprint']==target['fingerprint']:
+  print(json.dumps({'tenant':args.tenant,'status':'already_current','fingerprint':target['fingerprint']}));return
  new=dict(old,installation=target,resource_fingerprint=old.get('resource_fingerprint',old['installation']['fingerprint']))
  adapter.check_container(n['app'],old);adapter.check_container(n['database'],old)
  if not args.apply:

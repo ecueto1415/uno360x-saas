@@ -35,3 +35,14 @@ class ContainerBoundaryTests(unittest.TestCase):
   self.assertEqual(self.a.labels(updated),self.a.labels(self.s))
   other=dict(updated,tenant_id='f'*32)
   self.assertNotEqual(self.a.labels(other),self.a.labels(updated))
+
+ @unittest.skipUnless(os.name=='posix','Linux admission locking')
+ def test_two_slots_queue_third_without_blocking_existing_tenant(self):
+  from deployment.shared_adapter import SharedHostAdapter,CapacityUnavailable
+  adapter=SharedHostAdapter.__new__(SharedHostAdapter);adapter.state=self.state;adapter.max_active=2
+  with adapter.lock('a'*32):
+   with adapter.lock('b'*32):pass
+  with adapter.lock('a'*32):pass
+  with self.assertRaises(CapacityUnavailable):
+   with adapter.lock('c'*32):pass
+  self.assertFalse((self.state/('c'*32)).exists())

@@ -116,6 +116,7 @@ addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons
 data_dir = /var/lib/odoo
 workers = 0
 max_cron_threads = 0
+db_maxconn = 12
 proxy_mode = False
 without_demo = all
 http_interface = 0.0.0.0
@@ -123,8 +124,8 @@ http_interface = 0.0.0.0
         os.chmod(sql,0o644);os.chmod(config,0o644)
         if not self.exists('container',n['database']):
             self.run('run','-d','--name',n['database'],'--network',n['network'],*self.label_args(s),
-                '--cpus','0.4','--memory','384m','--env-file',str(pg_env),
-                '-v',n['pgvolume']+':/var/lib/postgresql/data','-v',str(sql)+':/docker-entrypoint-initdb.d/01-tenant.sql:ro',self.images['postgres:16'])
+                *getattr(self,'database_limits',['--cpus','0.4','--memory','384m']),'--env-file',str(pg_env),
+                '-v',n['pgvolume']+':/var/lib/postgresql/data','-v',str(sql)+':/docker-entrypoint-initdb.d/01-tenant.sql:ro',self.images['postgres:16'],*getattr(self,'database_command',[]))
         else:
             self.check_container(n['database'],s);self.run('start',n['database'])
         for _ in range(60):

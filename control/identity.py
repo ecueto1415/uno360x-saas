@@ -4,6 +4,7 @@ One connection/transaction covers accounts, memberships and tenant reservation.
 Tokens and sessions are stored only as digests. Delivery is explicitly injected;
 the lab supplies an in-memory sink and never prints links or credentials.
 """
+from functools import lru_cache
 import hashlib
 import hmac
 import json
@@ -62,6 +63,11 @@ def password_matches(password, encoded):
         return False
 
 
+@lru_cache(maxsize=1)
+def dummy_password_hash():
+    return password_hash(secrets.token_urlsafe(24))
+
+
 class IdentityService:
     def __init__(self, path, deliver, clock=time.time):
         if not callable(deliver):
@@ -103,7 +109,7 @@ class IdentityService:
           );
         ''')
         # Equal-cost work for nonexistent accounts. Never persisted or returned.
-        self.dummy_hash = password_hash(secrets.token_urlsafe(24))
+        self.dummy_hash = dummy_password_hash()
 
     def close(self):
         self.registry.close()
