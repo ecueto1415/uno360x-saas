@@ -1,0 +1,35 @@
+UNO360X — REVISIÓN VISUAL POS — 01/11/2026
+
+Alcance: caja estándar de Odoo 18, cliente ficticio Empresa Alfa, laboratorio
+WSL aislado. No se estableció conexión SSH ni se modificó producción.
+
+Comprobado en navegador: apertura con saldo cero y nota de prueba; búsqueda
+por nombre; selección de productos; cambio de cantidad a dos unidades;
+pantalla de cobro; efectivo ficticio; recibo; nuevo pedido; carrito móvil;
+eliminación de línea sin cobrar; cierre contado 450, diferencia cero.
+Pedido: 2 artículos A de 100 y 1 B de 250; total ficticio 450 USD.
+La opción de facturar no se activó; no se emitió factura fiscal ni se usaron
+terminales, bancos, impresoras físicas o envío de correo.
+
+Pantalla habitual 1280x720: distribución y controles legibles.
+Móvil 390x844: productos/carrito separados, teclado accesible y ancho de
+contenido 390, sin desbordamiento horizontal. Viewport restaurado al terminar.
+
+Hallazgos pendientes antes de una prueba comercial dominicana:
+- Laboratorio en inglés: preparar español.
+- Moneda de esta caja USD: configurar DOP según la empresa.
+- Interfaz y recibo con marca estándar Odoo: presentar adaptación UNO360X
+  en PDF antes de rediseñar, según el acuerdo existente.
+- Escáner, impresora y validación DGII aún no verificados.
+
+Estado final: caja de prueba 5 archivada, productos ficticios 82/83 archivados.
+Sesión 7 cerrada, diferencia cero. Pedido ficticio 13 conservado con sus dos
+asientos de caja/cierre para auditoría. Se retiró la siguiente sesión vacía
+que la interfaz había preparado automáticamente; no hay caja abierta.
+Beta conserva cero operaciones. Verificador distingue la evidencia visual
+archivada de los residuos de pruebas transaccionales.
+Correo configurado cero, cron activo cero. Relay temporal solo loopback,
+retirado al finalizar; no se publicaron puertos de los contenedores.
+
+Evidencias: UNO360X_POS_laboratorio_caja.jpg, _pago.jpg, _recibo.jpg,
+_movil.jpg y _cierre.jpg en outputs del chat actual.

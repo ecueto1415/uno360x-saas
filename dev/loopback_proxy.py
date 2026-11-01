@@ -10,6 +10,7 @@ import socketserver
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', required=True)
+parser.add_argument('--port', type=int, default=18069)
 args = parser.parse_args()
 
 
@@ -33,5 +34,5 @@ class Server(socketserver.ThreadingTCPServer):
     daemon_threads = True
 
 
-with Server(('127.0.0.1', 18069), Relay) as server:
+with Server(('127.0.0.1', args.port), Relay) as server:
     server.serve_forever()
