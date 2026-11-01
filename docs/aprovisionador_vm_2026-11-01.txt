@@ -44,3 +44,12 @@ Ubuntu sigue aplazado. Diseño de caja UNO360X pendiente de aprobación.
 
 Regresión del alta completa WSL tras extraer el adaptador compartido:
 registro/entrada nativa, DO/DOP/es_DO, CRM/POS, caducidad y logout aprobados.
+
+DESPLIEGUE Y ARRANQUE
+Fuente ejecutada: /srv/uno360x-saas/releases/worker-cf4d05a/source, commit
+cf4d05a, tar SHA256 2a3421ddcee6c532c64dc26b47488265391bb847d6663bd4ee1fd3d05976bf2a.
+Servicio habilitado para autoarranque. Se reinició únicamente el trabajador:
+reconcilió el cliente, volvió a listo y conservó inicio/vencimiento originales.
+No se reinició la VM para ensayarlo. Odoo operativo PID 2195, cero reinicios;
+67 grupos del administrador, huella de /etc/odoo18.conf igual. Servicios
+Odoo/PostgreSQL/Nginx/estado/trabajador activos al finalizar.

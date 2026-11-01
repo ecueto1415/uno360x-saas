@@ -23,5 +23,7 @@
   "https_origin_certificate": "uno360x-saas-origin",
   "https_public_status_url": "https://uno360x.com/saas/",
   "cloudflare_mode": "not_changed_no_authenticated_access",
-  "tenant_provisioning_service_deployed": false
+  "tenant_provisioning_service_deployed": true,
+  "tenant_provisioning_service": "uno360x-saas-worker",
+  "public_odoo_gateway_deployed": false
 }

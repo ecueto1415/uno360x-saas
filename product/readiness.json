@@ -42,7 +42,7 @@
   "shared_host_preparation": {
     "authorized": true,
     "stage": "private_vm_automatic_provisioning_verified",
-    "runtime_deployed": false,
+    "runtime_deployed": true,
     "public_signup_enabled": false,
     "ubuntu_upgrade": "deferred_by_user",
     "service_account": "uno360x-saas",
@@ -57,7 +57,9 @@
     "tenant_provisioning_service": "uno360x-saas-worker",
     "private_pilot_tenant": "5a4ed983d8c243a58054841c908ae820",
     "public_odoo_gateway_deployed": false,
-    "email_delivery_verified": false
+    "email_delivery_verified": false,
+    "runtime_scope": "private_queue_worker_only_no_public_identity_or_odoo_gateway",
+    "worker_restart_reconciliation_verified": true
   },
   "odoo_service_configuration_changed": false,
   "nginx_ingress_configuration_changed": true
