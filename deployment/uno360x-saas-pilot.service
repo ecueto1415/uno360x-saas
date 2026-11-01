@@ -1,0 +1,19 @@
+[Unit]
+Description=UNO360X controlled HTTPS pilot (disabled pending ingress verification)
+After=network-online.target user@996.service
+Requires=user@996.service
+[Service]
+User=uno360x-saas
+Group=uno360x-saas
+WorkingDirectory=/var/lib/uno360x-saas
+Environment=XDG_RUNTIME_DIR=/run/user/996
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/996/bus
+ExecStart=/usr/bin/python3 /srv/uno360x-saas/https-pilot-current/deployment/run_https_pilot.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+MemoryMax=256M
+CPUQuota=25%
+TasksMax=96
+[Install]
+WantedBy=multi-user.target

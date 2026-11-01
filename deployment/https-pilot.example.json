@@ -1,0 +1,6 @@
+{
+  "enabled": false,
+  "central_origin": "https://cuenta.uno360x.com",
+  "tenant_origin": "https://piloto.uno360x.com",
+  "allowed_emails": ["ecueto@outsolutech.com"]
+}

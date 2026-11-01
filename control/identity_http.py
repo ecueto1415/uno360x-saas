@@ -111,7 +111,7 @@ class Handler(BaseHTTPRequestHandler):
             if not permitted:
                 self._reply(429,{'error':'Espera antes de volver a intentarlo.'});return
             public={
-                '/trial/register':lambda:Trials(service).register(data['email'],data['name'],data['modules'],data['consent']),
+                '/trial/register':lambda:Trials(service).register(data['email'],data['name'],data['modules'],data['consent'],consent_version=getattr(self.server,'consent_version','lab-review-v1')),
                 '/register':lambda:service.register(data['email']),
                 '/verify':lambda:service.complete_registration(data['token'],data['password']),
                 '/reset/request':lambda:service.request_reset(data['email']),

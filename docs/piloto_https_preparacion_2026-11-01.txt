@@ -1,0 +1,26 @@
+Preparación de piloto HTTPS, 2026-11-01
+
+Resend: dominio verificado, clave de solo envío por dominio, SMTP TLS 465 probado y entrega confirmada a ecueto@outsolutech.com. Credencial exclusiva en VM, modo 0600, fuera del repositorio.
+
+Nuevos accesos propuestos: cuenta.uno360x.com (identidad) y piloto.uno360x.com (un solo cliente). No se sustituye el login nativo de OUTSOLUTECH ni se publica el backend Odoo. Proxy TCP privado del cliente: 127.0.0.1:18190, red interna exclusiva, sin acceso directo al Odoo operativo.
+
+Verificado en VM con cliente ficticio existente: autenticación del broker, canje de entrada, HTML nativo /odoo y cookie __Host segura. Las pruebas internas usan Host y Origin HTTPS esperados sobre loopback; todavía no equivalen a navegador público con TLS.
+
+Configuración de ejemplo apagada por defecto y acceso limitado al correo del operador. No equivale al lanzamiento abierto de SaaS: capacidad actual de una empresa. El cliente ficticio ocupa ese cupo; antes de un alta real debe archivarse y liberar recursos de prueba de forma controlada. Los módulos adicionales, emisión DGII, contratación y recuperación externa conservan los pendientes del plan.
+
+Activación pendiente: aprobación específica DNS, certificado de ambos subdominios, validación TLS pública, servicio piloto, correo con origen cuenta.uno360x.com y prueba de navegador sin exponer claves. No cambiar SSL de toda la zona sin revisar impacto. No activar enlaces públicos de prueba masiva todavía.
+
+Reversión: detener únicamente uno360x-saas-pilot y deshabilitar su vhost. Eliminar solo nuevos registros DNS si fuera necesario; conservar @, erp, www y los registros de Resend. La preparación no reinicia ni cambia odoo18.
+
+Actualización de cierre del piloto:
+- El usuario confirmó ambos registros A con proxy; ya están publicados hacia la VM existente.
+- Certificado Let's Encrypt uno360x-saas-pilot emitido para cuenta y piloto, con renovación automática.
+- Cloudflare global sigue Flexible. Regla UNO360X piloto - HTTPS estricto (d7938cbb203c4c0ab5826b835ebedc27) activa exclusivamente para los dos hosts nuevos; evita el bucle de redirecciones sin cambiar el Odoo operativo.
+- Referrer-Policy del documento usa strict-origin-when-cross-origin para conservar Origin en el formulario entre subdominios. No se aceptan orígenes nulos ni se relaja la validación del gateway.
+- Recorrido público de navegador verificado con usuario ficticio: login, empresa lista, entrada a /odoo, menú CRM/POS y pantalla CRM cargada. Las cookies nativas permanecen en el broker.
+- Cliente ficticio archivado en /var/lib/uno360x-saas/pilot-archive/20261101T175253Z. Solo se retiraron sus cuatro contenedores, con etiquetas comprobadas. Se conservaron sus volúmenes. Control SQLite nuevo y cupo libre para el operador.
+- Servicio uno360x-saas-pilot activo y habilitado. SMTP conectado al portal con origen https://cuenta.uno360x.com. Registro restringido al operador, no abierto al público general.
+- Verificación móvil a 390x844 sin desbordamiento horizontal. Pruebas Linux: 94 aprobadas; tras el ajuste de cabecera se repitieron las cinco pruebas afectadas correctamente.
+- OUTSOLUTECH: odoo18 sigue PID 2195, NRestarts 0; hash de /etc/odoo18.conf intacto. No actualización de Ubuntu.
+
+Sigue pendiente el lanzamiento comercial general y los módulos adicionales. Esta entrega permite una prueba real de Base Empresarial mediante registro por correo; no declara completo el resto del SaaS.

@@ -233,12 +233,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
         return self.server.manager.lookup(token, self.server.tenant)
 
     def dispatch(self):
-        authority = '127.0.0.1:' + str(self.server.server_port)
+        authority = getattr(self.server, 'authority', '127.0.0.1:' + str(self.server.server_port))
         if self.headers.get('Host') != authority:
             self.reply(403);return
         origin = self.headers.get('Origin')
         if self.path == '/__launch' and self.command == 'POST':
-            if origin != CENTRAL_ORIGIN or self.headers.get('Content-Type','').split(';')[0] != 'application/x-www-form-urlencoded':
+            if origin != getattr(self.server, 'central_origin', CENTRAL_ORIGIN) or self.headers.get('Content-Type','').split(';')[0] != 'application/x-www-form-urlencoded':
                 self.reply(403);return
             try:
                 size = int(self.headers.get('Content-Length','0'))
@@ -248,7 +248,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 if set(data) != {'grant'} or len(data['grant']) != 1:
                     raise ValueError()
                 handle = self.server.manager.consume(data['grant'][0], self.server.tenant)
-                self.reply(303, headers=[('Location','/odoo'),('Set-Cookie',f'{self.server.cookie}={handle.token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800')])
+                self.reply(303, headers=[('Location','/odoo'),('Set-Cookie',f'{self.server.cookie}={handle.token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800{getattr(self.server, "secure_cookie", "")}')])
             except (ValueError, IdentityError):
                 self.reply(403)
             return
@@ -273,7 +273,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     handle.active = False
                 finally:
                     identity.close()
-                self.reply(303, headers=[('Location', CENTRAL_ORIGIN + '/web/login'), ('Set-Cookie',f'{self.server.cookie}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')]);return
+                self.reply(303, headers=[('Location', getattr(self.server, 'central_origin', CENTRAL_ORIGIN) + '/web/login'), ('Set-Cookie',f'{self.server.cookie}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0{getattr(self.server, "secure_cookie", "")}')]);return
             if self.headers.get('Upgrade','').lower() == 'websocket':
                 self.websocket(handle);return
             if self.headers.get('Transfer-Encoding'):
@@ -286,6 +286,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
             self.reply(status, body, headers)
         except IdentityError:
             message = b'<!doctype html><html lang="es"><meta charset="utf-8"><title>Acceso UNO360X</title><h1>Vuelve a iniciar sesi\xc3\xb3n</h1><p>El acceso a esta empresa ya no est\xc3\xa1 disponible.</p><a href="http://127.0.0.1:18072/web/login">Ir a UNO360X</a></html>'
+            message=message.replace(b'http://127.0.0.1:18072',getattr(self.server,'central_origin',CENTRAL_ORIGIN).encode())
             self.reply(401, message, [('Content-Type','text/html; charset=utf-8')])
         except (ValueError, OSError, urllib.error.URLError):
             self.reply(502, b'La empresa no responde. Vuelve a intentarlo.', [('Content-Type','text/plain; charset=utf-8')])

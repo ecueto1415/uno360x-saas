@@ -27,7 +27,8 @@ class Trials:
           );
         ''')
 
-    def register(self, email, name, modules, consent):
+    def register(self, email, name, modules, consent, consent_version='lab-review-v1'):
+        if consent_version not in ('lab-review-v1','pilot-invitation-v1'):raise ValueError('Condiciones no reconocidas.')
         email = email_key(email)
         if not isinstance(name, str) or not 1 <= len(name.strip()) <= 150:
             raise ValueError('Indica tu nombre.')
@@ -41,7 +42,7 @@ class Trials:
             row = self.db.execute('SELECT id FROM accounts WHERE email=? AND verified=0 AND active=1', (email,)).fetchone()
             if row:
                 self.db.execute('INSERT OR IGNORE INTO trial_signup_drafts VALUES (?,?,?,?)',
-                                (row['id'], name.strip(), json.dumps(sorted(set(modules))), 'lab-review-v1'))
+                                (row['id'], name.strip(), json.dumps(sorted(set(modules))), consent_version))
         return result
 
     def draft(self, session):
