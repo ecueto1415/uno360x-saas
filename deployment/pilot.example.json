@@ -1,0 +1,10 @@
+{
+  "environment": "isolated_pilot",
+  "server_address": null,
+  "server_provider": null,
+  "monthly_budget_usd": null,
+  "central_origin": null,
+  "tenant_domain": null,
+  "smtp_config_path": null,
+  "external_backup_destination": null
+}
