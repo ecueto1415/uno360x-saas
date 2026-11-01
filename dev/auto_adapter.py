@@ -165,7 +165,8 @@ http_interface = 0.0.0.0
     def identity(self,s):
         n=self.names(s)
         p={'tenant':s['tenant_id'],'hostname':s['hostname'],'slug':s['slug'],
-           'operator_password':(n['directory']/'operator-password').read_text()}
+           'operator_password':(n['directory']/'operator-password').read_text(),
+           'company_profile':s.get('company_profile')}
         self.shell(s,"""import json
 p=json.loads(%r)
 identity=env['uno360x.tenant.identity'].search([])
@@ -174,6 +175,17 @@ if identity:
 else:
  env['uno360x.tenant.identity'].create({'tenant_id':p['tenant'],'hostname':p['hostname']})
 env.ref('base.main_company').name=p['slug']+' (LABORATORIO)'
+if p['company_profile']:
+ profile=p['company_profile']
+ assert profile['country']=='DO' and profile['currency'] in ('DOP','USD')
+ company=env.ref('base.main_company')
+ country=env['res.country'].search([('code','=',profile['country'])],limit=1)
+ currency=env['res.currency'].with_context(active_test=False).search([('name','=',profile['currency'])],limit=1)
+ assert country and currency
+ if company.currency_id!=currency:
+  assert not env['account.move'].search_count([]) and not env['sale.order'].search_count([]) and not env['purchase.order'].search_count([])
+ currency.active=True
+ company.write({'name':profile['name'],'country_id':country.id,'currency_id':currency.id})
 env.ref('base.user_admin').with_context(no_reset_password=True).write({'login':'operator_'+p['tenant'],'password':p['operator_password']})
 env['ir.cron'].search([]).write({'active':False})
 env.cr.commit()
@@ -240,3 +252,30 @@ print('UNO360X_OK')
 
     def bridge_key(self,s):
         return (self.names(s)['directory']/'bridge.key').read_bytes()
+
+    def configure_company(self,s,profile,origin):
+        if set(profile)!={'name','country','currency'} or profile['country']!='DO' or profile['currency'] not in ('DOP','USD') or not isinstance(profile['name'],str) or not 1<=len(profile['name'])<=150:
+            raise ValueError('Perfil básico inválido.')
+        if not re.fullmatch(r'http://127\.0\.0\.1:[0-9]{1,5}',origin):
+            raise ValueError('Origen local inválido.')
+        self.check_container(self.names(s)['app'],s)
+        payload=dict(profile,tenant=s['tenant_id'],origin=origin)
+        self.shell(s,"""import json
+p=json.loads(%r)
+identity=env['uno360x.tenant.identity'].search([])
+assert len(identity)==1 and identity.tenant_id==p['tenant']
+company=env.ref('base.main_company')
+country=env['res.country'].search([('code','=',p['country'])],limit=1)
+currency=env['res.currency'].with_context(active_test=False).search([('name','=',p['currency'])],limit=1)
+assert country and currency
+if company.currency_id!=currency:
+ assert not env['account.move'].search_count([]) and not env['sale.order'].search_count([]) and not env['purchase.order'].search_count([])
+currency.active=True
+company.write({'name':p['name'],'country_id':country.id,'currency_id':currency.id})
+assert company.name==p['name'] and company.country_id.code==p['country'] and company.currency_id.name==p['currency']
+parameters=env['ir.config_parameter'].sudo()
+parameters.set_param('web.base.url',p['origin'])
+parameters.set_param('web.base.url.freeze','True')
+env.cr.commit()
+print('UNO360X_OK')
+"""%json.dumps(payload))

@@ -44,10 +44,11 @@ def main():
         backend=open_space(jobs,session,ticket,adapter)
         result=backend.rpc('res.company','search_read',[],{'fields':['name'],'limit':10})
         assert len(result)==1 and backend.uid not in (1,2)
+        setup=post('/setup/status',{'tenant_id':state['tenant_id']})
         report={'ui_created_company':True,'selection_preserved':True,'trial_started_at_readiness':True,
                 'duration_days':15,'card_required':False,'automatic_charge':False,
                 'native_odoo_session':True,'technical_admin_used':False,'public_web_gateway_complete':False,
-                'company_parameters_applied_to_odoo':False}
+                'company_parameters_applied_to_odoo':setup['basic_company_parameters_applied_to_odoo']}
         (STATE/'ui_trial_verification.json').write_text(json.dumps(report,indent=2))
         print(json.dumps(report,indent=2))
         post('/logout',{})

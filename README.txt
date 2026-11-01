@@ -126,3 +126,12 @@ crea una empresa por cuenta sin duplicar y registra el plazo al quedar lista.
 El servidor local entrega verificación a un buzón privado, sin correo real.
 Ver docs/diseno_prueba_15_dias_2026-11-01.txt para rutas, pruebas y límites.
 No se publicó en uno360x.com. Sigue pendiente el gateway web completo Odoo.
+
+Acceso web nativo local - 01/11/2026:
+El broker separado dev/start_gateway.py ya permite entrar al cliente web real,
+incluidos recursos, RPC y websocket, con cookies nativas solo en el broker y
+revocación central. Se aplican nombre/país/moneda de la empresa ficticia.
+dev/run_preparation_worker.py --watch atiende nuevas altas en el laboratorio.
+Correo SMTP independiente preparado y probado con mocks, todavía no configurado.
+Estado vigente y límites: docs/gateway_local_2026-11-01.txt.
+No se publicó ni se habilitó acceso comercial. Producción sigue intacta.

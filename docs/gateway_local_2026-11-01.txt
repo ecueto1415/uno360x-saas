@@ -1,0 +1,92 @@
+UNO360X - ACCESO WEB A ODOO EN LABORATORIO
+1 de noviembre de 2026
+
+RESULTADO
+El botón Entrar a mi empresa abre el cliente web real de Odoo a través de
+un gateway de laboratorio. Se creó y guardó un proyecto ficticio desde esa
+interfaz. No se publicó el registro o el gateway en uno360x.com y no se
+modificaron producción ni sus credenciales de correo, Jenifer o DGII.
+
+ARQUITECTURA LOCAL
+- API/UI central en 127.0.0.1:18072. Solo autentica, comprueba CSRF y solicita
+  un handoff. No importa ni ejecuta el adaptador Podman en sus peticiones.
+- Broker root separado: dev/start_gateway.py. Recibe JSON limitado a 4096
+  bytes por socket Unix 0600 dentro de directorio 0700; verifica UID local.
+  No usa pickle, TCP de control o rutas de archivo suministradas por el cliente.
+- El broker valida el ticket, sincroniza el usuario propio y crea una sesión
+  nativa. Sus cookies permanecen en memoria del broker.
+- Cada empresa tiene un origen loopback con puerto propio, ligado de forma
+  inmutable a esa empresa. No se cambia de empresa bajo el mismo origen.
+- Entrada por POST con grant opaco de 60 segundos, un solo uso y origen
+  central exacto. El navegador recibe una cookie de gateway HttpOnly y
+  SameSite, diferente de la cookie Odoo. No se envía el grant en la URL.
+- HTTP, recursos, RPC y archivos pasan por el gateway. En cada petición se
+  revalidan cuenta, sesión central, empresa, rol, preparación y plazo de prueba.
+  Se vuelve a comprobar el acceso antes de devolver la respuesta al navegador.
+- Websocket con handshake validado, cookies nativas internas y comprobación
+  de acceso al menos cada segundo mientras está ocioso. Se corta al salir.
+- No se reenvían Cookie del navegador, Host ni cabeceras X-Forwarded al backend.
+  Se filtran Set-Cookie y redirecciones a orígenes externos del backend.
+- Gestor de bases, autenticación nativa y rutas de puente interno bloqueadas.
+  El logout de Odoo revoca también la sesión central.
+- El service worker servido es un script controlado que no usa cachés ni
+  intercepta fetch. El gateway no permite datos de negocio disponibles offline.
+
+CONFIGURACIÓN BÁSICA
+El broker aplica nombre, país DO y moneda DOP/USD mediante ORM, solo a la
+instancia propia y bajo bloqueo de empresa. No cambia moneda si ya existen
+documentos de negocio. El trabajador conserva esos datos al reconciliar.
+También fija web.base.url al origen local correspondiente.
+El checklist distingue parámetros básicos aplicados de configuración fiscal
+completa. No activa certificados, emisión DGII o integraciones externas.
+
+VERIFICACIÓN REAL
+dev/gateway_smoke.py comprobó:
+- Cliente web HTTP 200 y tres archivos reales de recursos.
+- RPC nativo con usuario comercial; sin administrador técnico.
+- Nombre de empresa, país DO y moneda DOP aplicados.
+- Proyecto Validación gateway UNO360X creado previamente desde el navegador
+  y encontrado de nuevo por RPC, confirmando persistencia.
+- Cookie de Odoo no devuelta al navegador.
+- Websocket real con respuesta 101 y cierre después del logout central.
+- Solicitudes HTTP con la cookie anterior rechazadas después del logout.
+- Gestor de bases inaccesible desde el gateway.
+77 pruebas del control aprobadas, incluidas seis de gateway y tres de correo.
+Las pruebas de correo usan un transporte simulado; ningún correo real enviado.
+
+CORREO
+control/mail_delivery.py prepara un adaptador SMTP independiente con TLS
+verificado: SSL 465 o STARTTLS 587 antes de autenticación. Los enlaces usan
+fragmentos y tokens de uso único. Rechaza destinatarios ficticios .test y
+remitentes ajenos a UNO360X. El archivo debe ser privado y no un enlace simbólico.
+dev/saas_mail.example.json es SOLO un esquema con valores ficticios; no es una
+cuenta ni un dominio configurado. El indicador de independencia es una
+declaración del operador, no una comprobación automática de otras credenciales.
+No se ha encontrado /var/lib/uno360x-saas-dev/control/saas-mail.json ni variables
+de correo SaaS independientes. El servidor sigue usando LocalMailbox.
+Faltan proveedor, buzón/remitente nuevo, credenciales, dominio HTTPS definitivo
+y validación de entrega. No se han leído/reutilizado credenciales operativas.
+
+EJECUCIÓN LOCAL
+Desde la raíz del repo en WSL root, en procesos separados:
+  python3 dev/start_gateway.py
+  python3 dev/start_identity.py
+  python3 dev/run_preparation_worker.py --watch
+El último proceso atiende nuevas altas; los fallos no se reintentan en un bucle
+infinito. Los trabajos fallidos pueden revisarse y retomarse explícitamente.
+El broker es necesario para la entrada web, aunque el cliente ya esté preparado.
+Reiniciar el broker invalida sus cookies locales. La entrada central crea otras.
+
+LÍMITES Y LANZAMIENTO
+Esto NO es el despliegue público comercial. Servidores de laboratorio ligados
+solo a loopback, HTTP local sin Secure, hasta 16 empresas y 64 sesiones en memoria,
+archivos de petición de 16 MiB y respuestas de 32 MiB. No hay orquestación de
+alta disponibilidad, streaming de grandes archivos o auditoría comercial final.
+El broker y la API siguen bajo root en WSL: faltan cuentas de servicio separadas
+y revisión de privilegios para producción. El enrutamiento por puertos se limita
+a la prueba local; el despliegue necesita orígenes por empresa, DNS, HTTPS e
+ingreso obligatorio sin acceso directo a los backends.
+Quedan pruebas de todos los flujos de negocio, informes y dispositivos, precios,
+condiciones comerciales, correo real, respaldos externos y validación fiscal.
+La interfaz nativa de Odoo usa el idioma instalado en el laboratorio; el recorrido
+de alta UNO360X conserva el español y el diseño aprobado.

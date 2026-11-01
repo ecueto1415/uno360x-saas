@@ -25,8 +25,9 @@ def csrf_for(session):
 class IdentityHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, port, database, deliver):
+    def __init__(self, port, database, deliver, launch=None):
         self.database,self.deliver = database,deliver
+        self.launch = launch
         # Address cannot be supplied by a request or changed to a public bind.
         super().__init__(('127.0.0.1',port),Handler)
 
@@ -72,8 +73,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Length',str(len(encoded)))
             self.send_header('Cache-Control','no-store')
             self.send_header('X-Content-Type-Options','nosniff')
-            self.send_header('Referrer-Policy','no-referrer')
-            self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+            self.send_header('Referrer-Policy','strict-origin-when-cross-origin')
+            self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self' http://127.0.0.1:*; base-uri 'none'; frame-ancestors 'none'")
             self.end_headers();self.wfile.write(encoded);return
         if self.path=='/health':
             self._reply(200,{'mode':'local-laboratory','public_ready':False});return
@@ -130,6 +131,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._reply(403,{'error':'Solicitud no autorizada.'});return
             onboarding=Onboarding(service)
             setup=Setup(service)
+            if self.path=='/spaces/open':
+                if self.server.launch is None:
+                    self._reply(503,{'error':'El acceso web local no está iniciado.'});return
+                ticket=onboarding.issue_handoff(session,data['tenant_id'])['ticket']
+                try:
+                    result=self.server.launch(session,ticket)
+                except IdentityError:
+                    self._reply(503,{'error':'El acceso web local no está disponible. Revisa el broker del laboratorio.'});return
+                self._reply(200,result);return
             private={
                 '/logout':lambda:service.logout(session),
                 '/companies':lambda:Trials(service).companies(session),

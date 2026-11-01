@@ -29,6 +29,8 @@ class Setup:
             from .onboarding import Onboarding
             ready=Onboarding(self.identity).status(session,tenant_id)['local_ready'] if self.db.execute('SELECT 1 FROM preparation_jobs WHERE tenant_id=?',(tenant_id,)).fetchone() else False
         members=self.db.execute('SELECT count(*) FROM memberships WHERE tenant_id=? AND active=1',(tenant_id,)).fetchone()[0]
+        applied=bool('trial_company_parameters' in tables and self.db.execute('SELECT 1 FROM trial_company_parameters WHERE tenant_id=?',(tenant_id,)).fetchone())
         return {'account_verified':True,'workspace_ready_local':ready,'company_details_saved':bool(profile),
                 'team_invited_and_joined':members>1,'configuration_applied_to_odoo':False,
+                'basic_company_parameters_applied_to_odoo':applied,
                 'tax_id_verified_external':False,'fiscal_emission_enabled':False}

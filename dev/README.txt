@@ -77,3 +77,13 @@ Punto 4: automatic_signup_demo.py, verify_automatic.py, run_preparation_worker.p
 http_signup_smoke.py y recovery_rehearsal.py. Solo WSL root, recursos nuevos
 uno360x-auto-UUID, sin puertos publicados. La última orden detiene una app
 ficticia para ensayar recuperación. No ejecutar en la VM operativa.
+
+Gateway web local en otro proceso:
+  python3 dev/start_gateway.py
+Trabajador de nuevas altas:
+  python3 dev/run_preparation_worker.py --watch
+Verificación real del fixture de UI (requiere ambos servidores):
+  python3 dev/gateway_smoke.py
+El ensayo cambia solo la contraseña del fixture ficticio y la deja aleatoria
+en el almacenamiento Linux protegido. No imprime tokens, grants ni cookies.
+Ver docs/gateway_local_2026-11-01.txt para límites y correo aún no configurado.

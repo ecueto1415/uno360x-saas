@@ -1,0 +1,10 @@
+{
+  "host": "smtp.proveedor-por-definir.example",
+  "port": 465,
+  "security": "ssl",
+  "username": "NUEVA_CUENTA_SAAS",
+  "password": "CONFIGURAR_SOLO_EN_ARCHIVO_PRIVADO_FUERA_DEL_REPO",
+  "from_address": "pruebas@uno360x.com",
+  "public_origin": "https://app.uno360x.com",
+  "independent_saas_mailbox": true
+}

@@ -18,6 +18,12 @@ class SetupTests(unittest.TestCase):
         status=self.setup.status(self.session,self.tenant)
         self.assertTrue(status['company_details_saved']);self.assertFalse(status['workspace_ready_local'])
         self.assertFalse(status['tax_id_verified_external']);self.assertFalse(status['fiscal_emission_enabled'])
+        with self.identity.db:
+            self.identity.db.execute('CREATE TABLE trial_company_parameters (tenant_id TEXT PRIMARY KEY,applied REAL NOT NULL)')
+            self.identity.db.execute('INSERT INTO trial_company_parameters VALUES (?,1)',(self.tenant,))
+        status=self.setup.status(self.session,self.tenant)
+        self.assertTrue(status['basic_company_parameters_applied_to_odoo'])
+        self.assertFalse(status['configuration_applied_to_odoo']);self.assertFalse(status['fiscal_emission_enabled'])
     def test_missing_company_membership_and_invalid_profile_rejected(self):
         with self.assertRaises(IdentityError):self.setup.status(self.session,'unknown')
         with self.assertRaises(ValueError):self.setup.save(self.session,self.tenant,{'name':'missing'})

@@ -9,6 +9,7 @@ from control.identity import IdentityService
 from control.identity_http import IdentityHTTPServer
 from control_state import control_database
 from local_delivery import LocalMailbox
+from control.gateway_ipc import launch_local
 
 
 if __name__=='__main__':
@@ -18,7 +19,7 @@ if __name__=='__main__':
     path=control_database()
     mailbox=LocalMailbox(path.parent/'mailbox')
     service=IdentityService(path,mailbox);service.close()
-    server=IdentityHTTPServer(18072,path,mailbox)
+    server=IdentityHTTPServer(18072,path,mailbox,launch=launch_local)
     print('Diseño local: http://127.0.0.1:18072/',flush=True)
     print('Sin correo real. Enlaces en buzón Linux privado; nunca se imprimen tokens.',flush=True)
     try:server.serve_forever()

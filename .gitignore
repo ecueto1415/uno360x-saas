@@ -8,3 +8,4 @@ secrets/
 *.pfx
 *.pem
 *.key
+saas-mail.json

@@ -80,6 +80,9 @@ class Onboarding:
         row=self.db.execute('SELECT * FROM preparation_jobs WHERE id=?',(job_id,)).fetchone()
         if not row:raise PreparationError('Preparación desconocida.')
         snapshot=json.loads(row['snapshot'])
+        if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():
+            basic=self.db.execute('SELECT name,country,currency FROM trial_workspaces WHERE tenant_id=?',(snapshot['tenant_id'],)).fetchone()
+            if basic:snapshot['company_profile']=dict(basic)
         with adapter.lock(snapshot['tenant_id']):
             tenant=self.db.execute('SELECT * FROM tenants WHERE id=?',(snapshot['tenant_id'],)).fetchone()
             expected=installation_profile(json.loads(tenant['modules']))
