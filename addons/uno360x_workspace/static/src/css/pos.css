@@ -3,3 +3,5 @@
 .pos .btn-primary {background:#138a73;border-color:#138a73;color:white}.pos .btn-primary:hover{background:#0d6c59;border-color:#0d6c59}
 
 .ux-pos-return{white-space:nowrap;color:#138a73!important;border:1px solid #dce9e5!important;min-height:42px}.ux-pos-return-short{display:none}@media(max-width:700px){.ux-pos-return-long{display:none}.ux-pos-return-short{display:inline}}
+
+.pos .pos-topheader > .ux-pos-return{flex:0 0 auto;position:relative;z-index:2;margin-right:6px}.pos .pos-topheader > .pos-leftheader{flex:1 1 0;min-width:0;width:auto}
