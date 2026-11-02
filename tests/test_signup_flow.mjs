@@ -6,13 +6,13 @@ const file=new URL('../control/web/app.js',import.meta.url);
 const source=fs.readFileSync(file,'utf8').replace(/^\(async\(\)=>\{.*$/m,'');
 const elements=new Map(),calls=[],navLinks=[{},{}],redirects=[],listeners={};
 function element(key){if(!elements.has(key))elements.set(key,{innerHTML:'',hidden:false,classList:{add(){},remove(){}},scrollIntoView(){},addEventListener(){}});return elements.get(key);}
-let authenticated=true,launchFailure=false,readyState={is_trial:true,local_ready:true,trial_active:true,expires:2000000000,days_remaining:15,name:"Existing Company"};const submissions=[];
+let companiesState=[{id:'existing-company',name:'Existing Company',slug:'existing-company'}];let authenticated=true,launchFailure=false,readyState={is_trial:true,local_ready:true,trial_active:true,expires:2000000000,days_remaining:15,name:"Existing Company"};const submissions=[];
 const context=vm.createContext({
  document:{createElement:tag=>({tag,append(){},submit(){submissions.push(this.action);}}),body:{append(){}},querySelector:element,querySelectorAll:selector=>selector==='[data-session-action]'?navLinks:[],addEventListener(){}},
  location:{pathname:'/prueba/inicio',search:''},history:{state:null,pushState(a,b,path){this.state=a;const u=new URL(path,'https://cuenta.uno360x.com');context.location.pathname=u.pathname;context.location.search=u.search;},replaceState(a,b,path){this.state=a;const u=new URL(path,'https://cuenta.uno360x.com');context.location.pathname=u.pathname;context.location.search=u.search;}},window:{location:{replace(path){redirects.push(path);}},addEventListener(name,handler){listeners[name]=handler;},scrollTo(){}},
  sessionStorage:{getItem:()=>JSON.stringify({name:'Old name',email:'old@example.test',modules:['payroll_hr','jenifer_ai','projects_services']}),setItem(){}},
  setTimeout,clearTimeout,URLSearchParams,URL,
- fetch:async(path)=>{calls.push(path);if(path==='/logout')authenticated=false;return {ok:(path!='/session'||authenticated)&&!(path==='/spaces/open'&&launchFailure),json:async()=>path==='/session'?{email:'existing@example.test',csrf_token:'fictional-csrf'}:path==='/companies'?{companies:[{id:'existing-company',name:'Existing Company',slug:'existing-company'}]}:path==='/trial/status'?readyState:path==='/spaces/open'?(launchFailure?{error:'Acceso temporalmente no disponible'}:{launch_url:'http://127.0.0.1:18001/__launch',grant:'fictional-grant'}):{logged_out:true}};},
+ fetch:async(path)=>{calls.push(path);if(path==='/logout')authenticated=false;return {ok:(path!='/session'||authenticated)&&!(path==='/spaces/open'&&launchFailure),json:async()=>path==='/session'?{email:'existing@example.test',csrf_token:'fictional-csrf'}:path==='/companies'?{companies:companiesState}:path==='/trial/draft'?{name:'Saved signup name',modules:['projects_services']}:path==='/trial/status'?readyState:path==='/spaces/open'?(launchFailure?{error:'Acceso temporalmente no disponible'}:{launch_url:'http://127.0.0.1:18001/__launch',grant:'fictional-grant'}):{logged_out:true}};},
 });
 vm.runInContext(source,context);
 await vm.runInContext('render()',context);
@@ -89,3 +89,13 @@ assert.equal(vm.runInContext('draft.modules.join()',context),'projects_services'
 await vm.runInContext("draft.modules=['payroll_hr'];render()",context);
 assert.equal(vm.runInContext('draft.modules.join()',context),'payroll_hr','Back navigation must retain the current selection');
 console.log('Pricing selection transfer, whitelist and history preservation passed.');
+
+const draftRequests=calls.filter(path=>path==='/trial/draft').length;
+authenticated=true;companiesState=[];
+await vm.runInContext("draft.name='';draft.modules=[];refreshSession().then(()=>afterLogin())",context);
+await new Promise(resolve=>setImmediate(resolve));await new Promise(resolve=>setImmediate(resolve));
+assert.equal(calls.filter(path=>path==='/trial/draft').length,draftRequests+1);
+assert.equal(vm.runInContext('draft.name',context),'Saved signup name');
+assert.equal(vm.runInContext('draft.modules.join()',context),'projects_services');
+assert(element('#screen').innerHTML.includes('id="company-form"'));
+console.log('Only new-company setup loads its saved signup draft; existing-company entry skips that round trip.');

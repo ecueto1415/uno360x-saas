@@ -64,8 +64,8 @@ class ContainerAdapter:
     def label_args(self,s):
         return [value for k,v in self.labels(s).items() for value in ('--label',k+'='+v)]
 
-    def check_container(self,name,s):
-        info=self.inspect(name)
+    def check_container(self,name,s,info=None):
+        if info is None:info=self.inspect(name)
         actual=info['Config']['Labels']
         if not all(actual.get(k)==v for k,v in self.labels(s).items()):
             raise RuntimeError('Recurso ajeno o configuración distinta; no se modifica.')
@@ -240,6 +240,37 @@ print('UNO360X_OK')
         info=self.check_container(self.names(s)['app'],s)
         return 'http://'+info['NetworkSettings']['Networks'][self.names(s)['network']]['IPAddress']+':8069'
 
+    def _user_is_current(self,s,claims,groups):
+        # Read-only equivalence check, not an authorization cache. Any missing
+        # identity, role/group drift or company mismatch takes the normal ORM
+        # synchronization path. The incoming identity is checked by sync_user.
+        import base64
+        payload=base64.b64encode(json.dumps(dict(claims,groups=groups)).encode()).decode()
+        query="""WITH RECURSIVE
+        payload AS (SELECT convert_from(decode('%s','base64'),'UTF8')::jsonb p),
+        wanted AS (SELECT d.res_id id,d.module||'.'||d.name xmlid FROM ir_model_data d,payload
+          WHERE d.model='res.groups' AND d.module||'.'||d.name IN (SELECT jsonb_array_elements_text(p->'groups') FROM payload)),
+        expected_groups(id) AS (SELECT id FROM wanted UNION SELECT rel.hid FROM res_groups_implied_rel rel JOIN expected_groups e ON rel.gid=e.id),
+        company AS (SELECT c.id,co.code FROM res_company c JOIN ir_model_data d ON d.res_id=c.id AND d.model='res.company' AND d.module='base' AND d.name='main_company'
+          LEFT JOIN res_partner cp ON cp.id=c.partner_id LEFT JOIN res_country co ON co.id=cp.country_id),
+        home AS (SELECT res_id id FROM ir_model_data WHERE module='uno360x_workspace' AND name='action_home')
+        SELECT u.id FROM res_users u JOIN res_partner partner ON partner.id=u.partner_id,company,payload
+        WHERE u.uno360x_account_id=p->>'account_id' AND u.login='saas_'||(p->>'account_id')
+          AND u.id NOT IN (1,2) AND u.active AND NOT u.share AND partner.email=p->>'email'
+          AND u.company_id=company.id
+          AND (SELECT array_agg(cid ORDER BY cid) FROM res_company_users_rel WHERE user_id=u.id)=ARRAY[company.id]
+          AND (SELECT count(DISTINCT xmlid) FROM wanted)=jsonb_array_length(p->'groups')
+          AND NOT EXISTS(SELECT id FROM expected_groups EXCEPT SELECT gid FROM res_groups_users_rel WHERE uid=u.id)
+          AND NOT EXISTS(SELECT gid FROM res_groups_users_rel WHERE uid=u.id EXCEPT SELECT id FROM expected_groups)
+          AND NOT EXISTS(SELECT 1 FROM expected_groups e JOIN ir_model_data d ON d.res_id=e.id AND d.model='res.groups' WHERE d.module='base' AND d.name='group_system')
+          AND (company.code IS DISTINCT FROM 'DO' OR NOT EXISTS(SELECT 1 FROM res_lang WHERE code='es_DO') OR partner.lang='es_DO')
+          AND (NOT (to_jsonb(u) ? 'action_id') OR NOT EXISTS(SELECT 1 FROM home) OR (to_jsonb(u)->>'action_id')::int=(SELECT id FROM home))
+          AND (coalesce(p->>'display_name','')='' OR partner.name IS DISTINCT FROM p->>'email' OR partner.name=p->>'display_name')
+        LIMIT 2"""%payload
+        try:result=self.sql(s,query).strip()
+        except RuntimeError:return False
+        return result.isdigit() and int(result)>2
+
     def sync_user(self,s,claims):
         if not re.fullmatch('[a-f0-9]{32}',claims['account_id']) or claims['tenant_id']!=s['tenant_id']:
             raise RuntimeError('Identidad de acceso inválida.')
@@ -248,6 +279,7 @@ print('UNO360X_OK')
             groups+=['sales_team.group_sale_manager','purchase.group_purchase_manager','stock.group_stock_manager','account.group_account_manager','point_of_sale.group_pos_manager']
             if 'uno360x_payroll_hr' in s['installation']['addons']:groups+=['hr.group_hr_manager','hr_attendance.group_hr_attendance_manager','hr_holidays.group_hr_holidays_manager']
             if 'uno360x_projects_services' in s['installation']['addons']:groups+=['project.group_project_manager','hr_timesheet.group_timesheet_manager']
+        if self._user_is_current(s,claims,groups):return
         p=dict(claims,groups=groups,password=secrets.token_urlsafe(32))
         self.shell(s,"""import json
 p=json.loads(%r)

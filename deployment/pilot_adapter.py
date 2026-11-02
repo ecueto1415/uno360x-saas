@@ -13,19 +13,34 @@ class PilotAdapter(SharedHostAdapter):
    except (OSError,urllib.error.URLError):pass
    time.sleep(0.2)
   raise RuntimeError('Private application proxy is not ready')
- def backend(self,s):
+ def access_backend(self,s):
+  # One fresh metadata snapshot per entry; no cross-request inspection cache.
+  # The same ownership/image/network/port checks below still inspect every item.
+  n=self.names(s);expected={n['app'],n['database'],n['prefix']+'-proxy'}
+  result=self.run('inspect',*sorted(expected),check=False);inspected=None
+  if result.returncode==0:
+   try:
+    items=json.loads(result.stdout)
+    if isinstance(items,list) and len(items)==3:
+     found={item['Name'].lstrip('/'):item for item in items}
+     if set(found)==expected:inspected=found
+   except (ValueError,KeyError,TypeError,AttributeError):pass
+  self.validate_runtime(s,inspected=inspected)
+  return self.backend(s,inspected=inspected)
+ def backend(self,s,inspected=None):
   import fcntl
   with (self.state/'proxy-ports.lock').open('a') as lock:
    fcntl.flock(lock,fcntl.LOCK_EX)
-   return self._backend_locked(s)
- def _backend_locked(self,s):
-  n=self.names(s);self.check_container(n['app'],s)
+   return self._backend_locked(s,inspected)
+ def _backend_locked(self,s,inspected=None):
+  inspected=inspected or {}
+  n=self.names(s);self.check_container(n['app'],s,info=inspected.get(n['app']))
   proxy=n['prefix']+'-proxy'
   port_file=n['directory']/'proxy-port'
   if port_file.is_symlink():raise RuntimeError('Unexpected proxy state')
   if port_file.exists():port=int(port_file.read_text())
-  elif self.exists('container',proxy):
-   info=self.inspect(proxy)
+  elif proxy in inspected or self.exists('container',proxy):
+   info=inspected.get(proxy) or self.inspect(proxy)
    if not all(info['Config']['Labels'].get(k)==v for k,v in self.labels(s).items()):raise RuntimeError('Foreign proxy')
    binding=info['HostConfig']['PortBindings'].get('18069/tcp',[])
    if len(binding)!=1 or binding[0]['HostIp']!='127.0.0.1':raise RuntimeError('Invalid proxy publication')
@@ -40,13 +55,13 @@ class PilotAdapter(SharedHostAdapter):
    if port is None:raise RuntimeError('No loopback proxy slot')
    self.protected(port_file,str(port))
   if not 18190<=port<18230:raise RuntimeError('Invalid private proxy port')
-  if not self.exists('container',proxy):
+  if proxy not in inspected and not self.exists('container',proxy):
    self.run('run','-d','--name',proxy,'--network',n['network'],*self.label_args(s),
     '--cpus','0.1','--memory','32m','--pids-limit','48','--read-only','--cap-drop','all',
     '--security-opt','no-new-privileges','-p','127.0.0.1:%s:18069'%port,
     '-v',str(self.root/'deployment'/'tenant_socket_proxy.py')+':/proxy.py:ro',
     '--entrypoint','python3',self.images['odoo:18.0'],'/proxy.py',n['app'])
-  info=self.inspect(proxy)
+  info=inspected.get(proxy) or self.inspect(proxy)
   if not all(info['Config']['Labels'].get(k)==v for k,v in self.labels(s).items()):raise RuntimeError('Foreign proxy')
   if info['Image'].removeprefix('sha256:')!=self.images['odoo:18.0'].removeprefix('sha256:'):raise RuntimeError('Unexpected proxy image')
   if set(info['NetworkSettings']['Networks'])!={n['network']}:raise RuntimeError('Unexpected proxy network')

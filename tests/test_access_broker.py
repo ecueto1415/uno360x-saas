@@ -79,3 +79,17 @@ class AccessBrokerTests(unittest.TestCase):
         ticket=self.jobs.issue_handoff(self.member,self.tenant['id'])['ticket']
         with patch('control.access_broker._rpc') as remote:
             self.assertIsNone(resume_space(self.jobs,self.member,ticket,self.backend));remote.assert_not_called()
+
+    def test_prepared_public_access_uses_one_validated_backend_and_still_syncs_user(self):
+        from control.access_broker import open_space
+        class Adapter(Prepared):
+            def access_backend(self,snapshot):return 'http://127.0.0.1:18190'
+            def validation(self,snapshot):raise AssertionError('Duplicate validation')
+            def backend(self,snapshot):raise AssertionError('Duplicate proxy probe')
+            def sync_user(self,snapshot,claims):self.synced=claims['account_id']
+            def bridge_key(self,snapshot):return b'x'*32
+        adapter=Adapter();ticket=self.jobs.issue_handoff(self.member,self.tenant['id'])['ticket']
+        with patch('control.access_broker._rpc',return_value={'authenticated':True,'uid':7}):
+            backend=open_space(self.jobs,self.member,ticket,adapter)
+        self.assertEqual(backend.base,'http://127.0.0.1:18190')
+        self.assertEqual(adapter.synced,self.claims['account_id'])

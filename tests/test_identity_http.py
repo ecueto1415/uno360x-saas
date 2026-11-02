@@ -37,7 +37,7 @@ class IdentityHTTPTests(unittest.TestCase):
         self.assertEqual(self.post('/register',{'email':email})[0],200)
         self.assertEqual(self.post('/verify',{'token':self.messages[-1]['token'],'password':PASSWORD})[0],200)
         status,body,headers=self.post('/login',{'email':email,'password':PASSWORD})
-        self.assertEqual(status,200);self.csrf=body['csrf_token']
+        self.assertEqual(status,200);self.assertEqual(body['email'],email.strip().casefold());self.csrf=body['csrf_token']
         self.assertIn('HttpOnly',headers['Set-Cookie']);self.assertIn('SameSite=Strict',headers['Set-Cookie'])
         self.assertNotIn('session',body)
 

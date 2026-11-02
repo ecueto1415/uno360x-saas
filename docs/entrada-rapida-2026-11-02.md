@@ -28,3 +28,5 @@ La comparación muestra una reentrada hasta el resumen de 0,596 segundos frente 
 Validación: 118 pruebas Python y las dos suites Node aprobadas en la VM; escenarios de ticket reutilizado, rol cambiado, sesión distinta, backend vencido, release anterior y la misma cuenta entrando a dos empresas. Comprobación visual publicada del acceso sin pasos de creación, llegada al resumen, Atrás al inicio y reentrada.
 
 Solo se reinició el piloto SaaS para cargar el código Python. No se migraron addons ni bases, ni se reinició el Odoo nativo de OUTSOLUTECH. La empresa ficticia se desactiva y sus sesiones se revocan al finalizar.
+
+Actualización posterior: el primer login también se optimizó. Véase primer-acceso-2026-11-02.md para la implementación y las mediciones actuales.

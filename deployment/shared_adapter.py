@@ -68,16 +68,24 @@ class SharedHostAdapter(ContainerAdapter):
   finally:db.close()
   if not row:raise RuntimeError('Verified owner required before readiness')
   self.sync_user(s,{'tenant_id':s['tenant_id'],'account_id':row[0],'email':row[1],'role':'owner','display_name':row[2]})
- def validation(self,s):
+ def validate_runtime(self,s,inspected=None):
+  inspected=inspected or {}
   n=self.names(s)
-  if not self.exists('container',n['app']):
+  if n['app'] not in inspected and not self.exists('container',n['app']):
    self.run('run','-d','--name',n['app'],*self.common(s),self.images['odoo:18.0'],'odoo','-c','/etc/odoo/odoo.conf')
+   self.check_container(n['app'],s)
   else:
-   self.check_container(n['app'],s);self.run('start',n['app'])
-  self.check_container(n['app'],s);self.check_container(n['database'],s);self.check_modules(s)
-  expected=s['tenant_id']+'|'+s['hostname']+'\n0\n0\nf|f|f|f'
-  actual=self.sql(s,"SELECT tenant_id,hostname FROM uno360x_tenant_identity; SELECT count(*) FROM ir_cron WHERE active; SELECT count(*) FROM ir_mail_server; SELECT rolsuper,rolcreatedb,rolcreaterole,rolbypassrls FROM pg_roles WHERE rolname='%s';"%n['role'])
-  if actual!=expected:raise RuntimeError('Tenant isolation validation failed')
+   info=self.check_container(n['app'],s,info=inspected.get(n['app']))
+   if not info['State']['Running']:self.run('start',n['app'])
+  self.check_container(n['database'],s,info=inspected.get(n['database']))
+  wanted=sorted(s['installation']['addons'])
+  modules="SELECT name FROM ir_module_module WHERE state='installed' AND name IN (%s) ORDER BY name; "%','.join("'%s'"%name for name in wanted)
+  expected='\n'.join(wanted)+'\n'+s['tenant_id']+'|'+s['hostname']+'\n0\n0\nf|f|f|f'
+  actual=self.sql(s,modules+"SELECT tenant_id,hostname FROM uno360x_tenant_identity; SELECT count(*) FROM ir_cron WHERE active; SELECT count(*) FROM ir_mail_server; SELECT rolsuper,rolcreatedb,rolcreaterole,rolbypassrls FROM pg_roles WHERE rolname='%s';"%n['role'])
+  if actual!=expected:raise RuntimeError('Tenant modules, isolation or identity validation failed')
+ def validation(self,s):
+  self.validate_runtime(s)
+  n=self.names(s)
   probe="import urllib.request; assert urllib.request.urlopen('http://127.0.0.1:8069/web/login',timeout=3).status==200"
   for _ in range(45):
    if self.run('exec',n['app'],'python3','-c',probe,check=False).returncode==0:return

@@ -123,6 +123,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path=='/login':
                 result=service.login(data['email'],data['password']);session=result.pop('session')
                 result['csrf_token']=csrf_for(session)
+                result['email']=service._account(session)['email']
                 self._reply(200,result,cookie=f'{COOKIE}={session}; HttpOnly; SameSite=Strict; Path=/; Max-Age={result["expires_in"]}')
                 return
             session=self._session()
