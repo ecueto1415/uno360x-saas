@@ -50,7 +50,7 @@ class HTTPSPilotTests(unittest.TestCase):
   self.assertEqual(status,200)
   self.assertIn(b'id="screen"',body)
   _,_,script=self.request('/assets/app.js')
-  self.assertIn(b"case '/prueba/inicio':case '/prueba':plans();",script)
+  self.assertIn(b"case '/prueba/inicio':draft={name:'',email:'',modules:[]}",script)
 
  def test_public_signup_accepts_multiple_mail_domains_without_allowlist(self):
   self.server.public_signup=True;self.server.consent_version='public-trial-v1'
