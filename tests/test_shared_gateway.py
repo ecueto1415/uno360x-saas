@@ -63,3 +63,13 @@ class SharedGatewayTests(unittest.TestCase):
   calls=[];self.manager.adapter.configure_company=lambda *args:calls.append(args)
   self.launch(0);self.launch(0)
   self.assertEqual(len(calls),1)
+
+ def test_same_account_switching_companies_never_probes_the_other_backend(self):
+  self.identity.invite(self.sessions[1],self.tenants[1],'shared0@example.test')
+  self.identity.accept_invitation(self.sessions[0],self.mail[-1]['token'])
+  first=self.launch(0)
+  self.sessions[1]=self.sessions[0]
+  with patch('control.gateway.resume_space',side_effect=AssertionError('Must not probe another tenant')):
+   second=self.launch(1)
+  self.assertEqual(json.loads(self.request('/odoo',first)[2])['company'],self.tenants[0])
+  self.assertEqual(json.loads(self.request('/odoo',second)[2])['company'],self.tenants[1])

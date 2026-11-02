@@ -71,6 +71,7 @@ await vm.runInContext('refreshSession().then(()=>afterLogin())',context);
 await new Promise(resolve=>setImmediate(resolve));await new Promise(resolve=>setImmediate(resolve));
 assert.equal(submissions.length,1,'Successful login must automatically enter an existing ready company');
 assert.equal(submissions[0],'http://127.0.0.1:18001/__launch');
+assert.equal(element('.stepper').innerHTML,'','Existing ready companies must not show creation steps');
 launchFailure=true;
 await vm.runInContext('preparation()',context);
 assert.equal(submissions.length,1);

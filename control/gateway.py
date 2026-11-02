@@ -19,7 +19,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from .access_broker import open_space
+from .access_broker import open_space, resume_space
 from .identity import IdentityService, IdentityError, digest
 from .onboarding import Onboarding
 from .trials import check_trial_access
@@ -93,7 +93,21 @@ class GatewayManager:
         identity = self.identity()
         try:
             jobs = Onboarding(identity)
-            backend = open_space(jobs, session, ticket, self.adapter)
+            backend = None
+            reused = None
+            target = jobs.db.execute('SELECT tenant_id FROM handoff_tickets WHERE digest=? AND session_digest=?',(digest(ticket),digest(session))).fetchone()
+            with self.lock:
+                candidate = next((h for h in self.handles.values() if target and h.active and h.tenant == target['tenant_id'] and h.backend.central_session == session), None)
+            if candidate:
+                with candidate.lock:
+                    try:
+                        self.validate(candidate, identity)
+                        backend = resume_space(jobs, session, ticket, candidate.backend)
+                    except IdentityError:
+                        backend = None
+                if backend is not None:reused = candidate
+            if backend is None:
+                backend = open_space(jobs, session, ticket, self.adapter)
             tenant = backend.claims['tenant_id']
             server = self.server(tenant)
             # Only the trusted broker applies basic data; no fiscal data or credentials.
@@ -108,6 +122,8 @@ class GatewayManager:
                     with identity.db:
                         identity.db.execute('INSERT OR IGNORE INTO trial_company_parameters VALUES (?,?)', (tenant, self.clock()))
             handle = Handle(secrets.token_urlsafe(32), tenant, backend)
+            if reused:
+                handle.lock, handle.sockets = reused.lock, reused.sockets
             self.validate(handle, identity)
             grant = secrets.token_urlsafe(32)
             with self.lock:

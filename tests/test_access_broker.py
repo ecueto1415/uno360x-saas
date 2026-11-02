@@ -1,6 +1,7 @@
 from contextlib import nullcontext
 from pathlib import Path
 import tempfile
+import json
 import unittest
 from unittest.mock import patch
 
@@ -49,3 +50,32 @@ class AccessBrokerTests(unittest.TestCase):
             for model,method in [('res.users','_check_credentials'),('../web','read'),('res.company','read?x=1')]:
                 with self.assertRaises(IdentityError):self.backend.rpc(model,method)
             remote.assert_not_called()
+
+    def test_resume_reuses_authenticated_backend_but_consumes_a_fresh_ticket(self):
+        from control.access_broker import resume_space
+        self.backend.snapshot=json.loads(self.jobs.db.execute('SELECT snapshot FROM preparation_jobs WHERE id=?',(self.claims['job_id'],)).fetchone()[0])
+        ticket=self.jobs.issue_handoff(self.member,self.tenant['id'])['ticket']
+        with patch('control.access_broker._rpc',return_value={'uid':7}) as remote:
+            resumed=resume_space(self.jobs,self.member,ticket,self.backend)
+            self.assertEqual(resumed.uid,7)
+            self.assertIs(resumed.opener,self.backend.opener)
+            self.assertEqual(remote.call_count,1)
+            with self.assertRaises(IdentityError):resume_space(self.jobs,self.member,ticket,self.backend)
+
+    def test_resume_falls_back_for_expired_backend_changed_role_or_new_session(self):
+        from control.access_broker import resume_space
+        self.backend.snapshot=json.loads(self.jobs.db.execute('SELECT snapshot FROM preparation_jobs WHERE id=?',(self.claims['job_id'],)).fetchone()[0])
+        ticket=self.jobs.issue_handoff(self.member,self.tenant['id'])['ticket']
+        with patch('control.access_broker._rpc',return_value={'uid':False}):
+            self.assertIsNone(resume_space(self.jobs,self.member,ticket,self.backend))
+        self.identity.change_role(self.owner,self.tenant['id'],self.claims['account_id'],'admin')
+        with patch('control.access_broker._rpc') as remote:
+            self.assertIsNone(resume_space(self.jobs,self.member,ticket,self.backend));remote.assert_not_called()
+            self.assertIsNone(resume_space(self.jobs,self.owner,ticket,self.backend));remote.assert_not_called()
+        self.jobs.consume_handoff(self.member,ticket) # fallback has not spent the ticket
+
+    def test_resume_never_reuses_a_previous_release(self):
+        from control.access_broker import resume_space
+        ticket=self.jobs.issue_handoff(self.member,self.tenant['id'])['ticket']
+        with patch('control.access_broker._rpc') as remote:
+            self.assertIsNone(resume_space(self.jobs,self.member,ticket,self.backend));remote.assert_not_called()

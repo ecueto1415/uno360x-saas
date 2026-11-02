@@ -7,6 +7,7 @@ import http.cookiejar
 import json
 import re
 import urllib.request
+import urllib.error
 
 from .bridge_protocol import mint
 from .identity import IdentityError
@@ -68,3 +69,28 @@ def open_space(onboarding,session,ticket,adapter):
         result=_rpc(opener,base,'/uno360x/bridge/login',{'login':'saas_'+claims['account_id'],'assertion':assertion})
         if not result.get('authenticated'):raise IdentityError('Completa la autenticación adicional de Odoo.')
     return BackendSession(onboarding,session,claims,snapshot,opener,base,result['uid'])
+
+
+def resume_space(onboarding,session,ticket,existing):
+    """Reuse only this exact central session and unchanged prepared identity.
+
+    Authorization is never cached: consuming the new one-use handoff still
+    checks account, membership, trial and current release. The backend session
+    is probed before reuse; a missing or expired session takes the normal path.
+    """
+    account=onboarding.identity._account(session)
+    if existing.central_session!=session or account['id']!=existing.claims['account_id']:
+        return None
+    member=onboarding.identity._membership(account['id'],existing.claims['tenant_id'])
+    if member['role']!=existing.claims['role']:return None
+    row=onboarding.db.execute("SELECT snapshot FROM preparation_jobs WHERE id=? AND status='ready_local'",(existing.claims['job_id'],)).fetchone()
+    if not row or json.loads(row['snapshot'])!=existing.snapshot:return None
+    try:
+        result=_rpc(existing.opener,existing.base,'/web/session/get_session_info',{})
+        if result.get('uid')!=existing.uid:return None
+    except (IdentityError,OSError,urllib.error.URLError,ValueError,KeyError):
+        return None
+    claims=onboarding.consume_handoff(session,ticket)
+    if any(claims[key]!=existing.claims[key] for key in ('account_id','tenant_id','role','job_id')):
+        raise IdentityError('El acceso cambió; vuelve a entrar a tu espacio.')
+    return BackendSession(onboarding,session,claims,existing.snapshot,existing.opener,existing.base,existing.uid)
