@@ -1,0 +1,13 @@
+UNO360X - POS en el SaaS
+
+Se agrega /uno360x-pos como entrada por empresa, con búsqueda de cajas limitada a la empresa actual y los permisos nativos. Si no hay una caja, el administrador puede crearla explícitamente; no se crean cajas ni ventas al visitar la página. Alta y apertura usan POST con CSRF. Los errores de configuración se muestran dentro del entorno con regreso visible.
+
+El POS incluye Volver a UNO360X: ejecuta la sincronización nativa de pedidos antes de salir hacia el selector de cajas. No hace el arqueo ni cierra el turno; se conserva la sesión. La salida evita la cancelación de apertura que puede llevar a la pantalla bloqueada del POS. El cierre contable se hace con Cerrar caja, dentro del POS.
+
+Verificación: seis pruebas de Odoo aprobadas en laboratorio y durante la actualización con respaldo de cada tenant. Prueba pública a través de Cloudflare con empresa ficticia: creación de configuración, apertura HTTP 200, apertura de saldo cero, salida al selector y sesión conservada. Sin ventas, facturas fiscales, bancos ni hardware real. La empresa real conserva sus cajas y operaciones: no se le crea una caja de forma automática.
+
+El acceso a una empresa todavía en reconciliación responde con 503 y una indicación de reintento, en lugar del 400 genérico de datos inválidos. No se modifican controles de identidad, pertenencia ni vencimiento.
+
+Los dominios existentes mantienen sus funciones: cuenta.uno360x.com identifica al usuario y piloto.uno360x.com sirve el entorno autenticado común. Cada empresa conserva base, archivos, credenciales y clave independientes. No se crean ni cambian registros DNS en este ajuste.
+
+Odoo nativo OUTSOLUTECH: configuración y privilegios preservados, sin reinicios. El despliegue se limita al código común y a los tenants del SaaS.

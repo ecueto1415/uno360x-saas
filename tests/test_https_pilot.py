@@ -87,3 +87,17 @@ class HTTPSPilotTests(unittest.TestCase):
   self.assertEqual(status,400);self.assertIn('El enlace venció',body.decode())
   self.assertEqual(self.request('/verify',{'token':new,'password':'Recovery fictional password 2026!'})[0],200)
   self.assertEqual(self.request('/login',{'email':'recover@example.com','password':'Recovery fictional password 2026!'})[0],200)
+
+ def test_reconciling_workspace_returns_retry_message_instead_of_bad_request(self):
+  from control.identity_http import csrf_for
+  from control.trials import Trials
+  self.server.public_signup=True;self.server.launch=lambda session,ticket:{}
+  identity=IdentityService(Path(self.tmp.name)/'control.sqlite3',self.mail.append)
+  try:
+   identity.register('waiting@example.com');identity.complete_registration(self.mail[-1]['token'],'Waiting fictional password 2026!')
+   session=identity.login('waiting@example.com','Waiting fictional password 2026!')['session']
+   company=Trials(identity).create(session,'Waiting company','DO','DOP',[])
+   c=http.client.HTTPConnection('127.0.0.1',self.server.server_port)
+   c.request('POST','/spaces/open',json.dumps({'tenant_id':company['tenant_id']}),{'Host':'cuenta.uno360x.com','Origin':'https://cuenta.uno360x.com','Content-Type':'application/json','Cookie':'__Host-uno360x_session='+session,'X-CSRF-Token':csrf_for(session)})
+   response=c.getresponse();self.assertEqual(response.status,503);self.assertIn('verificando tu espacio',response.read().decode());c.close()
+  finally:identity.close()

@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import json
 
 from .identity import IdentityService,IdentityError
-from .onboarding import Onboarding
+from .onboarding import Onboarding,PreparationError
 from .setup import Setup
 from .trials import Trials
 from .web_pages import asset
@@ -165,6 +165,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._reply(404,{'error':'Ruta no disponible.'});return
             value=private[self.path]()
             self._reply(200,value,cookie=f'{COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' if self.path=='/logout' else None)
+        except PreparationError:
+            self._reply(503,{'error':'Estamos verificando tu espacio. Espera unos segundos y vuelve a entrar a tu empresa.'})
         except IdentityError as error:
             # Same error for wrong login, unknown identity or inaccessible company.
             self._reply(400,{'error':(str(error) if str(error).startswith('La contraseña') else 'El enlace venció, fue reemplazado o ya se utilizó. Solicita otro y abre el correo más reciente.') if self.path in ('/verify','/reset/complete') else 'No se pudo completar la operación.'})
