@@ -47,6 +47,7 @@ class WorkspaceController(http.Controller):
   if menu_id not in ctx['allowed_menus']:raise NotFound()
   menu=request.env['ir.ui.menu'].browse(menu_id)
   if not menu.action:raise NotFound()
+  if menu.action in tuple(request.env.ref(xmlid,raise_if_not_found=False) for xmlid in ('point_of_sale.action_pos_config_kanban','point_of_sale.action_client_pos_menu')):return request.redirect('/uno360x-pos',code=303)
   return request.redirect('/odoo/action-%s?menu_id=%s'%(menu.action.id,menu.id),code=303)
  @http.route('/uno360x-aplicaciones',type='http',auth='user',methods=['GET'])
  def apps(self,**kw):return self._render('uno360x_workspace.apps',self._service()._workspace_context())

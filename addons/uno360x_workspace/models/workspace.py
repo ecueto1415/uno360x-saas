@@ -26,10 +26,10 @@ class Workspace(models.AbstractModel):
  @api.model
  def _workspace_context(self):
   if not self.env.user.has_group('base.group_user'):raise AccessError('Acceso de empresa requerido.')
-  visible=self.env['ir.ui.menu']._visible_menu_ids();options=self._enabled_options();allowed=set();pos_root=self.env.ref('point_of_sale.menu_point_root',raise_if_not_found=False)
+  visible=self.env['ir.ui.menu']._visible_menu_ids();options=self._enabled_options();allowed=set();pos_root=self.env.ref('point_of_sale.menu_point_root',raise_if_not_found=False);pos_actions=tuple(self.env.ref(xmlid,raise_if_not_found=False) for xmlid in ('point_of_sale.action_pos_config_kanban','point_of_sale.action_client_pos_menu'))
   def node(m,label=None):
    allowed.add(m.id)
-   return {'id':m.id,'name':label or m.name,'href':'/uno360x-pos' if m==pos_root else ('/uno360x/open/%s'%m.id if m.action else ''),
+   return {'id':m.id,'name':label or m.name,'href':'/uno360x-pos' if m==pos_root or m.action in pos_actions else ('/uno360x/open/%s'%m.id if m.action else ''),
            'children':[node(c) for c in m.child_id.sorted('sequence') if c.active and c.id in visible]}
   groups=[]
   for title,icon,specs in MENU_GROUPS:

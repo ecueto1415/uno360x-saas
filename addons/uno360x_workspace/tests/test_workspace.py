@@ -49,3 +49,15 @@ class TestWorkspace(TransactionCase):
   self.assertEqual(self.env['pos.session'].search_count([]),before)
   commercial=next(g for g in values['groups'] if g['name']=='Comercial')
   self.assertTrue(any(node['href']=='/uno360x-pos' for node in commercial['nodes']))
+
+ def test_pos_dashboard_menu_also_uses_the_safe_entry(self):
+  action=self.env.ref('point_of_sale.action_pos_config_kanban')
+  menu_ids=set(self.env['ir.ui.menu'].search([('action','=','%s,%s'%(action._name,action.id))]).ids)
+  def flatten(nodes):
+   for node in nodes:
+    yield node
+    yield from flatten(node['children'])
+  nodes=list(flatten([node for group in self.service._workspace_context()['groups'] for node in group['nodes']]))
+  dashboards=[node for node in nodes if node['id'] in menu_ids]
+  self.assertTrue(dashboards)
+  self.assertTrue(all(node['href']=='/uno360x-pos' for node in dashboards))
