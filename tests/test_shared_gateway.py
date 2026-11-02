@@ -5,11 +5,12 @@ from unittest.mock import patch
 from control.identity import IdentityService,IdentityError
 from control.onboarding import Onboarding
 from control.access_broker import BackendSession,NoRedirect
-from deployment.https_pilot import HTTPSGatewayManager
+from deployment.https_pilot import HTTPSGatewayManager,BoundedHTTPServer
 from tests.test_onboarding import FakeAdapter
 
 class SharedGatewayTests(unittest.TestCase):
  def setUp(self):
+  self.server_patch=patch('deployment.https_pilot.BoundedHTTPServer',side_effect=lambda address,handler:BoundedHTTPServer(('127.0.0.1',0),handler));self.server_patch.start();self.addCleanup(self.server_patch.stop)
   self.tmp=tempfile.TemporaryDirectory();self.mail=[];self.now=2000000000
   self.database=Path(self.tmp.name)/'control.sqlite3';self.identity=IdentityService(self.database,self.mail.append,clock=lambda:self.now)
   self.upstreams=[];self.threads=[];self.sessions=[];self.tenants=[];self.origins={}
@@ -34,14 +35,14 @@ class SharedGatewayTests(unittest.TestCase):
   for server,thread in zip(self.upstreams,self.threads):server.shutdown();server.server_close();thread.join()
   self.identity.close();self.tmp.cleanup()
  def request(self,path,cookie='',data=None,origin=None):
-  c=http.client.HTTPConnection('127.0.0.1',18184,timeout=10);headers={'Host':'piloto.uno360x.com','Cookie':cookie}
+  c=http.client.HTTPConnection('127.0.0.1',self.manager.servers['shared'].server_port,timeout=10);headers={'Host':'piloto.uno360x.com','Cookie':cookie}
   if origin:headers['Origin']=origin
   if data is not None:headers['Content-Type']='application/x-www-form-urlencoded'
   c.request('POST' if data is not None else 'GET',path,data,headers);r=c.getresponse();status=r.status;h=dict(r.getheaders());body=r.read();c.close();return status,h,body
  def launch(self,i):
   jobs=Onboarding(self.identity);ticket=jobs.issue_handoff(self.sessions[i],self.tenants[i])['ticket'];grant=self.manager.launch(self.sessions[i],ticket)
   result=self.request('/__launch',data=urllib.parse.urlencode({'grant':grant['grant']}).encode(),origin='https://cuenta.uno360x.com')
-  self.assertEqual(result[0],303);self.assertIn('storage',result[1]['Clear-Site-Data']);return result[1]['Set-Cookie'].split(';')[0]
+  self.assertEqual(result[0],303);self.assertEqual(result[1]['Location'],'/uno360x-resumen');self.assertIn('storage',result[1]['Clear-Site-Data']);return result[1]['Set-Cookie'].split(';')[0]
  def test_two_companies_share_entry_without_sharing_backend_or_permissions(self):
   first=self.launch(0);second=self.launch(1)
   self.assertNotEqual(first,second)
@@ -53,3 +54,12 @@ class SharedGatewayTests(unittest.TestCase):
   self.identity.logout(self.sessions[0]);self.assertEqual(self.request('/odoo',first)[0],401)
   self.assertEqual(self.request('/odoo',second)[0],200)
   self.assertEqual(self.request('/odoo',first+'forged')[0],401)
+
+ def test_company_parameters_are_not_rewritten_on_each_login(self):
+  from control.trials import Trials
+  Trials(self.identity)
+  account=self.identity._account(self.sessions[0])['id'];tid=self.tenants[0]
+  with self.identity.db:self.identity.db.execute('INSERT INTO trial_workspaces VALUES (?,?,?,?,?,?,?,?)',(account,tid,'Fictional company','DO','DOP',self.now,self.now,self.now+1296000))
+  calls=[];self.manager.adapter.configure_company=lambda *args:calls.append(args)
+  self.launch(0);self.launch(0)
+  self.assertEqual(len(calls),1)

@@ -6,4 +6,6 @@
  <section t-if="not pos_configs" class="ux-card"><h2>Prepara tu primera caja</h2><p>No tienes una caja configurada todavía. Dale un nombre para comenzar.</p><form t-if="can_manage_pos" action="/uno360x/pos/create" method="post"><input type="hidden" name="csrf_token" t-att-value="csrf"/><label for="pos-name">Nombre de la caja</label><input id="pos-name" name="name" value="Caja principal" maxlength="80" required="required"/><button class="ux-button" type="submit">Crear mi primera caja</button></form><p t-else="">Pide al administrador de tu empresa que configure una caja.</p></section>
  <p class="ux-helper-text">Volver desde la caja conserva la sesión de caja y utiliza la sincronización de pedidos de Odoo. Para hacer el arqueo y terminar el turno, usa «Cerrar caja» dentro del POS.</p>
 </t></template>
+
+<template id="pos_brand_index" inherit_id="point_of_sale.index"><xpath expr="//head/title" position="replace"><title>UNO360X · Caja</title></xpath><xpath expr="//head/link[@rel='icon']" position="attributes"><attribute name="href">/uno360x_workspace/static/src/img/favicon.svg</attribute><attribute name="type">image/svg+xml</attribute></xpath></template>
 </odoo>

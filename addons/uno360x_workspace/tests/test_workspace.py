@@ -61,3 +61,12 @@ class TestWorkspace(TransactionCase):
   dashboards=[node for node in nodes if node['id'] in menu_ids]
   self.assertTrue(dashboards)
   self.assertTrue(all(node['href']=='/uno360x-pos' for node in dashboards))
+
+
+ def test_search_result_targets_an_accessible_action_not_a_container(self):
+  ctx=self.service._workspace_context()
+  menu=self.service._search_menu('res.partner','contacts.menu_contacts',ctx['allowed_menus'])
+  self.assertTrue(menu.action)
+  self.assertEqual(menu.action.res_model,'res.partner')
+  self.assertIn(menu.id,ctx['allowed_menus'])
+  self.assertFalse(self.service._search_menu('res.partner','contacts.menu_contacts',set()))

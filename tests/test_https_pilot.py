@@ -50,7 +50,7 @@ class HTTPSPilotTests(unittest.TestCase):
   self.assertEqual(status,200)
   self.assertIn(b'id="screen"',body)
   _,_,script=self.request('/assets/app.js')
-  self.assertIn(b"case '/prueba/inicio':draft={name:'',email:'',modules:[]}",script)
+  self.assertIn(b"case '/prueba/inicio':startTrial();",script)
 
  def test_public_signup_accepts_multiple_mail_domains_without_allowlist(self):
   self.server.public_signup=True;self.server.consent_version='public-trial-v1'
@@ -101,3 +101,42 @@ class HTTPSPilotTests(unittest.TestCase):
    c.request('POST','/spaces/open',json.dumps({'tenant_id':company['tenant_id']}),{'Host':'cuenta.uno360x.com','Origin':'https://cuenta.uno360x.com','Content-Type':'application/json','Cookie':'__Host-uno360x_session='+session,'X-CSRF-Token':csrf_for(session)})
    response=c.getresponse();self.assertEqual(response.status,503);self.assertIn('verificando tu espacio',response.read().decode());c.close()
   finally:identity.close()
+
+ def public_request(self,path,method='GET',data=None,session='',origin='https://uno360x.com',extra=None):
+  headers={'Host':'cuenta.uno360x.com','Origin':origin,'Content-Type':'application/json'}
+  if session:headers['Cookie']='__Host-uno360x_session='+session
+  if extra:headers.update(extra)
+  c=http.client.HTTPConnection('127.0.0.1',self.server.server_port);c.request(method,path,json.dumps(data).encode() if data is not None else None,headers)
+  response=c.getresponse();result=(response.status,dict(response.getheaders()),response.read());c.close();return result
+ def test_public_header_state_does_not_expose_account_data_or_private_csrf(self):
+  self.server.public_signup=True
+  self.request('/trial/register',{'email':'header@example.com','name':'Header','modules':[],'consent':True})
+  self.request('/verify',{'token':self.mail[-1]['token'],'password':'Header fictional password 2026!'})
+  identity=IdentityService(Path(self.tmp.name)/'control.sqlite3',self.mail.append)
+  try:
+   session=identity.login('header@example.com','Header fictional password 2026!')['session']
+   status,headers,body=self.public_request('/public/session-status',session=session)
+   self.assertEqual(status,200);value=json.loads(body);self.assertEqual(set(value),{'authenticated','logout_token'});self.assertTrue(value['authenticated'])
+   self.assertEqual(headers['Access-Control-Allow-Origin'],'https://uno360x.com');self.assertEqual(headers['Access-Control-Allow-Credentials'],'true')
+   from control.identity_http import csrf_for
+   self.assertNotEqual(value['logout_token'],csrf_for(session))
+   self.assertEqual(self.public_request('/session',session=session)[0],403)
+   self.assertEqual(self.public_request('/public/session-status',session=session,origin='https://evil.example')[0],403)
+   bad=self.public_request('/public/logout','POST',{'token':csrf_for(session)},session);self.assertEqual(bad[0],403);identity._account(session)
+   out=self.public_request('/public/logout','POST',{'token':value['logout_token']},session)
+   self.assertEqual(out[0],200);self.assertTrue(json.loads(out[2])['logged_out']);self.assertIn('Secure',out[1]['Set-Cookie'])
+   from control.identity import IdentityError
+   with self.assertRaises(IdentityError):identity._account(session)
+  finally:identity.close()
+ def test_public_logout_preflight_and_anonymous_state_are_limited(self):
+  status,headers,body=self.public_request('/public/session-status');self.assertEqual(status,200);self.assertEqual(json.loads(body),{'authenticated':False})
+  self.assertEqual(self.public_request('/public/logout','OPTIONS',extra={'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type'})[0],204)
+  self.assertEqual(self.public_request('/login','OPTIONS',extra={'Access-Control-Request-Method':'POST'})[0],403)
+  self.assertEqual(self.public_request('/public/logout','OPTIONS',origin='https://erp.uno360x.com',extra={'Access-Control-Request-Method':'POST'})[0],403)
+  self.assertEqual(self.public_request('/public/logout','POST',[])[0],403)
+
+ def test_plan_query_and_login_tracking_do_not_break_entry(self):
+  self.server.public_signup=True
+  self.assertEqual(self.request('/prueba/inicio?modules=projects_services')[0],200)
+  self.assertEqual(self.request('/web/login?db=ignored')[0],200)
+  status,_,body=self.request('/condiciones');self.assertEqual(status,200);self.assertIn('/assets/app.css',body.decode());self.assertIn('UNO',body.decode())

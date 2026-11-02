@@ -64,10 +64,10 @@ class SharedHostAdapter(ContainerAdapter):
   super().identity(s)
   db=sqlite3.connect('file:/var/lib/uno360x-saas/control/control.sqlite3?mode=ro',uri=True)
   try:
-   row=db.execute("SELECT a.id,a.email FROM preparation_jobs p JOIN accounts a ON a.id=p.requested_by JOIN memberships m ON m.account_id=a.id AND m.tenant_id=p.tenant_id WHERE p.tenant_id=? AND a.verified=1 AND a.active=1 AND m.active=1 AND m.role='owner'",(s['tenant_id'],)).fetchone()
+   row=db.execute("SELECT a.id,a.email,d.name FROM preparation_jobs p JOIN accounts a ON a.id=p.requested_by LEFT JOIN trial_signup_drafts d ON d.account_id=a.id JOIN memberships m ON m.account_id=a.id AND m.tenant_id=p.tenant_id WHERE p.tenant_id=? AND a.verified=1 AND a.active=1 AND m.active=1 AND m.role='owner'",(s['tenant_id'],)).fetchone()
   finally:db.close()
   if not row:raise RuntimeError('Verified owner required before readiness')
-  self.sync_user(s,{'tenant_id':s['tenant_id'],'account_id':row[0],'email':row[1],'role':'owner'})
+  self.sync_user(s,{'tenant_id':s['tenant_id'],'account_id':row[0],'email':row[1],'role':'owner','display_name':row[2]})
  def validation(self,s):
   n=self.names(s)
   if not self.exists('container',n['app']):

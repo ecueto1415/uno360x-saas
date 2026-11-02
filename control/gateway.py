@@ -99,13 +99,14 @@ class GatewayManager:
             # Only the trusted broker applies basic data; no fiscal data or credentials.
             if identity.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():
                 row = identity.db.execute('SELECT name,country,currency FROM trial_workspaces WHERE tenant_id=?', (tenant,)).fetchone()
-                if row:
+                identity.db.execute('''CREATE TABLE IF NOT EXISTS trial_company_parameters (
+                    tenant_id TEXT PRIMARY KEY, applied REAL NOT NULL)''')
+                applied=identity.db.execute('SELECT 1 FROM trial_company_parameters WHERE tenant_id=?',(tenant,)).fetchone()
+                if row and not applied:
                     with self.adapter.lock(tenant):
                         self.adapter.configure_company(backend.snapshot, dict(row), server.origin)
-                    identity.db.execute('''CREATE TABLE IF NOT EXISTS trial_company_parameters (
-                        tenant_id TEXT PRIMARY KEY, applied REAL NOT NULL)''')
                     with identity.db:
-                        identity.db.execute('INSERT INTO trial_company_parameters VALUES (?,?) ON CONFLICT(tenant_id) DO UPDATE SET applied=excluded.applied', (tenant, self.clock()))
+                        identity.db.execute('INSERT OR IGNORE INTO trial_company_parameters VALUES (?,?)', (tenant, self.clock()))
             handle = Handle(secrets.token_urlsafe(32), tenant, backend)
             self.validate(handle, identity)
             grant = secrets.token_urlsafe(32)
@@ -252,7 +253,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 if set(data) != {'grant'} or len(data['grant']) != 1:
                     raise ValueError()
                 handle = self.server.manager.consume(data['grant'][0], self.server.tenant)
-                self.reply(303, headers=[('Location','/odoo'),('Set-Cookie',f'{self.server.cookie}={handle.token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800{getattr(self.server, "secure_cookie", "")}')])
+                self.reply(303, headers=[('Location',getattr(self.server,'landing_path','/odoo')),('Set-Cookie',f'{self.server.cookie}={handle.token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800{getattr(self.server, "secure_cookie", "")}')])
             except (ValueError, IdentityError):
                 self.reply(403)
             return

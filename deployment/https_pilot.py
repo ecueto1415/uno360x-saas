@@ -1,7 +1,7 @@
 """Explicit HTTPS pilot transport. Loopback only; nginx terminates verified TLS.
-No public rollout: only the operator allowlist may register. One tenant per host.
+Public registration is configuration-controlled; tenant access remains session-isolated.
 """
-import io,json,os,re,threading
+import io,json,os,re,threading,hmac,hashlib
 from http.cookies import SimpleCookie
 from http.server import ThreadingHTTPServer
 from urllib.parse import urlsplit
@@ -17,15 +17,15 @@ def checked_origin(origin):
   raise ValueError('Dedicated HTTPS subdomain required')
  return u.netloc
 
-HTTP_SLOTS=threading.BoundedSemaphore(6)
-
 class BoundedHTTPServer(ThreadingHTTPServer):
  daemon_threads=True
+ request_queue_size=64
+ max_concurrent_requests=24
  def __init__(self,*args,**kw):
-  self.slots=HTTP_SLOTS
+  self.slots=threading.BoundedSemaphore(self.max_concurrent_requests)
   super().__init__(*args,**kw)
  def process_request(self,request,address):
-  if not self.slots.acquire(blocking=False):
+  if not self.slots.acquire(timeout=3):
    try:
     body=b'{"error":"Hay varias solicitudes. Intenta de nuevo en unos segundos."}'
     request.sendall(('HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nRetry-After: 3\r\nContent-Length: %s\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n'%len(body)).encode()+body)
@@ -39,6 +39,7 @@ class BoundedHTTPServer(ThreadingHTTPServer):
 
 class HTTPSIdentityServer(BoundedHTTPServer):
  daemon_threads=True
+ max_concurrent_requests=8
  def __init__(self,port,database,deliver,launch,origin,allowed_emails,tenant_origin,public_signup=False):
   self.authority=checked_origin(origin);self.origin=origin
   self.tenant_origin=tenant_origin;checked_origin(tenant_origin)
@@ -50,6 +51,50 @@ class HTTPSIdentityServer(BoundedHTTPServer):
   super().__init__(('127.0.0.1',port),HTTPSIdentityHandler)
 
 class HTTPSIdentityHandler(LocalHandler):
+ def _public_origin_ok(self):
+  return self.headers.get('Host')==self.server.authority and self.headers.get('Origin') in ('https://uno360x.com','https://www.uno360x.com')
+ def _public_logout_token(self,session):
+  return hmac.new(session.encode(),b'uno360x-public-logout-only',hashlib.sha256).hexdigest()
+ def _public_reply(self,status,value,cookie=None):
+  body=json.dumps(value).encode();self.send_response(status)
+  for key,val in [('Content-Type','application/json'),('Content-Length',str(len(body))),('Cache-Control','no-store'),('Vary','Origin'),('X-Content-Type-Options','nosniff'),('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'")]:self.send_header(key,val)
+  if self._public_origin_ok():
+   self.send_header('Access-Control-Allow-Origin',self.headers['Origin']);self.send_header('Access-Control-Allow-Credentials','true')
+  if cookie:self.send_header('Set-Cookie',cookie)
+  self.end_headers();self.wfile.write(body)
+ def do_OPTIONS(self):
+  if self.path!='/public/logout' or not self._public_origin_ok() or self.headers.get('Access-Control-Request-Method')!='POST':self._public_reply(403,{'error':'Origen no autorizado.'});return
+  requested={v.strip().lower() for v in self.headers.get('Access-Control-Request-Headers','').split(',') if v.strip()}
+  if requested-{'content-type'}:self._public_reply(403,{'error':'Cabeceras no autorizadas.'});return
+  self.send_response(204);self.send_header('Access-Control-Allow-Origin',self.headers['Origin']);self.send_header('Access-Control-Allow-Credentials','true');self.send_header('Access-Control-Allow-Methods','POST');self.send_header('Access-Control-Allow-Headers','Content-Type');self.send_header('Cache-Control','no-store');self.send_header('Vary','Origin');self.end_headers()
+ def _public_status(self):
+  if not self._public_origin_ok():self._public_reply(403,{'error':'Origen no autorizado.'});return
+  from control.identity import IdentityService
+  service=IdentityService(self.server.database,self.server.deliver)
+  try:
+   session=self._session();service._account(session)
+   self._public_reply(200,{'authenticated':True,'logout_token':self._public_logout_token(session)})
+  except IdentityError:self._public_reply(200,{'authenticated':False})
+  finally:service.close()
+ def _public_logout(self):
+  if not self._public_origin_ok():self._public_reply(403,{'error':'Origen no autorizado.'});return
+  service=None
+  try:
+   if self.headers.get('Content-Type','').split(';')[0]!='application/json' or self.headers.get('Transfer-Encoding'):raise ValueError()
+   length=int(self.headers.get('Content-Length','0'))
+   if not 1<=length<=512:raise ValueError()
+   data=json.loads(self.rfile.read(length))
+   if not isinstance(data,dict):raise ValueError()
+   session=self._session()
+   from control.identity import IdentityService
+   service=IdentityService(self.server.database,self.server.deliver);service._account(session)
+   token=data.get('token','')
+   if not isinstance(token,str) or not hmac.compare_digest(token,self._public_logout_token(session)):raise IdentityError('Solicitud no autorizada.')
+   service.logout(session)
+   self._public_reply(200,{'logged_out':True},'__Host-uno360x_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0')
+  except (ValueError,TypeError,IdentityError):self._public_reply(403,{'error':'Solicitud no autorizada.'})
+  finally:
+   if service:service.close()
  def _origin_ok(self):
   return self.headers.get('Host')==self.server.authority and self.headers.get('Origin',None if self.command=='POST' else self.server.origin)==self.server.origin
  def _reply(self,status,value,cookie=None):
@@ -62,10 +107,13 @@ class HTTPSIdentityHandler(LocalHandler):
   except Exception:return ''
   return jar['__Host-uno360x_session'].value if '__Host-uno360x_session' in jar else ''
  def do_GET(self):
+  if self.path=='/public/session-status':self._public_status();return
   if not self._origin_ok():self._reply(403,{'error':'Origen no autorizado.'});return
-  if self.path=='/':
+  path=urlsplit(self.path).path
+  if not self.path.startswith('/') or len(self.path)>2048:self._reply(400,{'error':'Ruta no disponible.'});return
+  if path=='/':
    self.send_response(303);self.send_header('Location','/web/login');self.send_header('Cache-Control','no-store');self.end_headers();return
-  resource=asset(self.path)
+  resource=asset(path)
   if not resource:return super().do_GET()
   kind,body=resource
   text=body.decode('utf-8')
@@ -75,6 +123,7 @@ class HTTPSIdentityHandler(LocalHandler):
   text=text.replace('trabajador local','servicio de preparación')
   text=text.replace('En este laboratorio no enviamos correo real. El enlace se guarda en el buzón privado del equipo para las pruebas.','Te enviaremos un correo real de UNO360X. Revisa también la carpeta de correo no deseado.')
   text=text.replace('condiciones de la prueba de laboratorio','condiciones del piloto')
+  text=text.replace('href="/"','href="https://uno360x.com/"')
   text=text.replace('href="/#','href="https://uno360x.com/#').replace('href="/planes-y-precios"','href="https://uno360x.com/planes-y-precios"')
   text=text.replace('Empieza con la Base Empresarial y agrega los módulos que necesitas.','Este piloto por invitación utiliza Base Empresarial con CRM y POS. Los módulos adicionales están en preparación.')
   if not self.server.public_signup:
@@ -83,10 +132,10 @@ class HTTPSIdentityHandler(LocalHandler):
    text=text.replace('Agregar a mi prueba','En preparación')
   text=text.replace("target.protocol!=='http:'||target.hostname!=='127.0.0.1'||target.pathname!=='/__launch'||!target.port",
                     "target.origin!=="+json.dumps(self.server.tenant_origin)+"||target.pathname!=='/__launch'")
-  if self.path in ('/condiciones','/privacidad'):
-   title='Condiciones del piloto' if self.path=='/condiciones' else 'Privacidad del piloto'
-   content=('Piloto por invitación durante 15 días desde la preparación del espacio, sin tarjeta, cargos automáticos ni contratación comercial. Base Empresarial incluye CRM y POS. La emisión fiscal requiere validación independiente. Los módulos adicionales y precios siguen en preparación.' if self.path=='/condiciones' else 'El correo identifica tu cuenta. Los datos se almacenan en la infraestructura de UNO360X; Resend procesa los mensajes de confirmación y recuperación. Las contraseñas se guardan mediante hash y los enlaces son temporales y de un solo uso. Usa información de prueba durante este piloto. Para solicitar asistencia o eliminación, contacta a ecueto@outsolutech.com.')
-   text='<html lang="es"><meta charset="utf-8"><title>'+title+'</title><h1>'+title+'</h1><p>'+content+'</p><a href="/prueba/cuenta">Volver</a></html>'
+  if path in ('/condiciones','/privacidad'):
+   title='Condiciones del piloto' if path=='/condiciones' else 'Privacidad del piloto'
+   content=('Piloto por invitación durante 15 días desde la preparación del espacio, sin tarjeta, cargos automáticos ni contratación comercial. Base Empresarial incluye CRM y POS. La emisión fiscal requiere validación independiente. Los módulos adicionales y precios siguen en preparación.' if path=='/condiciones' else 'El correo identifica tu cuenta. Los datos se almacenan en la infraestructura de UNO360X; Resend procesa los mensajes de confirmación y recuperación. Las contraseñas se guardan mediante hash y los enlaces son temporales y de un solo uso. Usa información de prueba durante este piloto. Para solicitar asistencia o eliminación, contacta a ecueto@outsolutech.com.')
+   text='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+title+' | UNO360X</title><link rel="stylesheet" href="/assets/app.css"></head><body><div class="page-shell"><nav class="site-nav"><a class="wordmark" href="https://uno360x.com/">UNO<span>360X</span><i></i></a><a class="button secondary" href="/web/login">Mi cuenta</a></nav><main class="form-card legal"><h1>'+title+'</h1><p>'+content+'</p><a href="/prueba/cuenta">Volver al registro</a></main></div></body></html>'
   if self.server.public_signup:
    text=text.replace('Piloto UNO360X · Acceso por invitación · Sin cargos','UNO360X · 15 días gratis · Sin tarjeta')
    text=text.replace('Este piloto por invitación utiliza Base Empresarial con CRM y POS. Los módulos adicionales están en preparación.','Empieza con Base Empresarial, CRM y POS. Agrega las áreas que quieres probar.')
@@ -102,6 +151,7 @@ class HTTPSIdentityHandler(LocalHandler):
   self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self' "+self.server.tenant_origin+"; base-uri 'none'; frame-ancestors 'none'")
   self.end_headers();self.wfile.write(encoded)
  def do_POST(self):
+  if self.path=='/public/logout':self._public_logout();return
   # Never let alternate company-creation or invitation routes bypass pilot capacity.
   permitted={'/trial/register','/verify','/verify/resend','/reset/request','/reset/complete','/login','/logout',
    '/companies','/trial/draft','/trial/create','/trial/status','/spaces/open','/setup/profile','/setup/status'}
@@ -137,7 +187,7 @@ class HTTPSGatewayManager(GatewayManager):
     server.manager,server.tenant=self,None if self.shared_origin else tenant
     server.origin=self.tenant_origin;server.authority=checked_origin(server.origin)
     server.central_origin=self.central_origin;server.cookie='__Host-uno360x_pilot_space'
-    server.secure_cookie='; Secure'
+    server.secure_cookie='; Secure';server.landing_path='/uno360x-resumen'
     self.servers[key]=server
     threading.Thread(target=server.serve_forever,daemon=True).start()
    return self.servers[key]

@@ -3,6 +3,15 @@
  <t t-name="uno360x_workspace.PosReturn" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension">
   <xpath expr="//div[hasclass('pos-topheader')]/div[hasclass('pos-leftheader')]" position="before">
    <button class="btn btn-light ux-pos-return" title="Volver a UNO360X" aria-label="Volver a UNO360X" t-on-click="() => pos.uno360xReturn()"><i class="fa fa-arrow-left"/><span class="ux-pos-return-long"> Volver a UNO360X</span><span class="ux-pos-return-short"> Volver</span></button>
+   <span class="ux-pos-mobile-brand">UNO<span>360X</span></span>
   </xpath>
+  <xpath expr="//img[hasclass('pos-logo')]" position="replace"><button type="button" class="ux-pos-brand" aria-label="UNO360X, volver a mi empresa" t-on-click="() => pos.uno360xReturn()">UNO<span>360X</span></button></xpath>
+  <xpath expr="//DropdownItem[@onSelected='() =&gt; pos.closePos()']" position="replace"><DropdownItem onSelected="() => pos.uno360xReturn()">Volver a UNO360X</DropdownItem></xpath>
  </t>
+
+ <t t-name="uno360x_workspace.PosLoginBrand" t-inherit="point_of_sale.LoginScreen" t-inherit-mode="extension">
+  <xpath expr="//div[contains(@t-attf-class,'screen-login-logo')]" position="replace"><div t-attf-class="screen-login-logo {{ ui.isSmall ? 'mx-auto' : 'ms-auto'}}"><strong class="ux-pos-brand">UNO<span>360X</span></strong><div t-esc="pos.company.name"/></div></xpath>
+  <xpath expr="//button[hasclass('select-logout')]" position="replace"><button class="select-logout btn btn-primary btn-lg" t-on-click="() => pos.uno360xReturn()">Volver a UNO360X</button></xpath>
+ </t>
+ <t t-name="uno360x_workspace.PosReceiptBrand" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension"><xpath expr="//p[text()='Powered by Odoo']" position="replace"><p>Gestionado con UNO360X</p></xpath></t>
 </templates>

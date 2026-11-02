@@ -15,3 +15,6 @@ patch(PosStore.prototype, {
         window.location.href = "/uno360x-pos";
     },
 });
+
+// Revalidate an authenticated page restored from browser history.
+window.addEventListener('pageshow',function(event){if(event.persisted)window.location.reload();});

@@ -66,8 +66,8 @@ class WorkspaceController(http.Controller):
   if 'projects_services' in ctx['options']:specs.append(('project.project','name','project.menu_main_pm','Proyectos'))
   if q:
    for model,field,xmlid,label in specs:
-    menu=request.env.ref(xmlid,raise_if_not_found=False)
-    if not service._can_read(model) or not menu or menu.id not in ctx['allowed_menus']:continue
+    menu=service._search_menu(model,xmlid,ctx['allowed_menus'])
+    if not service._can_read(model) or not menu:continue
     domain=[(field,'ilike',q)]
     if model!='res.partner':domain+=[('company_id','=',request.env.company.id)]
     for record in request.env[model].search(domain,limit=20):

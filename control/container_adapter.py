@@ -258,7 +258,7 @@ group_ids=[env.ref(xmlid).id for xmlid in p['groups']]
 assert env.ref('base.group_system').id not in group_ids
 users=env['res.users'].with_context(no_reset_password=True,tracking_disable=True)
 user=users.search([('uno360x_account_id','=',p['account_id'])])
-values={'name':p['email'],'email':p['email'],'login':'saas_'+p['account_id'],
+values={'name':p.get('display_name') or p['email'],'email':p['email'],'login':'saas_'+p['account_id'],
  'uno360x_account_id':p['account_id'],'active':True,'company_id':company.id,
  'company_ids':[(6,0,[company.id])],'groups_id':[(6,0,group_ids)]}
 if company.country_id.code=='DO' and env['res.lang'].search([('code','=','es_DO')]):
@@ -267,6 +267,7 @@ home=env.ref('uno360x_workspace.action_home',raise_if_not_found=False)
 if home and 'action_id' in users._fields:values['action_id']=home.id
 if user:
  assert len(user)==1
+ if not p.get('display_name') or user.name!=p['email']:values.pop('name',None)
  user.write(values)
 else:
  values['password']=p['password']

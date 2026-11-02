@@ -134,12 +134,12 @@ class Handler(BaseHTTPRequestHandler):
             setup=Setup(service)
             if self.path=='/spaces/open':
                 if self.server.launch is None:
-                    self._reply(503,{'error':'El acceso web local no está iniciado.'});return
+                    self._reply(503,{'error':'El acceso a tu empresa no está disponible en este momento.'});return
                 ticket=onboarding.issue_handoff(session,data['tenant_id'])['ticket']
                 try:
                     result=self.server.launch(session,ticket)
                 except IdentityError:
-                    self._reply(503,{'error':'El acceso web local no está disponible. Revisa el broker del laboratorio.'});return
+                    self._reply(503,{'error':'El acceso a tu empresa no está disponible en este momento. Vuelve a intentarlo.'});return
                 self._reply(200,result);return
             private={
                 '/logout':lambda:service.logout(session),

@@ -1,5 +1,6 @@
 (function(){
 if(!document.body.classList.contains('o_web_client')){return;}
+function brandTitle(){var next=document.title.replace(/\bOdoo\b/g,'UNO360X');if(next.indexOf('UNO360X')<0)next+=' · UNO360X';if(document.title!==next)document.title=next;}brandTitle();var title=document.querySelector('title');if(title)new MutationObserver(brandTitle).observe(title,{childList:true,subtree:true,characterData:true});document.querySelectorAll('link[rel~="icon"]').forEach(function(link){link.href='/uno360x_workspace/static/src/img/favicon.svg';});
 var header=document.getElementById('ux-native-header');
 var sidebar=document.getElementById('ux-sidebar');
 var opener=document.getElementById('ux-native-open');
@@ -16,3 +17,5 @@ if(opener){opener.addEventListener('click',function(){var isOpen=document.body.c
 if(backdrop){backdrop.addEventListener('click',closeMenu);}
 if(sidebar){var closer=sidebar.querySelector('.ux-mobile-toggle');if(closer){closer.addEventListener('click',closeMenu);}sidebar.addEventListener('click',function(e){if(e.target.closest('a')){closeMenu();document.querySelectorAll('.ux-native-shell .ux-primary-item[open]').forEach(function(d){d.open=false;});}});}
 })();
+// Revalidate an authenticated page restored from browser history.
+window.addEventListener('pageshow',function(event){if(event.persisted)window.location.reload();});

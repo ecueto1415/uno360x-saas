@@ -24,6 +24,11 @@ class Workspace(models.AbstractModel):
  def _can_read(self,name):
   return name in self.env.registry.models and self.env[name].check_access_rights('read',raise_exception=False)
  @api.model
+ def _search_menu(self,model,xmlid,allowed):
+  root=self.env.ref(xmlid,raise_if_not_found=False)
+  if not root:return self.env['ir.ui.menu']
+  return self.env['ir.ui.menu'].search([('id','child_of',root.id),('id','in',list(allowed))]).filtered(lambda menu:menu.action and getattr(menu.action.sudo(),'res_model',None)==model)[:1]
+ @api.model
  def _workspace_context(self):
   if not self.env.user.has_group('base.group_user'):raise AccessError('Acceso de empresa requerido.')
   visible=self.env['ir.ui.menu']._visible_menu_ids();options=self._enabled_options();allowed=set();pos_root=self.env.ref('point_of_sale.menu_point_root',raise_if_not_found=False);pos_actions=tuple(self.env.ref(xmlid,raise_if_not_found=False) for xmlid in ('point_of_sale.action_pos_config_kanban','point_of_sale.action_client_pos_menu'))
