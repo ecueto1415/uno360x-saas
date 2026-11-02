@@ -1,0 +1,7 @@
+Acceso público al SaaS
+
+Los enlaces Iniciar sesión y Entrar a mi espacio de la portada y los planes apuntan a https://cuenta.uno360x.com/web/login. Allí se usa el correo completo y la contraseña SaaS; no se elige una base de datos. Una sesión válida muestra la cuenta actual y permite continuar o cambiar de cuenta.
+
+La sustitución del enlace solo aplica a los hosts públicos uno360x.com y www.uno360x.com. El host ERP conserva su enlace nativo. Se mantienen sin redirecciones los accesos operativos /web/login y las credenciales y base predeterminada de OUTSOLUTECH. La configuración nginx-public-login-map.conf debe instalarse en el contexto http antes de incluir nginx-marketing-trial-root.conf.
+
+Se respalda la configuración, se valida nginx -t y se recarga Nginx sin reiniciar el Odoo operativo. Se verifican los enlaces de la portada, planes y la pantalla de acceso SaaS desde Internet.

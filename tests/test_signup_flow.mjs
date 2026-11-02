@@ -49,3 +49,13 @@ element('#use-other-email').onclick();
 await new Promise(resolve=>setImmediate(resolve));
 assert.equal(vm.runInContext('draft.email',context),'');
 console.log('Signup flow passed: clean defaults, existing-email recovery, explicit account choice, logout navigation and existing-company history guard.');
+
+authenticated=true;
+await vm.runInContext("refreshSession().then(()=>{location.pathname='/web/login';return render();})",context);
+assert(element('#screen').innerHTML.includes('existing@example.test'));
+assert(element('#screen').innerHTML.includes('Iniciar sesión con otra cuenta'));
+assert(!element('#screen').innerHTML.includes('id="login-form"'));
+await element('#different-account').onclick({target:{disabled:false}});
+await new Promise(resolve=>setImmediate(resolve));
+assert(element('#screen').innerHTML.includes('id="login-form"'));
+console.log('Existing login session is recognized; switching accounts restores the login form.');
