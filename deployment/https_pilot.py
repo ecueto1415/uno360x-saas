@@ -77,9 +77,10 @@ class HTTPSIdentityHandler(LocalHandler):
   text=text.replace('condiciones de la prueba de laboratorio','condiciones del piloto')
   text=text.replace('href="/#','href="https://uno360x.com/#').replace('href="/planes-y-precios"','href="https://uno360x.com/planes-y-precios"')
   text=text.replace('Empieza con la Base Empresarial y agrega los módulos que necesitas.','Este piloto por invitación utiliza Base Empresarial con CRM y POS. Los módulos adicionales están en preparación.')
-  text=text.replace('function plans(){steps(1);','function plans(){draft.modules=[];save();steps(1);')
-  text=text.replace('type="checkbox" name="modules"','type="checkbox" disabled name="modules"')
-  text=text.replace('Agregar a mi prueba','En preparación')
+  if not self.server.public_signup:
+   text=text.replace('function plans(){steps(1);','function plans(){draft.modules=[];save();steps(1);')
+   text=text.replace('type="checkbox" name="modules"','type="checkbox" disabled name="modules"')
+   text=text.replace('Agregar a mi prueba','En preparación')
   text=text.replace("target.protocol!=='http:'||target.hostname!=='127.0.0.1'||target.pathname!=='/__launch'||!target.port",
                     "target.origin!=="+json.dumps(self.server.tenant_origin)+"||target.pathname!=='/__launch'")
   if self.path in ('/condiciones','/privacidad'):
@@ -88,7 +89,10 @@ class HTTPSIdentityHandler(LocalHandler):
    text='<html lang="es"><meta charset="utf-8"><title>'+title+'</title><h1>'+title+'</h1><p>'+content+'</p><a href="/prueba/cuenta">Volver</a></html>'
   if self.server.public_signup:
    text=text.replace('Piloto UNO360X · Acceso por invitación · Sin cargos','UNO360X · 15 días gratis · Sin tarjeta')
-   text=text.replace('Este piloto por invitación utiliza Base Empresarial con CRM y POS. Los módulos adicionales están en preparación.','Empieza con Base Empresarial, CRM y POS. Los módulos adicionales están en preparación.')
+   text=text.replace('Este piloto por invitación utiliza Base Empresarial con CRM y POS. Los módulos adicionales están en preparación.','Empieza con Base Empresarial, CRM y POS. Agrega las áreas que quieres probar.')
+   text=text.replace('Empleados, asistencia y nómina.','Empleados, asistencia y ausencias. Cálculo legal de nómina pendiente de validación.')
+   text=text.replace('Consultas y asistencia con permisos.','Consultas internas con permisos. Conexión a IA externa en preparación.')
+   text=text.replace('Los módulos adicionales y precios siguen en preparación.','Puedes seleccionar RR. HH., Jenifer y Proyectos. El cálculo legal de nómina y la IA externa siguen en preparación. Precios por definir.')
    text=text.replace('condiciones del piloto','condiciones de la prueba').replace('Condiciones del piloto','Condiciones de la prueba')
    text=text.replace('Privacidad del piloto','Privacidad de la prueba').replace('Piloto por invitación durante 15 días','Prueba gratis durante 15 días')
   encoded=text.encode('utf-8')
@@ -99,11 +103,11 @@ class HTTPSIdentityHandler(LocalHandler):
   self.end_headers();self.wfile.write(encoded)
  def do_POST(self):
   # Never let alternate company-creation or invitation routes bypass pilot capacity.
-  permitted={'/trial/register','/verify','/reset/request','/reset/complete','/login','/logout',
+  permitted={'/trial/register','/verify','/verify/resend','/reset/request','/reset/complete','/login','/logout',
    '/companies','/trial/draft','/trial/create','/trial/status','/spaces/open','/setup/profile','/setup/status'}
   if not self._origin_ok():self._reply(403,{'error':'Origen no autorizado.'});return
   if self.path not in permitted:self._reply(404,{'error':'Ruta no disponible.'});return
-  if self.path in ('/trial/register','/reset/request','/login','/trial/create'):
+  if self.path in ('/trial/register','/verify/resend','/reset/request','/login','/trial/create'):
    try:
     n=int(self.headers.get('Content-Length','0'))
     if not 1<=n<=16384 or self.headers.get('Transfer-Encoding'):raise ValueError()
@@ -112,7 +116,7 @@ class HTTPSIdentityHandler(LocalHandler):
      self._reply(403,{'error':'Este piloto tiene acceso por invitación.'});return
     if self.server.public_signup and self.path=='/trial/register' and email_key(data['email']).endswith(('.test','.invalid','.localhost')):
      self._reply(400,{'error':'Utiliza un correo que pueda recibir el enlace de confirmación.'});return
-    if self.path in ('/trial/create','/trial/register') and data.get('modules'):
+    if not self.server.public_signup and self.path in ('/trial/create','/trial/register') and data.get('modules'):
      self._reply(400,{'error':'El piloto inicial utiliza Base Empresarial con CRM y POS.'});return
     self.rfile=io.BytesIO(raw)
    except (ValueError,KeyError,TypeError):self._reply(400,{'error':'Solicitud inválida.'});return

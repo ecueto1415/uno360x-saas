@@ -65,3 +65,25 @@ class HTTPSPilotTests(unittest.TestCase):
   _,_,html=self.request('/prueba/inicio');self.assertNotIn('Acceso por invitación',html.decode())
   self.assertEqual(self.request('/trial/register',{'email':'fake@example.test','name':'Fake','modules':[],'consent':True})[0],400)
   self.assertFalse(self.mail)
+
+ def test_public_optional_selection_survives_signup_and_confirmation(self):
+  self.server.public_signup=True
+  modules=['payroll_hr','jenifer_ai','projects_services']
+  status,_,script=self.request('/assets/app.js')
+  self.assertEqual(status,200);self.assertNotIn(b'checkbox" disabled name="modules',script)
+  self.assertNotIn(b'function plans(){draft.modules=[]',script)
+  self.assertEqual(self.request('/trial/register',{'email':'plans@example.com','name':'Plans','modules':modules,'consent':True})[0],200)
+  self.assertEqual(self.request('/verify',{'token':self.mail[-1]['token'],'password':'Plans fictional password 2026!'})[0],200)
+  import sqlite3
+  with sqlite3.connect(Path(self.tmp.name)/'control.sqlite3') as db:
+   self.assertEqual(json.loads(db.execute('SELECT modules FROM trial_signup_drafts').fetchone()[0]),sorted(modules))
+
+ def test_verification_can_be_recovered_without_registering_another_account(self):
+  self.server.public_signup=True
+  self.assertEqual(self.request('/verify/resend',{'email':'absent@example.com'})[0],200);self.assertFalse(self.mail)
+  self.request('/trial/register',{'email':'recover@example.com','name':'Recovery','modules':[],'consent':True});old=self.mail[-1]['token']
+  self.assertEqual(self.request('/verify/resend',{'email':'recover@example.com'})[0],200);new=self.mail[-1]['token'];self.assertNotEqual(old,new)
+  status,_,body=self.request('/verify',{'token':old,'password':'Recovery fictional password 2026!'})
+  self.assertEqual(status,400);self.assertIn('El enlace venció',body.decode())
+  self.assertEqual(self.request('/verify',{'token':new,'password':'Recovery fictional password 2026!'})[0],200)
+  self.assertEqual(self.request('/login',{'email':'recover@example.com','password':'Recovery fictional password 2026!'})[0],200)

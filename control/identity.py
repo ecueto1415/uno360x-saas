@@ -163,6 +163,19 @@ class IdentityService:
         self._deliver(notice)
         return dict(GENERIC)
 
+    def request_verification(self, email):
+        email = email_key(email)
+        notice = None
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            if self._allow('register', email):
+                row = self.db.execute('SELECT id FROM accounts WHERE email=? AND verified=0 AND active=1', (email,)).fetchone()
+                if row:
+                    notice = self._issue('verify', email, row['id'])
+                    self._audit('verification_resent', row['id'])
+        self._deliver(notice)
+        return dict(GENERIC)
+
     def _token(self, token, purpose):
         if not isinstance(token,str) or not 32 <= len(token) <= 128:
             raise IdentityError('Enlace inválido o vencido.')

@@ -114,6 +114,7 @@ class Handler(BaseHTTPRequestHandler):
                 '/trial/register':lambda:Trials(service).register(data['email'],data['name'],data['modules'],data['consent'],consent_version=getattr(self.server,'consent_version','lab-review-v1')),
                 '/register':lambda:service.register(data['email']),
                 '/verify':lambda:service.complete_registration(data['token'],data['password']),
+                '/verify/resend':lambda:service.request_verification(data['email']),
                 '/reset/request':lambda:service.request_reset(data['email']),
                 '/reset/complete':lambda:service.reset_password(data['token'],data['password']),
             }
@@ -164,9 +165,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._reply(404,{'error':'Ruta no disponible.'});return
             value=private[self.path]()
             self._reply(200,value,cookie=f'{COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' if self.path=='/logout' else None)
-        except IdentityError:
+        except IdentityError as error:
             # Same error for wrong login, unknown identity or inaccessible company.
-            self._reply(400,{'error':'No se pudo completar la operación.'})
+            self._reply(400,{'error':(str(error) if str(error).startswith('La contraseña') else 'El enlace venció, fue reemplazado o ya se utilizó. Solicita otro y abre el correo más reciente.') if self.path in ('/verify','/reset/complete') else 'No se pudo completar la operación.'})
         except (KeyError,TypeError,ValueError):
             self._reply(400,{'error':'Solicitud inválida.'})
         except Exception:

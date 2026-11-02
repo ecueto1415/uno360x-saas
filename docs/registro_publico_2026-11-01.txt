@@ -12,8 +12,10 @@ El broker asigna un puerto privado distinto a cada proxy, exclusivamente en 127.
 
 Correo: se mantiene el transporte exclusivo Resend y el origen de confirmación cuenta.uno360x.com. No se modifica correo de OUTSOLUTECH, Jenifer ni DGII. La cuota contratada del proveedor sigue siendo aplicable; abrir registro no crea un buzón ni contrata otro plan.
 
-Alcance inicial público: prueba de Base Empresarial con CRM y POS. La interfaz común admite los cuatro escenarios; los módulos adicionales y las opciones finales de cada plan se afinan por separado. No se habilitan integraciones fiscales, pagos ni IA externa por abrir el registro.
+Alcance público: Base Empresarial con CRM y POS y selección de RR. HH., Jenifer y Proyectos. Se instalan los módulos seleccionados con la interfaz común. La pantalla aclara que el cálculo legal de nómina y la conexión a IA externa siguen pendientes; no se presentan como funciones terminadas. No se habilitan integraciones fiscales, pagos ni IA externa por abrir el registro.
 
 Despliegue: configuración public_signup y shared_gateway en /etc/uno360x-saas/https-pilot.json; admisión en resource-policy.json. La configuración de ejemplo sigue apagada hasta validación y activación explícita. Se verifica la coexistencia de dos clientes y se retira el cliente ficticio antes de habilitar el ingreso general.
 
 Validación real: segunda empresa ficticia preparada en la VM junto a magiccomputer; acceso HTTPS con certificado validado, interfaz UNO360X, puertos privados distintos y rechazo de pertenencia ajena. Se comprobó que el parámetro db no cambia la base autorizada. La empresa ficticia se venció y desactivó después de la prueba; sus recursos quedan detenidos y sus datos conservados. El reinicio del trabajador excluye pruebas vencidas para evitar reactivarlas. Odoo operativo conservó PID 2195, cero reinicios y la misma configuración.
+
+Activación: se agregó recuperación del enlace desde la pantalla de confirmación y una ruta de reenvío que no crea otra cuenta. Los enlaces reemplazados o vencidos muestran un mensaje explícito; los errores de red se distinguen de los errores de validación.
