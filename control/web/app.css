@@ -6,3 +6,10 @@
 
 /* Empty registration steps must not reserve space above account entry. */
 .stepper:empty{display:none}.auth-main>#notice{display:none}.auth-card .login-message{background:none;border:0;padding:0;color:var(--ink);font-size:13px;font-weight:600;line-height:1.5;margin:10px 0 0}.auth-card .login-message:not([hidden])+.fineprint{margin-top:12px}
+
+/* Account entry follows the public homepage container and 18px content gap. */
+body:has(.auth-main) .lab-notice{display:none}
+.page-shell:has(.auth-main){max-width:1168px;padding:24px}
+#main.auth-main{margin-top:18px;padding:0!important}
+.page-shell:has(.auth-main) .nav-actions .button{min-height:44px}
+@media(max-width:800px){.page-shell:has(.auth-main){padding:16px}.page-shell:has(.auth-main) .nav-actions .button{min-height:42px}}
