@@ -1,9 +1,35 @@
 from odoo import http
 from odoo.http import request
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError,UserError
 from werkzeug.exceptions import NotFound,Forbidden
 
 class WorkspaceController(http.Controller):
+ def _pos_values(self,error=''):
+  ctx=self._service()._workspace_context()
+  if not request.env.user.has_group('point_of_sale.group_pos_user'):raise Forbidden()
+  ctx.update(pos_configs=request.env['pos.config'].search([('company_id','=',request.env.company.id),('active','=',True)]),can_manage_pos=request.env.user.has_group('point_of_sale.group_pos_manager'),pos_error=error,page_key='pos')
+  return ctx
+ @http.route('/uno360x-pos',type='http',auth='user',methods=['GET'])
+ def pos_home(self,**kw):return self._render('uno360x_workspace.pos_home',self._pos_values())
+ @http.route('/uno360x/pos/create',type='http',auth='user',methods=['POST'],csrf=True)
+ def pos_create(self,name='',**kw):
+  values=self._pos_values()
+  if not values['can_manage_pos']:raise Forbidden()
+  if not isinstance(name,str) or not 1<=len(name.strip())<=80:return self._render('uno360x_workspace.pos_home',self._pos_values('Indica un nombre de caja de hasta 80 caracteres.'))
+  try:
+   with request.env.cr.savepoint():request.env['pos.config'].create({'name':name.strip(),'company_id':request.env.company.id})
+  except UserError as error:return self._render('uno360x_workspace.pos_home',self._pos_values(str(error)))
+  return request.redirect('/uno360x-pos',code=303)
+ @http.route('/uno360x/pos/open/<int:box_id>',type='http',auth='user',methods=['POST'],csrf=True)
+ def pos_open(self,box_id,**kw):
+  values=self._pos_values();box=values['pos_configs'].filtered(lambda box:box.id==box_id)
+  if not box:raise NotFound()
+  try:
+   with request.env.cr.savepoint():action=box.open_ui()
+  except UserError as error:return self._render('uno360x_workspace.pos_home',self._pos_values(str(error)))
+  url=action.get('url','')
+  if not url.startswith('/pos/ui?'):raise NotFound()
+  return request.redirect(url,code=303)
  def _service(self):
   if not request.env.user.has_group('base.group_user'):raise Forbidden()
   return request.env['uno360x.workspace']

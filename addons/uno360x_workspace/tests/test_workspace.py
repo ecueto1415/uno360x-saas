@@ -40,3 +40,12 @@ class TestWorkspace(TransactionCase):
   data=self.service.with_user(user)._dashboard()
   self.assertFalse(data['can_finance']);self.assertEqual(data['series'],[])
   self.assertEqual(data['pending_total'],0)
+
+ def test_pos_entry_has_setup_and_return_without_creating_a_session(self):
+  before=self.env['pos.session'].search_count([])
+  values=self.service._workspace_context();values.update(csrf='qa-csrf',pos_configs=self.env['pos.config'].browse(),can_manage_pos=True,pos_error='')
+  html=str(self.env['ir.ui.view']._render_template('uno360x_workspace.pos_home',values))
+  self.assertIn('/uno360x/pos/create',html);self.assertIn('Crear mi primera caja',html);self.assertIn('Volver a UNO360X',html)
+  self.assertEqual(self.env['pos.session'].search_count([]),before)
+  commercial=next(g for g in values['groups'] if g['name']=='Comercial')
+  self.assertTrue(any(node['href']=='/uno360x-pos' for node in commercial['nodes']))

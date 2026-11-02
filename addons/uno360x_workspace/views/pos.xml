@@ -1,0 +1,9 @@
+<odoo>
+<template id="pos_home"><t t-call="uno360x_workspace.shell">
+ <section class="ux-intro"><div><p class="ux-eyebrow">COMERCIAL</p><h1>Punto de venta</h1><p>Elige tu caja para empezar a vender.</p></div><a class="ux-small-link" href="/uno360x-resumen">← Volver a UNO360X</a></section>
+ <section t-if="pos_error" class="ux-card"><p role="alert" t-out="pos_error"/></section>
+ <section class="ux-catalog"><article t-foreach="pos_configs" t-as="box" class="ux-catalog-card"><h2 t-out="box.name"/><p><t t-out="box.currency_id.name"/> · <t t-out="'Sesión abierta' if box.has_active_session else 'Lista para abrir'"/></p><form t-att-action="'/uno360x/pos/open/%s' % box.id" method="post"><input type="hidden" name="csrf_token" t-att-value="csrf"/><button class="ux-button" type="submit">Abrir caja</button></form></article></section>
+ <section t-if="not pos_configs" class="ux-card"><h2>Prepara tu primera caja</h2><p>No tienes una caja configurada todavía. Dale un nombre para comenzar.</p><form t-if="can_manage_pos" action="/uno360x/pos/create" method="post"><input type="hidden" name="csrf_token" t-att-value="csrf"/><label for="pos-name">Nombre de la caja</label><input id="pos-name" name="name" value="Caja principal" maxlength="80" required="required"/><button class="ux-button" type="submit">Crear mi primera caja</button></form><p t-else="">Pide al administrador de tu empresa que configure una caja.</p></section>
+ <p class="ux-helper-text">Volver desde la caja conserva la sesión de caja y utiliza la sincronización de pedidos de Odoo. Para hacer el arqueo y terminar el turno, usa «Cerrar caja» dentro del POS.</p>
+</t></template>
+</odoo>

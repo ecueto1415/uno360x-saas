@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+ <t t-name="uno360x_workspace.PosReturn" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension">
+  <xpath expr="//div[hasclass('status-buttons')]/Input" position="before">
+   <button class="btn btn-light ux-pos-return" title="Volver a UNO360X" aria-label="Volver a UNO360X" t-on-click="() => pos.closePos()"><i class="fa fa-arrow-left"/><span class="ux-pos-return-long"> Volver a UNO360X</span><span class="ux-pos-return-short"> Volver</span></button>
+  </xpath>
+ </t>
+</templates>
