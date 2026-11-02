@@ -12,7 +12,7 @@ import json
 from .identity import IdentityService,IdentityError
 from .onboarding import Onboarding,PreparationError
 from .setup import Setup
-from .trials import Trials
+from .trials import Trials,TrialCompanyExists
 from .web_pages import asset
 
 COOKIE = 'uno360x_lab_session'
@@ -165,6 +165,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._reply(404,{'error':'Ruta no disponible.'});return
             value=private[self.path]()
             self._reply(200,value,cookie=f'{COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' if self.path=='/logout' else None)
+        except TrialCompanyExists as error:
+            self._reply(409,{'error':str(error),'code':'company_exists'})
         except PreparationError:
             self._reply(503,{'error':'Estamos verificando tu espacio. Espera unos segundos y vuelve a entrar a tu empresa.'})
         except IdentityError as error:

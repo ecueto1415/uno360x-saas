@@ -1,0 +1,11 @@
+UNO360X - Cuentas existentes y navegación de sesión
+
+La inscripción de prueba muestra explícitamente que un correo ya tiene cuenta, por solicitud del propietario del producto. Ofrece iniciar sesión o usar otro correo. Para cuentas pendientes ofrece reenviar el enlace; repetir el formulario no reemplaza el enlace ni crea otro usuario. Se conserva el límite de intentos por correo y los controles de transporte. La API general de identidad y la recuperación mantienen sus respuestas uniformes.
+
+El encabezado del recorrido SaaS muestra Salir cuando hay sesión, tanto en escritorio como en móvil. El botón cierra la sesión central mediante POST con CSRF, limpia el borrador y vuelve al acceso. El navegador vuelve a comprobar la sesión al retroceder y al recuperar una página desde su caché de navegación.
+
+El paso Tu empresa consulta primero las empresas del usuario. Si ya tiene una, muestra su nombre, Entrar a mi empresa y Salir y usar otra cuenta; no muestra el formulario de creación. El servidor conserva la unicidad de la prueba por cuenta y rechaza otra creación por un propietario existente, incluso si se llama directamente a la API. Las repeticiones idénticas siguen siendo idempotentes y no reinician los 15 días.
+
+Comprobación del caso reportado: ingcuetoebcc@gmail.com tiene una sola empresa activa, magiccomputer. No fue necesario borrar empresas. No se cambian contraseñas, correo ni privilegios de OUTSOLUTECH.
+
+Validación: pruebas de identidad HTTP, HTTPS y trials; prueba ejecutable del JavaScript real para sesión, retroceso, salida y recuperación de correo existente. El despliegue del control no modifica el Odoo operativo ni necesita volver a migrar los datos de empresa.

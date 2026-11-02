@@ -9,6 +9,9 @@ from .onboarding import Onboarding
 
 TRIAL_SECONDS = 15 * 24 * 60 * 60
 
+class TrialCompanyExists(IdentityError):
+    pass
+
 
 class Trials:
     def __init__(self, identity):
@@ -36,7 +39,16 @@ class Trials:
             raise ValueError('Selección inválida.')
         if consent is not True:
             raise ValueError('Revisa las condiciones de la prueba.')
-        # Register remains generic and rate limited; no account enumeration.
+        # The public trial explicitly identifies an existing email, as requested.
+        # Never create another account or silently replace a pending email link.
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            if not self.identity._allow('trial_register',email):
+                return {'message':'Espera unos minutos antes de intentarlo otra vez.','rate_limited':True}
+            existing=self.db.execute('SELECT verified FROM accounts WHERE email=?',(email,)).fetchone()
+            if existing:
+                return {'account_exists':True,'verification_required':not bool(existing['verified']),
+                        'message':'Ya existe una cuenta con este correo. Inicia sesión o utiliza otro correo.' if existing['verified'] else 'Este correo ya tiene una cuenta pendiente de confirmación. Puedes reenviar el enlace o utilizar otro correo.'}
         result = self.identity.register(email)
         with self.db:
             row = self.db.execute('SELECT id FROM accounts WHERE email=? AND verified=0 AND active=1', (email,)).fetchone()
@@ -71,8 +83,10 @@ class Trials:
                 tenant_id = old['tenant_id']
                 existing = self.db.execute('SELECT modules FROM tenants WHERE id=?', (tenant_id,)).fetchone()
                 if (old['name'], old['country'], old['currency'], json.loads(existing['modules'])) != (name.strip(), country, currency, modules):
-                    raise ValueError('Ya existe tu empresa de prueba. Continúa con ella.')
+                    raise TrialCompanyExists('Esta cuenta ya tiene una empresa de prueba. Entra a ella para continuar.')
             else:
+                if self.db.execute("SELECT 1 FROM memberships WHERE account_id=? AND role='owner' AND active=1",(account['id'],)).fetchone():
+                    raise TrialCompanyExists('Esta cuenta ya tiene una empresa. Entra a ella para continuar.')
                 # No technical hostname is requested from the user or accepted as input.
                 tenant = self.identity.registry._reserve_in_transaction('empresa-' + uuid.uuid4().hex[:16], modules, 'trial:' + account['id'])
                 tenant_id = tenant['id']

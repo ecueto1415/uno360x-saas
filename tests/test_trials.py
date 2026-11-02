@@ -4,7 +4,7 @@ from pathlib import Path
 
 from control.identity import IdentityService, IdentityError
 from control.onboarding import Onboarding
-from control.trials import Trials, TRIAL_SECONDS, check_trial_access
+from control.trials import Trials, TrialCompanyExists, TRIAL_SECONDS, check_trial_access
 from tests.test_onboarding import FakeAdapter
 
 
@@ -24,6 +24,21 @@ class TrialTests(unittest.TestCase):
         self.assertEqual(self.trials.draft(self.session)['modules'], ['payroll_hr'])
         self.trials.register('trial@example.test','Otro nombre',[],True)
         self.assertEqual(self.trials.draft(self.session)['name'], 'Persona ficticia')
+    def test_existing_email_is_explicit_without_new_account_or_verification_mail(self):
+        before=self.identity.db.execute('SELECT count(*) FROM accounts').fetchone()[0];mail_count=len(self.mail)
+        result=self.trials.register('TRIAL@example.test','Another name',[],True)
+        self.assertTrue(result['account_exists']);self.assertFalse(result['verification_required'])
+        self.assertEqual(self.identity.db.execute('SELECT count(*) FROM accounts').fetchone()[0],before)
+        self.assertEqual(len(self.mail),mail_count)
+        self.trials.register('pending@example.test','Pending',[],True);token=self.mail[-1]['token'];mail_count=len(self.mail)
+        result=self.trials.register('pending@example.test','Pending again',[],True)
+        self.assertTrue(result['account_exists']);self.assertTrue(result['verification_required']);self.assertEqual(len(self.mail),mail_count)
+        self.identity.complete_registration(token,'Pending fictional password 2026!')
+    def test_existing_owner_cannot_create_another_trial_through_history_or_api(self):
+        self.identity.create_company(self.session,'existing-owner',[],'existing-owner-request')
+        before=self.identity.db.execute('SELECT count(*) FROM tenants').fetchone()[0]
+        with self.assertRaises(TrialCompanyExists):self.create()
+        self.assertEqual(self.identity.db.execute('SELECT count(*) FROM tenants').fetchone()[0],before)
     def test_create_retries_are_idempotent_and_one_trial_per_account(self):
         first=self.create();second=self.create()
         self.assertEqual(first['tenant_id'], second['tenant_id'])
