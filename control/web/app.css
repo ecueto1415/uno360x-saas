@@ -3,3 +3,6 @@
 .site-nav,.home-trial{--teal:#12877c}
 
 @media(max-width:380px){.site-nav .nav-actions{display:none}.site-nav .mobile-menu{margin-left:auto}}
+
+/* Empty registration steps must not reserve space above account entry. */
+.stepper:empty{display:none}.auth-main>#notice{display:none}.auth-card .login-message{background:none;border:0;padding:0;color:var(--ink);font-size:13px;font-weight:600;line-height:1.5;margin:10px 0 0}.auth-card .login-message:not([hidden])+.fineprint{margin-top:12px}
