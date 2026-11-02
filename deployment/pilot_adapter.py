@@ -1,8 +1,18 @@
 """Private broker adapter. Tenant HTTP is published to host loopback only."""
-import json,socket
+import json,socket,time,urllib.request,urllib.error
 from deployment.shared_adapter import SharedHostAdapter
 from deployment.https_pilot import checked_origin
 class PilotAdapter(SharedHostAdapter):
+ def wait_backend(self,port):
+  opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+  base='http://127.0.0.1:'+str(port)
+  for _ in range(30):
+   try:
+    with opener.open(base+'/web/login',timeout=2) as response:
+     if response.status==200:return base
+   except (OSError,urllib.error.URLError):pass
+   time.sleep(0.2)
+  raise RuntimeError('Private application proxy is not ready')
  def backend(self,s):
   import fcntl
   with (self.state/'proxy-ports.lock').open('a') as lock:
@@ -43,7 +53,7 @@ class PilotAdapter(SharedHostAdapter):
   ports=info['HostConfig']['PortBindings']
   if ports!={'18069/tcp':[{'HostIp':'127.0.0.1','HostPort':str(port)}]}:raise RuntimeError('Unexpected proxy publication')
   if not info['State']['Running']:self.run('start',proxy)
-  return 'http://127.0.0.1:'+str(port)
+  return self.wait_backend(port)
  def configure_company(self,s,profile,origin):
   checked_origin(origin)
   super().configure_company(s,profile,'http://127.0.0.1:18184')
