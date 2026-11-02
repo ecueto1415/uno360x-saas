@@ -14,7 +14,7 @@ def main():
  delivery=SMTPDelivery.from_file(STATE/'mail-resend.json')
  if delivery.config['public_origin']!=config['central_origin']:raise RuntimeError('Mail origin must match identity origin')
  manager=HTTPSGatewayManager(STATE/'control.sqlite3',PilotAdapter(),config['central_origin'],config['tenant_origin'],shared_origin=config.get('shared_gateway',False))
- server=HTTPSIdentityServer(18183,STATE/'control.sqlite3',delivery,manager.launch,config['central_origin'],config.get('allowed_emails',[]),config['tenant_origin'],public_signup=config.get('public_signup',False))
+ server=HTTPSIdentityServer(18183,STATE/'control.sqlite3',delivery,manager.launch,config['central_origin'],config.get('allowed_emails',[]),config['tenant_origin'],public_signup=config.get('public_signup',False),operational_login=config.get('operational_login',False),operational_directory=config.get('operational_directory'))
  try:server.serve_forever()
  finally:server.server_close();manager.close()
 if __name__=='__main__':main()

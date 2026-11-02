@@ -6,13 +6,13 @@ const file=new URL('../control/web/app.js',import.meta.url);
 const source=fs.readFileSync(file,'utf8').replace(/^\(async\(\)=>\{.*$/m,'');
 const elements=new Map(),calls=[],navLinks=[{},{}],redirects=[],listeners={};
 function element(key){if(!elements.has(key))elements.set(key,{innerHTML:'',hidden:false,classList:{add(){},remove(){}},scrollIntoView(){},addEventListener(){}});return elements.get(key);}
-let companiesState=[{id:'existing-company',name:'Existing Company',slug:'existing-company'}];let loginStatus=200;let authenticated=true,launchFailure=false,readyState={is_trial:true,local_ready:true,trial_active:true,expires:2000000000,days_remaining:15,name:"Existing Company"};const submissions=[];
+let companiesState=[{id:'existing-company',name:'Existing Company',slug:'existing-company'}];let loginStatus=200;let authenticated=true,launchFailure=false,readyState={is_trial:true,local_ready:true,trial_active:true,expires:2000000000,days_remaining:15,name:"Existing Company"};const submissions=[];let nativeLaunch=false,nativeLaunchUrl="https://erp.uno360x.com/__operational/enter";
 const context=vm.createContext({
  document:{createElement:tag=>({tag,append(){},submit(){submissions.push(this.action);}}),body:{append(){}},querySelector:selector=>selector==='#login-message'&&!element('#screen').innerHTML.includes('id="login-message"')?null:element(selector),querySelectorAll:selector=>selector==='[data-session-action]'?navLinks:[],addEventListener(){}},
  location:{pathname:'/prueba/inicio',search:''},history:{state:null,pushState(a,b,path){this.state=a;const u=new URL(path,'https://cuenta.uno360x.com');context.location.pathname=u.pathname;context.location.search=u.search;},replaceState(a,b,path){this.state=a;const u=new URL(path,'https://cuenta.uno360x.com');context.location.pathname=u.pathname;context.location.search=u.search;}},window:{location:{replace(path){redirects.push(path);}},addEventListener(name,handler){listeners[name]=handler;},scrollTo(){}},
  sessionStorage:{getItem:()=>JSON.stringify({name:'Old name',email:'old@example.test',modules:['payroll_hr','jenifer_ai','projects_services']}),setItem(){}},
  setTimeout,clearTimeout,URLSearchParams,URL,
- fetch:async(path)=>{calls.push(path);if(path==='/logout')authenticated=false;return {ok:(path!='/session'||authenticated)&&!(path==='/spaces/open'&&launchFailure)&&!(path==='/login'&&loginStatus!==200),status:path==='/login'?loginStatus:200,json:async()=>path==='/session'?{email:'existing@example.test',csrf_token:'fictional-csrf'}:path==='/companies'?{companies:companiesState}:path==='/trial/draft'?{name:'Saved signup name',modules:['projects_services']}:path==='/trial/status'?readyState:path==='/spaces/open'?(launchFailure?{error:'Acceso temporalmente no disponible'}:{launch_url:'http://127.0.0.1:18001/__launch',grant:'fictional-grant'}):{logged_out:true}};},
+ fetch:async(path)=>{calls.push(path);if(path==='/logout')authenticated=false;return {ok:(path!='/session'||authenticated)&&!(path==='/spaces/open'&&launchFailure)&&!(path==='/login'&&loginStatus!==200),status:path==='/login'?loginStatus:200,json:async()=>path==='/session'?{email:'existing@example.test',csrf_token:'fictional-csrf'}:path==='/companies'?{companies:companiesState}:path==='/trial/draft'?{name:'Saved signup name',modules:['projects_services']}:path==='/trial/status'?readyState:path==='/spaces/open'?(launchFailure?{error:'Acceso temporalmente no disponible'}:{launch_url:nativeLaunch?nativeLaunchUrl:'http://127.0.0.1:18001/__launch',grant:'fictional-grant',operational_access:nativeLaunch}):{logged_out:true}};},
 });
 vm.runInContext(source,context);
 await vm.runInContext('render()',context);
@@ -111,3 +111,17 @@ await vm.runInContext("message('')",context);assert.equal(element('#login-messag
 loginStatus=429;
 await assert.rejects(vm.runInContext("api('/login',{})",context),error=>error.message!=='Contraseña incorrecta.');
 console.log('Incorrect credentials use inline login feedback; rate limits retain their own error.');
+
+// Operational entry must skip trial setup and accept only the fixed ERP exchange.
+authenticated=true;loginStatus=200;nativeLaunch=true;
+companiesState=[{id:'__operational__',name:'OUTSOLUTECH',operational:true}];
+const nativeBefore=submissions.length,nativeTrialCalls=calls.filter(p=>p==='/trial/status').length;
+await vm.runInContext('refreshSession().then(()=>afterLogin())',context);
+assert.equal(submissions.length,nativeBefore+1);
+assert.equal(submissions.at(-1),'https://erp.uno360x.com/__operational/enter');
+assert.equal(calls.filter(p=>p==='/trial/status').length,nativeTrialCalls,'Native companies must never be prepared as a SaaS trial');
+assert.equal(element('.stepper').innerHTML,'');
+nativeLaunchUrl='https://erp.uno360x.com.evil.example/__operational/enter';
+await vm.runInContext("openOdoo('__operational__')",context);
+assert.equal(submissions.length,nativeBefore+1,'A response flag must not permit an untrusted handoff destination');
+console.log('Unified native entry skips creation steps and rejects altered ERP destinations.');

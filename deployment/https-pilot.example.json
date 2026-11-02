@@ -6,5 +6,7 @@
     "ecueto@outsolutech.com"
   ],
   "public_signup": false,
-  "shared_gateway": false
+  "shared_gateway": false,
+  "operational_login": false,
+  "operational_directory": "/var/lib/uno360x-saas/operational-directory.json"
 }

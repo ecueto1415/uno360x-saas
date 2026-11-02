@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh native login identifiers without copying credentials
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+AccuracySec=1
+[Install]
+WantedBy=timers.target

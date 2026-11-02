@@ -1,0 +1,9 @@
+[Unit]
+Description=Read-only OUTSOLUTECH login directory for unified access
+After=postgresql.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/uno360x/refresh-operational-directory.py
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
