@@ -19,6 +19,15 @@ DEMO = 'E310000000001'
 def canonical(node):
     return etree.tostring(node, method='c14n', exclusive=False, with_comments=False)
 
+
+def canonical_signed_info(node):
+    # A standalone namespace-preserving round trip avoids libxml2 inserting
+    # spurious xmlns="" declarations in default-namespace SignedInfo subtrees.
+    # The declared inclusive C14N algorithm, reference digest and RSA/SHA256
+    # verification are unchanged; no exclusive-C14N fallback is accepted.
+    standalone = etree.fromstring(etree.tostring(node), etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False))
+    return canonical(standalone)
+
 def parse(xml):
     if len(xml) > 5_000_000:
         raise ValueError('XML demasiado grande.')
@@ -71,7 +80,7 @@ def sign_xml(xml, p12, password):
     child(transforms, 'Transform', Algorithm=DS + 'enveloped-signature')
     child(ref, 'DigestMethod', Algorithm=SHA256)
     child(ref, 'DigestValue').text = digest
-    child(sig, 'SignatureValue').text = base64.b64encode(key.sign(canonical(info), padding.PKCS1v15(), hashes.SHA256())).decode()
+    child(sig, 'SignatureValue').text = base64.b64encode(key.sign(canonical_signed_info(info), padding.PKCS1v15(), hashes.SHA256())).decode()
     data = child(child(sig, 'KeyInfo'), 'X509Data')
     child(data, 'X509Certificate').text = base64.b64encode(cert.public_bytes(serialization.Encoding.DER)).decode()
     result = etree.tostring(root, encoding='UTF-8', xml_declaration=True, pretty_print=False)
@@ -102,5 +111,5 @@ def verify_xml(xml, trusted_cert):
     unsigned.remove(unsigned.find('{%s}Signature' % DS))
     if hashlib.sha256(canonical(unsigned)).digest() != base64.b64decode(ref.findtext('ds:DigestValue', namespaces=ns), validate=True):
         raise ValueError('El contenido XML cambió después de firmarse.')
-    trusted_cert.public_key().verify(base64.b64decode(sig.findtext('ds:SignatureValue', namespaces=ns), validate=True), canonical(info), padding.PKCS1v15(), hashes.SHA256())
+    trusted_cert.public_key().verify(base64.b64decode(sig.findtext('ds:SignatureValue', namespaces=ns), validate=True), canonical_signed_info(info), padding.PKCS1v15(), hashes.SHA256())
     return True

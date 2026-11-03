@@ -2,16 +2,17 @@ import importlib.util
 import pathlib
 import tempfile
 import unittest
+import base64
 from datetime import datetime,timedelta,timezone
 from concurrent.futures import ThreadPoolExecutor
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes,serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import rsa,padding
 from cryptography.hazmat.primitives.serialization import pkcs12
 from lxml import etree
 from certification.receiver import Inbox,RECEPTION,APPROVAL,upload,compile_schema,SCHEMAS
-from certification.xmlsig import sign_xml,verify_xml,parse
+from certification.xmlsig import sign_xml,verify_xml,parse,canonical_signed_info,DS
 
 
 class ReceiverTests(unittest.TestCase):
@@ -64,6 +65,15 @@ class ReceiverTests(unittest.TestCase):
         xml=self.invoice().replace(b'<NombreItem>Prueba</NombreItem>',b'<NombreItem>CAMBIO</NombreItem>')
         status,ack=self.inbox.receive(RECEPTION,xml)
         self.assertEqual(status,200);self.assertEqual(parse(ack).findtext('DetalleAcusedeRecibo/CodigoMotivoNoRecibido'),'2')
+
+    def test_default_namespace_signature_retains_declared_inclusive_c14n(self):
+        xml=self.invoice().replace(b'ds:',b'').replace(b'xmlns:ds=',b'xmlns=')
+        root=parse(xml);sig=root.find('{%s}Signature'%DS);info=sig.find('{%s}SignedInfo'%DS)
+        sig.find('{%s}SignatureValue'%DS).text=base64.b64encode(self.sender[0].sign(canonical_signed_info(info),padding.PKCS1v15(),hashes.SHA256())).decode()
+        signed=etree.tostring(root)
+        self.assertTrue(verify_xml(signed,self.sender[1]))
+        self.assertEqual(parse(self.inbox.receive(RECEPTION,signed)[1]).findtext('DetalleAcusedeRecibo/Estado'),'0')
+        self.assertEqual(parse(self.inbox.receive(RECEPTION,signed.replace(b'Prueba',b'Cambio'))[1]).findtext('DetalleAcusedeRecibo/CodigoMotivoNoRecibido'),'2')
 
     def test_wrong_destination_never_accepts(self):
         _,ack=self.inbox.receive(RECEPTION,self.invoice('111111111'))
