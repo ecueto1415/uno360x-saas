@@ -91,13 +91,21 @@ class Onboarding:
             with self.db:
                 self.db.execute("UPDATE preparation_jobs SET status='running',updated=? WHERE id=?",(self.identity.clock(),job_id))
                 self.db.execute('DELETE FROM preparation_steps WHERE job_id=?',(job_id,))
+            import time as duration_clock
+            resource_names=adapter.names(snapshot) if hasattr(adapter,'names') else None
+            timing_path=resource_names['directory']/'preparation-timing.json' if isinstance(resource_names,dict) and resource_names.get('directory') else None
+            timings=[]
             for step in STEPS:
                 with self.db:
                     self.db.execute('UPDATE preparation_jobs SET current_step=?,updated=? WHERE id=?',(step,self.identity.clock(),job_id))
                 try:
                     # Reconcile every step. A recorded success cannot hide a
                     # missing/stopped resource after a process or host crash.
+                    step_started=duration_clock.monotonic()
                     getattr(adapter,step)(snapshot)
+                    timings.append({'step':step,'seconds':round(duration_clock.monotonic()-step_started,3)})
+                    if timing_path:
+                        timing_path.write_text(json.dumps({'steps':timings,'seconds':round(sum(x['seconds'] for x in timings),3)}));timing_path.chmod(0o600)
                 except Exception:
                     with self.db:
                         self.db.execute("UPDATE preparation_jobs SET status='failed',updated=? WHERE id=?",(self.identity.clock(),job_id))

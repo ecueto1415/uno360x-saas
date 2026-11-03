@@ -125,3 +125,21 @@ nativeLaunchUrl='https://erp.uno360x.com.evil.example/__operational/enter';
 await vm.runInContext("openOdoo('__operational__')",context);
 assert.equal(submissions.length,nativeBefore+1,'A response flag must not permit an untrusted handoff destination');
 console.log('Unified native entry skips creation steps and rejects altered ERP destinations.');
+
+// A queued creation must not trap its owner in the same session or create again.
+nativeLaunch=false;authenticated=true;companiesState=[{id:'existing-company',name:'Existing Company'}];
+readyState={is_trial:true,local_ready:false,status:'queued',current_step:'capacity',completed_steps:[],name:'Queued Company'};
+await vm.runInContext("tenantId='existing-company';history.replaceState({},'','/prueba/preparando');refreshSession().then(()=>render())",context);
+assert(element('#screen').innerHTML.includes('Iniciar sesión con otra cuenta'));
+const createsBefore=calls.filter(p=>p==='/trial/create').length;
+await element('#switch-pending-account').onclick({target:{disabled:false}});
+await new Promise(resolve=>setImmediate(resolve));
+assert.equal(context.location.pathname,'/web/login');
+assert(element('#screen').innerHTML.includes('id="login-form"'));
+assert.equal(vm.runInContext('tenantId',context),'');
+assert.equal(calls.filter(p=>p==='/trial/create').length,createsBefore);
+authenticated=true;
+await vm.runInContext("history.replaceState({},'','/web/login?cambiar=cuenta');refreshSession().then(()=>render())",context);
+assert(element('#screen').innerHTML.includes('Iniciar sesión con otra cuenta'));
+vm.runInContext('clearTimeout(timer)',context);
+console.log('Pending creation permits account switching without cancelling or duplicating the company.');

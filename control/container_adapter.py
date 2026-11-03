@@ -129,7 +129,11 @@ http_interface = 0.0.0.0
         else:
             self.check_container(n['database'],s);self.run('start',n['database'])
         for _ in range(60):
-            if self.run('exec',n['database'],'pg_isready','-U','postgres','-d',n['role'],check=False).returncode==0:return
+            # pg_isready alone also succeeds during the image's temporary
+            # bootstrap server, before the tenant DB exists. Wait for PID 1
+            # to be the final PostgreSQL server and verify the actual database.
+            probe=self.run('exec',n['database'],'sh','-c',"test \"$(cat /proc/1/comm)\" = postgres && psql -U postgres -d "+n['role']+" -Atc 'SELECT 1'",check=False)
+            if probe.returncode==0 and probe.stdout.strip()=='1':return
             time.sleep(1)
         raise RuntimeError('Base de datos no disponible.')
 
@@ -156,7 +160,7 @@ http_interface = 0.0.0.0
             if info['State']['Running'] or info['State']['ExitCode']!=0:
                 raise RuntimeError('Instalación pendiente; revisar sin duplicar recursos.')
         else:
-            result=self.run('run','--name',n['init'],'--log-driver','k8s-file',*self.common(s),self.images['odoo:18.0'],
+            result=self.run('run','--name',n['init'],'--log-driver','k8s-file','--oom-score-adj','500',*self.common(s),self.images['odoo:18.0'],
                        'odoo','-c','/etc/odoo/odoo.conf','-i',','.join(addons),'--without-demo=all','--stop-after-init',
                        '--test-enable','--test-tags','/uno360x_auth_bridge',check=False)
             (n['directory']/'install.log').write_text(result.stdout+'\n'+result.stderr)
@@ -173,8 +177,21 @@ http_interface = 0.0.0.0
         actual=self.sql(s,"SELECT name FROM ir_module_module WHERE state='installed' AND name IN (%s) ORDER BY name"%','.join("'%s'"%name for name in wanted)).splitlines()
         if actual!=wanted:raise RuntimeError('Instalación incompleta.')
 
+    @contextmanager
+    def batch_shell(self,s):
+        if hasattr(self,'_shell_scripts'):raise RuntimeError('Nested identity batch')
+        self._shell_scripts=[]
+        try:
+            yield
+            scripts=self._shell_scripts
+        finally:
+            del self._shell_scripts
+        if scripts:self.shell(s,'\n'.join(scripts))
+
     def shell(self,s,code):
-        result=self.run('run','--rm','-i',*self.common(s),self.images['odoo:18.0'],
+        if hasattr(self,'_shell_scripts'):
+            self._shell_scripts.append(code);return 'UNO360X_OK'
+        result=self.run('run','--rm','-i','--oom-score-adj','500',*self.common(s),self.images['odoo:18.0'],
                    'odoo','shell','-c','/etc/odoo/odoo.conf','--no-http',input=code,check=False)
         if result.returncode or 'UNO360X_OK' not in result.stdout:
             raise RuntimeError('Configuración local no comprobada.')

@@ -18,10 +18,11 @@ def pending_jobs(db,initial):
 def main():
  os.umask(0o077);adapter=SharedHostAdapter();STATE.mkdir(mode=0o700,exist_ok=True)
  service=IdentityService(STATE/'control.sqlite3',lambda notice:None);jobs=Onboarding(service)
- initial=True
+ initial=True;next_expiration_sweep=0
  try:
   while True:
-   if service.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():
+   if time.monotonic()>=next_expiration_sweep and service.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():
+    next_expiration_sweep=time.monotonic()+60
     for expired in service.db.execute("SELECT p.snapshot FROM preparation_jobs p JOIN trial_workspaces t ON p.tenant_id=t.tenant_id WHERE t.expires IS NOT NULL AND t.expires<=?",(time.time(),)).fetchall():
      try:adapter.stop_expired(json.loads(expired[0]))
      except Exception:print('expired_compute_cleanup_pending',flush=True)
@@ -32,6 +33,6 @@ def main():
      with service.db:service.db.execute("UPDATE preparation_jobs SET current_step='capacity' WHERE status='queued' AND (current_step IS NULL OR current_step='capacity')")
      break
     except Exception:print(job+' preparation_failed_review_private_state',flush=True)
-   initial=False;time.sleep(3)
+   initial=False;time.sleep(1)
  finally:service.close()
 if __name__=='__main__':main()
