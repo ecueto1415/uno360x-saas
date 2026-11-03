@@ -31,7 +31,9 @@ def otp(secret,counter):
 def csrf(token):return hmac.new(token.encode(),b'uno360x-owner-csrf',hashlib.sha256).hexdigest()
 
 class Auth:
- def __init__(self,state,owner,clock=time.time):
+ def __init__(self,state,owner,clock=time.time,factor="totp",delivery=None):
+  if factor not in ("totp","email"):raise ValueError("Unsupported authentication factor")
+  self.factor=factor;self.delivery=delivery
   self.state=Path(state);self.state.mkdir(mode=0o700,parents=True,exist_ok=True);self.owner=owner;self.clock=clock
   key=self.state/'mfa.key'
   if not key.exists():
@@ -47,6 +49,7 @@ class Auth:
    CREATE TABLE IF NOT EXISTS sessions(digest TEXT PRIMARY KEY,expires REAL NOT NULL,last_seen REAL NOT NULL,agent TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS recovery(digest TEXT PRIMARY KEY,used INTEGER NOT NULL DEFAULT 0);
    CREATE TABLE IF NOT EXISTS limits(bucket TEXT PRIMARY KEY,started REAL NOT NULL,count INTEGER NOT NULL);
+   CREATE TABLE IF NOT EXISTS email_codes(challenge TEXT PRIMARY KEY,code TEXT NOT NULL,created REAL NOT NULL,expires REAL NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,used INTEGER NOT NULL DEFAULT 0);
    CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,event TEXT NOT NULL,occurred REAL NOT NULL);
   ''')
   (self.state/'auth.sqlite3').chmod(0o600)
@@ -73,19 +76,25 @@ class Auth:
    self.db.execute('BEGIN IMMEDIATE')
    row=self.db.execute('SELECT * FROM enrollment WHERE digest=? AND used=0 AND expires>?',(digest(token),self.clock())).fetchone()
    if not row or self.db.execute('SELECT 1 FROM owner').fetchone():raise Denied('Enlace inválido o vencido.')
+  if self.factor=='email':
+   self.issue_email(token,'activation',ip);return {'email':self.owner,'factor':'email','expires_seconds':600}
+  with self.db:
    secret=self.cipher.decrypt(row['secret']).decode() if row['secret'] else base64.b32encode(secrets.token_bytes(20)).decode().rstrip('=')
    self.db.execute('UPDATE enrollment SET secret=? WHERE digest=?',(self.cipher.encrypt(secret.encode()),digest(token)))
   return {'email':self.owner,'secret':secret}
  def finish_enrollment(self,token,password,code,agent,ip):
   self.allow('activate-finish:'+ip)
   encoded=password_hash(password)
+  if self.factor=='email':self.check_email(token,'activation',code)
   with self.db:
    self.db.execute('BEGIN IMMEDIATE')
    row=self.db.execute('SELECT * FROM enrollment WHERE digest=? AND used=0 AND expires>?',(digest(token),self.clock())).fetchone()
-   if not row or not row['secret'] or self.db.execute('SELECT 1 FROM owner').fetchone():raise Denied('Enlace inválido o vencido.')
-   secret=self.cipher.decrypt(row['secret']).decode();counter=self.valid_counter(secret,code,-1)
-   self.db.execute('INSERT INTO owner VALUES (?,?,?,?)',(self.owner,encoded,row['secret'],counter));self.db.execute('UPDATE enrollment SET used=1,secret=NULL')
-   codes=[secrets.token_hex(6) for _ in range(8)]
+   if not row or (self.factor=='totp' and not row['secret']) or self.db.execute('SELECT 1 FROM owner').fetchone():raise Denied('Enlace inválido o vencido.')
+   if self.factor=='totp':
+    secret=self.cipher.decrypt(row['secret']).decode();counter=self.valid_counter(secret,code,-1);stored_secret=row['secret']
+   else:counter=-1;stored_secret=self.cipher.encrypt(b'')
+   self.db.execute('INSERT INTO owner VALUES (?,?,?,?)',(self.owner,encoded,stored_secret,counter));self.db.execute('UPDATE enrollment SET used=1,secret=NULL')
+   codes=[secrets.token_hex(6) for _ in range(8)] if self.factor=='totp' else []
    self.db.executemany('INSERT INTO recovery(digest) VALUES (?)',[(digest(c),) for c in codes]);session=self.create_session(agent);self.audit('owner_activated')
   return session,codes
  def valid_counter(self,secret,code,last):
@@ -103,10 +112,12 @@ class Auth:
    raise Denied('Correo o contraseña incorrectos.')
   token=secrets.token_urlsafe(32)
   with self.db:
-   self.db.execute('DELETE FROM challenges WHERE expires<=?',(self.clock(),));self.db.execute('INSERT INTO challenges VALUES (?,?,?)',(digest(token),self.clock()+300,digest(agent)));self.audit('password_verified')
+   self.db.execute('DELETE FROM challenges WHERE expires<=?',(self.clock(),));self.db.execute('INSERT INTO challenges VALUES (?,?,?)',(digest(token),self.clock()+(600 if self.factor=='email' else 300),digest(agent)));self.audit('password_verified')
+  if self.factor=='email':self.issue_email(token,'login',ip)
   return token
  def mfa(self,challenge,code,agent,ip):
   self.allow('mfa:'+ip)
+  if self.factor=='email':return self.email_session(challenge,code,agent,ip)
   with self.db:
    self.db.execute('BEGIN IMMEDIATE')
    row=self.db.execute('SELECT * FROM challenges WHERE digest=? AND expires>? AND agent=?',(digest(challenge),self.clock(),digest(agent))).fetchone()
@@ -132,6 +143,48 @@ class Auth:
   if not row:raise Denied('Sesión vencida.')
   if touch:
    with self.db:self.db.execute('UPDATE sessions SET last_seen=? WHERE digest=?',(now,digest(token)))
-  return {'email':self.owner,'role':'owner','csrf_token':csrf(token)}
+  return {'email':self.owner,'role':'owner','csrf_token':csrf(token),'factor':self.factor}
  def logout(self,token):
   with self.db:self.db.execute('DELETE FROM sessions WHERE digest=?',(digest(token),));self.audit('logout')
+
+ def mail_digest(self,challenge,code):
+  return hmac.new((self.state/'mfa.key').read_bytes(),(challenge+':'+code).encode(),hashlib.sha256).hexdigest()
+ def issue_email(self,token,purpose,ip):
+  key=digest(purpose+':'+token);now=self.clock()
+  row=self.db.execute('SELECT * FROM email_codes WHERE challenge=?',(key,)).fetchone()
+  if row and now-row['created']<60 and row['expires']>now and row['used']==0:return
+  self.allow('email-owner',5);self.allow('email-ip:'+ip,5)
+  if self.delivery is None:raise RuntimeError('Mail transport unavailable')
+  code=str(secrets.randbelow(1000000)).zfill(6);hashed=self.mail_digest(key,code)
+  with self.db:
+   self.db.execute('DELETE FROM email_codes WHERE expires<?',(now-86400,))
+   self.db.execute('INSERT OR REPLACE INTO email_codes VALUES (?,?,?,?,0,0)',(key,hashed,now,now+600))
+  try:self.delivery(code)
+  except Exception:
+   with self.db:self.db.execute('DELETE FROM email_codes WHERE challenge=? AND code=?',(key,hashed));self.audit('email_delivery_failed')
+   raise RuntimeError('No pudimos enviar el código. Vuelve a intentarlo en unos minutos.') from None
+  with self.db:self.audit('email_code_sent')
+ def check_email(self,token,purpose,code):
+  key=digest(purpose+':'+token);accepted=False
+  with self.db:
+   self.db.execute('BEGIN IMMEDIATE');row=self.db.execute('SELECT * FROM email_codes WHERE challenge=?',(key,)).fetchone()
+   if row and row['expires']>self.clock() and row['attempts']<5 and not row['used']:
+    accepted=isinstance(code,str) and len(code)==6 and code.isdigit() and hmac.compare_digest(row['code'],self.mail_digest(key,code))
+    self.db.execute('UPDATE email_codes SET attempts=attempts+1,used=? WHERE challenge=?',(int(accepted),key))
+  if not accepted:raise Denied('Código incorrecto, vencido o ya utilizado. Solicita uno nuevo.')
+ def email_session(self,challenge,code,agent,ip):
+  row=self.db.execute('SELECT * FROM challenges WHERE digest=? AND expires>? AND agent=?',(digest(challenge),self.clock(),digest(agent))).fetchone()
+  if not row:raise Denied('Vuelve a iniciar sesión.')
+  self.check_email(challenge,'login',code)
+  with self.db:
+   self.db.execute('BEGIN IMMEDIATE')
+   row=self.db.execute('SELECT * FROM challenges WHERE digest=? AND expires>? AND agent=?',(digest(challenge),self.clock(),digest(agent))).fetchone()
+   if not row:raise Denied('Vuelve a iniciar sesión.')
+   self.db.execute('DELETE FROM challenges WHERE digest=?',(digest(challenge),));token=self.create_session(agent)
+   self.db.execute('DELETE FROM limits WHERE bucket IN (?,?)',(digest('login-owner'),digest('login-ip:'+ip)));self.audit('login_success')
+  return token
+ def resend_email(self,challenge,agent,ip):
+  if self.factor!='email':raise Denied('Solicitud no disponible.')
+  row=self.db.execute('SELECT * FROM challenges WHERE digest=? AND expires>? AND agent=?',(digest(challenge),self.clock(),digest(agent))).fetchone()
+  if not row:raise Denied('Vuelve a iniciar sesión.')
+  self.issue_email(challenge,'login',ip)

@@ -92,4 +92,62 @@ class OwnerHTTPTests(unittest.TestCase):
   status,headers,_,body=self.request('/');self.assertEqual(status,200);self.assertNotIn('unsafe-inline',headers['Content-Security-Policy']);self.assertEqual(headers['X-Frame-Options'],'DENY')
   self.assertNotIn(b'https://cdn',body)
 
+class OwnerEmailTests(unittest.TestCase):
+ def setUp(self):
+  self.tmp=tempfile.TemporaryDirectory();self.now=2000000000;self.codes=[]
+  self.auth=Auth(self.tmp.name,OWNER,clock=lambda:self.now,factor='email',delivery=self.codes.append)
+ def tearDown(self):self.auth.close();self.tmp.cleanup()
+ def enroll(self):
+  token=self.auth.new_enrollment();setup=self.auth.start_enrollment(token,'ip');self.assertNotIn('secret',setup)
+  code=self.codes[-1];session,codes=self.auth.finish_enrollment(token,PASS,code,'agent','ip');self.assertEqual(codes,[])
+  return token,code,session
+ def test_email_enrollment_login_password_first_and_single_use(self):
+  token,code,session=self.enroll();self.auth.account(session,'agent')
+  with self.assertRaises(Denied):self.auth.finish_enrollment(token,PASS,code,'agent','ip')
+  n=len(self.codes)
+  with self.assertRaises(Denied):self.auth.login(OWNER,'wrong','agent','ip')
+  self.assertEqual(len(self.codes),n)
+  challenge=self.auth.login(OWNER,PASS,'agent','ip');code=self.codes[-1]
+  with self.assertRaises(Denied):self.auth.account(challenge,'agent')
+  result=self.auth.mfa(challenge,code,'agent','ip');self.auth.account(result,'agent')
+  with self.assertRaises(Denied):self.auth.mfa(challenge,code,'agent','ip')
+  dump='\n'.join(self.auth.db.iterdump())
+  for value in (PASS,token,challenge,session):self.assertNotIn(value,dump)
+  self.assertNotEqual(self.auth.db.execute('SELECT code FROM email_codes ORDER BY created DESC LIMIT 1').fetchone()[0],digest(code))
+ def test_five_attempt_limit_and_expiration(self):
+  token=self.auth.new_enrollment();self.auth.start_enrollment(token,'ip');code=self.codes[-1]
+  for _ in range(5):
+   with self.assertRaises(Denied):self.auth.check_email(token,'activation','not-a-code')
+  with self.assertRaises(Denied):self.auth.check_email(token,'activation',code)
+  self.now+=61;self.auth.start_enrollment(token,'ip');code=self.codes[-1];self.now+=601
+  with self.assertRaises(Denied):self.auth.check_email(token,'activation',code)
+ def test_resend_throttles_and_invalidates_old_code(self):
+  token=self.auth.new_enrollment();self.auth.start_enrollment(token,'ip');old=self.codes[-1]
+  self.auth.start_enrollment(token,'ip');self.assertEqual(len(self.codes),1)
+  self.now+=61;self.auth.start_enrollment(token,'ip');self.assertEqual(len(self.codes),2)
+  row=self.auth.db.execute('SELECT * FROM email_codes').fetchone();self.assertEqual(row['code'],self.auth.mail_digest(digest('activation:'+token),self.codes[-1]))
+  self.assertEqual(row['attempts'],0)
+ def test_delivery_failure_never_authenticates(self):
+  token=self.auth.new_enrollment()
+  def fail(code):raise RuntimeError('provider details')
+  self.auth.delivery=fail
+  with self.assertRaises(RuntimeError):self.auth.start_enrollment(token,'ip')
+  self.assertEqual(self.auth.db.execute('SELECT count(*) FROM email_codes').fetchone()[0],0)
+  self.assertEqual(self.auth.db.execute('SELECT count(*) FROM owner').fetchone()[0],0)
+
+class OwnerEmailHTTPTests(OwnerHTTPTests):
+ def test_email_http_enrollment_and_login(self):
+  codes=[];self.server.factor='email';self.server.delivery=codes.append
+  a=Auth(self.state,OWNER,clock=lambda:self.now,factor='email',delivery=codes.append);token=a.new_enrollment();a.close()
+  self.assertEqual(self.request('/api/auth-config')[2]['factor'],'email')
+  status,_,setup,_=self.request('/api/enroll/start',{'token':token});self.assertEqual(status,200);self.assertNotIn('secret',setup)
+  self.assertEqual(self.request('/api/enroll/finish',{'token':token,'password':PASS,'code':codes[-1]})[0],200)
+  account=self.request('/api/session')[2];self.csrf=account['csrf_token'];self.assertEqual(account['factor'],'email')
+  self.assertEqual(self.request('/api/logout',{})[0],200)
+  self.assertEqual(self.request('/api/login',{'email':OWNER,'password':PASS})[2]['factor'],'email')
+  self.assertEqual(self.request('/api/overview')[0],401)
+  self.assertEqual(self.request('/api/mfa/resend',{})[0],200)
+  self.assertEqual(self.request('/api/mfa',{'code':codes[-1]})[0],200)
+  self.assertEqual(self.request('/api/overview')[0],200)
+
 if __name__=='__main__':unittest.main()

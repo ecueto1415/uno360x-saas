@@ -1,0 +1,27 @@
+[Unit]
+Description=UNO360X admin email verification relay
+After=network-online.target
+Wants=network-online.target
+[Service]
+User=uno360x-saas
+Group=uno360x-admin
+RuntimeDirectory=uno360x-admin-mail
+RuntimeDirectoryMode=0750
+ExecStart=/usr/bin/python3 /opt/uno360x-admin-mail/broker.py
+Restart=on-failure
+UMask=0007
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadWritePaths=/run/uno360x-admin-mail
+MemoryMax=64M
+CPUQuota=10%
+TasksMax=8
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+[Install]
+WantedBy=multi-user.target

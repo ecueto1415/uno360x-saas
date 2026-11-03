@@ -13,7 +13,8 @@ CSP="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' dat
 class Server(ThreadingHTTPServer):
  daemon_threads=True
  max_concurrent_requests=8
- def __init__(self,port,state,snapshot,owner='ecueto@outsolutech.com',origin='https://admin.uno360x.com'):
+ def __init__(self,port,state,snapshot,owner='ecueto@outsolutech.com',origin='https://admin.uno360x.com',factor='totp',delivery=None):
+  self.factor=factor;self.delivery=delivery
   self.state=Path(state);self.snapshot=Path(snapshot);self.owner=owner;self.origin=origin;self.host=urlsplit(origin).netloc;self.clock=time.time
   if origin!='https://admin.uno360x.com':raise ValueError('Dedicated administrative origin required')
   self.slots=threading.BoundedSemaphore(8)
@@ -44,7 +45,7 @@ class Handler(BaseHTTPRequestHandler):
    jar=SimpleCookie();jar.load(self.headers.get('Cookie',''));return jar[name].value if name in jar else ''
   except Exception:return ''
  def valid_origin(self):return self.headers.get('Host')==self.server.host and (self.command!='POST' or self.headers.get('Origin')==self.server.origin)
- def auth(self):return Auth(self.server.state,self.server.owner,clock=self.server.clock)
+ def auth(self):return Auth(self.server.state,self.server.owner,clock=self.server.clock,factor=self.server.factor,delivery=self.server.delivery)
  def agent(self):return self.headers.get('User-Agent','')[:512]
  def ip(self):
   try:return str(ipaddress.ip_address(self.headers.get('X-UNO360X-Client-IP',self.client_address[0])))
@@ -56,6 +57,7 @@ class Handler(BaseHTTPRequestHandler):
   assets={'/':('text/html','index.html'),'/login':('text/html','index.html'),'/activar':('text/html','index.html'),'/assets/admin.css':('text/css','admin.css'),'/assets/admin.js':('application/javascript','admin.js')}
   if route in assets:
    kind,name=assets[route];self.common(200,kind+'; charset=utf-8',(ROOT/'web'/name).read_bytes());return
+  if route=='/api/auth-config':self.reply(200,{'factor':self.server.factor});return
   if route=='/health':self.reply(200,{'status':'available'});return
   if route not in ('/api/session','/api/overview','/api/activity'):
    self.reply(404,{'error':'Ruta no disponible.'});return
@@ -73,7 +75,7 @@ class Handler(BaseHTTPRequestHandler):
   finally:auth.close()
  def do_POST(self):
   if not self.valid_origin():self.reply(403,{'error':'Origen no autorizado.'});return
-  if self.path not in ('/api/login','/api/mfa','/api/enroll/start','/api/enroll/finish','/api/logout'):
+  if self.path not in ('/api/login','/api/mfa','/api/mfa/resend','/api/enroll/start','/api/enroll/finish','/api/logout'):
    self.reply(404,{'error':'Ruta no disponible.'});return
   auth=None
   try:
@@ -84,7 +86,9 @@ class Handler(BaseHTTPRequestHandler):
    auth=self.auth()
    if self.path=='/api/login':
     challenge=auth.login(data.get('email'),data.get('password'),self.agent(),self.ip())
-    self.reply(200,{'mfa_required':True},[self.setcookie(CHALLENGE,challenge,300),self.setcookie(COOKIE)]);return
+    self.reply(200,{'mfa_required':True,'factor':self.server.factor},[self.setcookie(CHALLENGE,challenge,600 if self.server.factor=='email' else 300),self.setcookie(COOKIE)]);return
+   if self.path=='/api/mfa/resend':
+    auth.resend_email(self.cookie(CHALLENGE),self.agent(),self.ip());self.reply(200,{'sent':True});return
    if self.path=='/api/mfa':
     session=auth.mfa(self.cookie(CHALLENGE),data.get('code'),self.agent(),self.ip())
     self.reply(200,{'authenticated':True},[self.setcookie(COOKIE,session,28800),self.setcookie(CHALLENGE)]);return
@@ -106,7 +110,8 @@ class Handler(BaseHTTPRequestHandler):
 def main():
  os.umask(0o077)
  config=json.loads(Path('/etc/uno360x-admin.json').read_text())
- server=Server(18185,config['state'],config['snapshot'],config['owner'])
+ from admin_console.mail_client import send_code
+ server=Server(18185,config['state'],config['snapshot'],config['owner'],factor=config.get('factor','totp'),delivery=send_code)
  server.serve_forever()
 
 if __name__=='__main__':main()
