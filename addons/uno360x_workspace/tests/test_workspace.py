@@ -70,3 +70,21 @@ class TestWorkspace(TransactionCase):
   self.assertEqual(menu.action.res_model,'res.partner')
   self.assertIn(menu.id,ctx['allowed_menus'])
   self.assertFalse(self.service._search_menu('res.partner','contacts.menu_contacts',set()))
+
+ def test_approved_internal_views_render_without_operational_ids(self):
+  import datetime
+  from types import SimpleNamespace
+  env=self.env(user=self.user)
+  contact=self.env['res.partner'].create({'name':'Contact QA','company_id':self.env.company.id})
+  specs=[('reference_contacts',{}),('reference_contact',{'id':str(contact.id)}),('reference_billing',{})]
+  if 'project.project' in env.registry:
+   project=self.env['project.project'].create({'name':'Project QA','company_id':self.env.company.id})
+   specs.extend([('reference_projects',{}),('reference_project',{'id':str(project.id)})])
+  if 'hr.employee' in env.registry:specs.append(('reference_employees',{}))
+  for name,params in specs:
+   values=self.service._workspace_context();values.update(csrf='qa-token',panel_env=env,datetime=datetime,request=SimpleNamespace(env=env,params=params,httprequest=SimpleNamespace(args=params)))
+   with self.debug_mode():
+    from odoo.http import request as active_request
+    active_request.env=env;active_request.params=params;active_request.httprequest.args=params
+    html=str(self.env['ir.ui.view']._render_template('uno360x_workspace.'+name,values))
+   self.assertIn('UNO',html);self.assertNotIn('/odoo/action-303',html);self.assertNotIn('/odoo/action-379',html)

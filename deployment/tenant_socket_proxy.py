@@ -1,7 +1,7 @@
 """Fixed TCP tunnel inside an isolated tenant network; no HTTP credentials logged."""
 import re,select,socket,socketserver,sys
 TARGET=sys.argv[1]
-if not re.fullmatch(r'uno360x-pilot-[a-f0-9]{32}-app',TARGET):raise ValueError('Invalid target')
+if not re.fullmatch(r'uno360x-(?:pilot|bench)-[a-f0-9]{32}-app',TARGET):raise ValueError('Invalid target')
 class Handler(socketserver.BaseRequestHandler):
  def handle(self):
   upstream=None

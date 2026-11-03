@@ -1,6 +1,7 @@
 """Versioned, tenant-scoped workspace rollout. Never targets the native Odoo.
 Run as uno360x-saas from an immutable release. Default is a read-only plan.
-Stop SaaS worker and pilot before --apply; the operational odoo18 stays running.
+Stop the SaaS worker before --apply. --defer-publish keeps the old control profile
+until all tenant runtimes are validated. The operational odoo18 stays running.
 """
 import argparse,datetime,json,os,shutil,sqlite3,sys
 from pathlib import Path
@@ -10,7 +11,7 @@ from control.catalog import installation_profile
 CONTROL=Path('/var/lib/uno360x-saas/control/control.sqlite3')
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('tenant');parser.add_argument('--apply',action='store_true');args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('tenant');parser.add_argument('--apply',action='store_true');parser.add_argument('--defer-publish',action='store_true');args=parser.parse_args()
  os.umask(0o077);adapter=SharedHostAdapter();db=sqlite3.connect(CONTROL);db.row_factory=sqlite3.Row
  row=db.execute('SELECT * FROM preparation_jobs WHERE tenant_id=?',(args.tenant,)).fetchone()
  if not row or row['status']!='ready_local':raise RuntimeError('Ready SaaS tenant required')
@@ -20,7 +21,7 @@ def main():
  # This rollout installs the approved common workspace; business migrations need their own review.
  if set(target['addons'])-set(old['installation']['addons'])-{'uno360x_workspace'}:raise RuntimeError('Unexpected new business module')
  for name,version in old['installation']['addons'].items():
-  if name!='uno360x_workspace' and target['addons'].get(name)!=version:raise RuntimeError('Unreviewed business change: '+name)
+  if name not in {'uno360x_workspace','uno360x_payroll_hr'} and target['addons'].get(name)!=version:raise RuntimeError('Unreviewed business change: '+name)
  if row['fingerprint']==target['fingerprint']:
   print(json.dumps({'tenant':args.tenant,'status':'already_current','fingerprint':target['fingerprint']}));return
  new=dict(old,installation=target,resource_fingerprint=old.get('resource_fingerprint',old['installation']['fingerprint']))
@@ -36,7 +37,8 @@ def main():
   adapter.run('stop',n['app'])
   (backup/'tenant.sql').write_text(adapter.run('exec',n['database'],'pg_dump','-U','postgres','--no-owner','--no-acl',n['role']).stdout)
   adapter.run('volume','export','--output',str(backup/'files.tar'),n['files'])
-  result=adapter.run('run','--rm','--name',n['prefix']+'-workspace-upgrade',*adapter.common(new),adapter.images['odoo:18.0'],'odoo','-c','/etc/odoo/odoo.conf','-i','uno360x_workspace','-u','uno360x_workspace','--without-demo=all','--stop-after-init','--test-enable','--test-tags','/uno360x_workspace',check=False)
+  visual_modules=','.join(x for x in ('uno360x_workspace','uno360x_payroll_hr') if x in target['addons'])
+  result=adapter.run('run','--rm','--name',n['prefix']+'-workspace-upgrade',*adapter.common(new),adapter.images['odoo:18.0'],'odoo','-c','/etc/odoo/odoo.conf','-i','uno360x_workspace','-u',visual_modules,'--without-demo=all','--stop-after-init','--test-enable','--test-tags','/uno360x_workspace',check=False)
   (backup/'upgrade.log').write_text(result.stdout+'\n'+result.stderr)
   if result.returncode:raise RuntimeError('Workspace update failed. SaaS backup retained; native Odoo unaffected.')
   adapter.shell(new,"""home=env.ref('uno360x_workspace.action_home')
@@ -46,9 +48,19 @@ env['ir.config_parameter'].sudo().set_param('uno360x.workspace.release',%r)
 env['ir.cron'].search([]).write({'active':False})
 env.cr.commit();print('UNO360X_OK')
 """%target['fingerprint'])
-  adapter.run('rm',n['app'])
-  adapter.validation(new)
+  previous_app=n['app']+'-previous-'+stamp.lower()
+  adapter.run('rename',n['app'],previous_app)
+  try:
+   adapter.validation(new)
+  except Exception:
+   if adapter.exists('container',n['app']):adapter.check_container(n['app'],new);adapter.run('rm','-f',n['app'])
+   adapter.run('rename',previous_app,n['app']);adapter.run('start',n['app'])
+   raise
   adapter.check_modules(new)
+  if args.defer_publish:
+   pending={'job_id':row['id'],'tenant_id':args.tenant,'old_fingerprint':row['fingerprint'],'snapshot':new,'backup':str(backup),'previous_app':previous_app,'trial':json.loads((backup/'before.json').read_text())['trial']}
+   (n['directory']/'workspace-pending.json').write_text(json.dumps(pending));(n['directory']/'workspace-pending.json').chmod(0o600)
+   print(json.dumps({'tenant':args.tenant,'runtime':'validated','publication':'deferred','backup':str(backup),'native_odoo_touched':False}));return
   (n['directory']/'installed.json').write_text(json.dumps({'fingerprint':target['fingerprint']}))
   with db:
    db.execute('CREATE TABLE IF NOT EXISTS tenant_releases (tenant_id TEXT NOT NULL, fingerprint TEXT NOT NULL, previous_fingerprint TEXT NOT NULL, applied REAL NOT NULL, backup TEXT NOT NULL, PRIMARY KEY(tenant_id,fingerprint))')

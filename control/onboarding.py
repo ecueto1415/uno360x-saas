@@ -89,8 +89,9 @@ class Onboarding:
             if expected['fingerprint']!=row['fingerprint']:
                 raise PreparationError('El producto cambió; requiere migración explícita.')
             with self.db:
-                self.db.execute("UPDATE preparation_jobs SET status='running',updated=? WHERE id=?",(self.identity.clock(),job_id))
-                self.db.execute('DELETE FROM preparation_steps WHERE job_id=?',(job_id,))
+                if row['status']!='ready_local':
+                    self.db.execute("UPDATE preparation_jobs SET status='running',updated=? WHERE id=?",(self.identity.clock(),job_id))
+                    self.db.execute('DELETE FROM preparation_steps WHERE job_id=?',(job_id,))
             import time as duration_clock
             resource_names=adapter.names(snapshot) if hasattr(adapter,'names') else None
             timing_path=resource_names['directory']/'preparation-timing.json' if isinstance(resource_names,dict) and resource_names.get('directory') else None

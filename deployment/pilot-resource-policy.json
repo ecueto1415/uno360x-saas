@@ -1,0 +1,10 @@
+{
+  "max_active_tenants": null,
+  "saas_memory_max_bytes": 3221225472,
+  "saas_cpu_quota_percent": 150,
+  "per_app_memory_mib": 640,
+  "per_database_memory_mib": 192,
+  "native_odoo_modified": false,
+  "admission": "resource_headroom",
+  "minimum_new_tenant_headroom_mib": 1088
+}

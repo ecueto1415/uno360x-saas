@@ -62,6 +62,21 @@ class OnboardingTests(unittest.TestCase):
                 self.assertEqual(len(adapter.resources),5)
                 self.assertEqual(self.jobs.status(self.owner,self.tenant['id'])['status'],'ready_local')
 
+    def test_ready_reconciliation_keeps_existing_access_until_a_real_failure(self):
+        job,adapter=self.ready()
+        observed=[]
+        class Observe(FakeAdapter):
+            def __getattr__(inner,step):
+                ensure=super().__getattr__(step)
+                def check(snapshot):
+                    observed.append(self.jobs.status(self.owner,self.tenant['id'])['local_ready'])
+                    return ensure(snapshot)
+                return check
+        self.jobs.run(job['job_id'],Observe())
+        self.assertEqual(observed,[True]*len(STEPS))
+        with self.assertRaises(PreparationError):self.jobs.run(job['job_id'],FakeAdapter(fail='validation'))
+        self.assertFalse(self.jobs.status(self.owner,self.tenant['id'])['local_ready'])
+
     def test_product_change_is_rejected_instead_of_silent_update(self):
         job=self.jobs.request(self.owner,self.tenant['id'])
         with patch('control.onboarding.installation_profile',return_value={'fingerprint':'different'}):

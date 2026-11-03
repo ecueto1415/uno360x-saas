@@ -1,0 +1,2361 @@
+<odoo>
+  <template id="reference_contacts">
+    <t t-set="panel_env" t-value="(panel_env or request.env)['res.users'].with_context(lang=(panel_env or request.env).user.lang or 'es_ES').env" />
+    <t t-set="u" t-value="panel_env.user" />
+    <t t-set="en" t-value="(u.lang or 'es_ES').startswith('en')" />
+    <t t-set="company" t-value="panel_env.company" />
+    <t t-set="visible" t-value="panel_env['ir.ui.menu']._visible_menu_ids() if u.has_group('base.group_user') else []" />
+    <t t-set="today" t-value="datetime.date.today()" />
+    <t t-if="u.has_group('base.group_user')">
+      <t t-set="page_key" t-value="'contacts'" />
+      <t t-set="can_read" t-value="panel_env['res.partner'].check_access_rights('read',raise_exception=False)" />
+      <t t-set="query" t-value="str(request.params.get('q',''))[:100].strip()" />
+      <t t-set="kind" t-value="str(request.params.get('kind','all'))" />
+      <t t-set="page_num" t-value="min(10000,max(1,int(str(request.params.get('page','1'))))) if str(request.params.get('page','1')).isdigit() else 1" />
+      <t t-set="domain" t-value="[('active','=',True)]" />
+      <t t-if="query">
+        <t t-set="domain" t-value="domain+['|','|','|',('name','ilike',query),('email','ilike',query),('vat','ilike',query),('parent_id.name','ilike',query)]" />
+      </t>
+      <t t-if="kind in ['company','person']">
+        <t t-set="domain" t-value="domain+[('is_company','=',kind == 'company')]" />
+      </t>
+      <t t-if="kind == 'customer' and 'customer_rank' in panel_env['res.partner']._fields">
+        <t t-set="domain" t-value="domain+[('customer_rank','&gt;',0)]" />
+      </t>
+      <t t-set="total" t-value="panel_env['res.partner'].search_count(domain) if can_read else 0" />
+      <t t-set="page_num" t-value="min(page_num,max(1,(total+11)//12))" />
+      <t t-set="partners" t-value="panel_env['res.partner'].with_context(bin_size=True).search(domain,order='name,id',offset=(page_num-1)*12,limit=12) if can_read else []" />
+      <t t-call="uno360x_workspace.shell">
+        <p class="ux-breadcrumb">
+          <t t-out="'Sales / Contacts' if en else 'Comercial / Contactos'" />
+        </p>
+        <section class="ux-directory-head">
+          <div>
+            <h1>
+              <t t-out="'Customers and contacts' if en else 'Clientes y contactos'" />
+            </h1>
+            <p>
+              <t t-out="total" />
+              <t t-out="'contacts available within your permissions' if en else 'contactos disponibles según tus permisos'" />
+            </p>
+          </div>
+          <div class="ux-actions">
+            <a class="ux-action-button" href="/uno360x/native/res.partner">
+              <t t-out="'Full list' if en else 'Lista completa'" />
+            </a>
+            <a class="ux-action-button primary" t-if="panel_env['res.partner'].check_access_rights('create',raise_exception=False)" href="/odoo/res.partner/new">
+              <t t-out="'+ New contact' if en else '+ Nuevo contacto'" />
+            </a>
+          </div>
+        </section>
+        <div class="ux-filterbar">
+          <form class="ux-directory-search" method="get" action="/uno360x-contactos">
+            <input type="hidden" name="kind" t-att-value="kind" />
+            <input type="search" name="q" t-att-value="query" t-att-placeholder="'Name, company or tax ID…' if en else 'Nombre, empresa o documento…'" t-att-aria-label="'Find contact' if en else 'Buscar contacto'" />
+            <button class="ux-action-button" type="submit">
+              <t t-out="'Search' if en else 'Buscar'" />
+            </button>
+          </form>
+          <form t-foreach="[('all','Todos','All'),('company','Empresas','Companies'),('person','Personas','People'),('customer','Clientes','Customers')]" t-as="f" action="/uno360x-contactos" method="get">
+            <input type="hidden" name="q" t-att-value="query" />
+            <button type="submit" name="kind" t-att-value="f[0]" t-att-class="'ux-filter-pill active' if kind == f[0] else 'ux-filter-pill'" style="border:0" t-out="f[2] if en else f[1]" />
+          </form>
+        </div>
+        <section class="ux-directory-grid">
+          <t t-foreach="partners" t-as="p">
+            <article class="ux-directory-card">
+              <div class="ux-contact-identity">
+                <span t-att-class="'ux-record-avatar' if p.is_company else 'ux-record-avatar person'">
+                  <img t-if="p.image_128" t-att-src="'/web/image/res.partner/%s/image_128' % p.id" t-att-alt="p.name" />
+                  <t t-else="" t-call="uno360x_workspace.reference_icon">
+                    <t t-set="icon_kind" t-value="'company' if p.is_company else 'client'" />
+                  </t>
+                </span>
+                <div>
+                  <a class="ux-record-name" t-att-title="p.name" t-att-href="'/uno360x-contacto?id=%s' % p.id" t-out="p.name" />
+                  <p class="ux-record-subtitle">
+                    <t t-out="('Company' if en else 'Empresa') if p.is_company else ('Person' if en else 'Persona')" />
+                    <t t-if="p.parent_id"> · <t t-out="p.parent_id.name" />
+                    </t>
+                    <t t-elif="p.city"> · <t t-out="p.city" />
+                    </t>
+                  </p>
+                  <span class="ux-role-pill" t-out="('Customer' if en else 'Cliente') if 'customer_rank' in p._fields and p.customer_rank else (('Vendor' if en else 'Proveedor') if 'supplier_rank' in p._fields and p.supplier_rank else ('Contact' if en else 'Contacto'))" />
+                </div>
+              </div>
+              <div class="ux-contact-channels">
+                <a t-if="p.email" t-att-href="'mailto:'+p.email" t-out="p.email" />
+                <span t-else="" t-out="'No email recorded' if en else 'Correo sin registrar'" />
+                <a t-if="p.phone or p.mobile" t-att-href="'tel:'+(p.phone or p.mobile)" t-out="p.phone or p.mobile" />
+                <span t-else="" t-out="'No phone recorded' if en else 'Teléfono sin registrar'" />
+              </div>
+              <footer class="ux-record-foot">
+                <span t-out="p.country_id.name or ('No country recorded' if en else 'País sin registrar')" />
+                <a t-att-href="'/uno360x-contacto?id=%s' % p.id">
+                  <t t-out="'Open record →' if en else 'Abrir ficha →'" />
+                </a>
+              </footer>
+            </article>
+          </t>
+        </section>
+        <p class="ux-business-empty" t-if="not partners">
+          <t t-out="'No contacts match these filters.' if en else 'No hay contactos que coincidan con estos filtros.'" />
+        </p>
+        <div class="ux-pager">
+          <span>
+            <t t-out="min(total,(page_num-1)*12+1)" /> - <t t-out="min(total,page_num*12)" /> / <t t-out="total" />
+          </span>
+          <div class="ux-actions">
+            <form t-if="page_num &gt; 1" method="get">
+              <input type="hidden" name="q" t-att-value="query" />
+              <input type="hidden" name="kind" t-att-value="kind" />
+              <button class="ux-action-button" name="page" t-att-value="page_num-1">
+                <t t-out="'← Previous' if en else '← Anterior'" />
+              </button>
+            </form>
+            <form t-if="total &gt; page_num*12" method="get">
+              <input type="hidden" name="q" t-att-value="query" />
+              <input type="hidden" name="kind" t-att-value="kind" />
+              <button class="ux-action-button" name="page" t-att-value="page_num+1">
+                <t t-out="'Next →' if en else 'Siguiente →'" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </t>
+    </t>
+    <t t-else="">
+      <div class="ux-public-message">
+        <p>
+          <t t-out="'Sign in to open your workspace.' if en else 'Inicia sesión para abrir tu espacio.'" />
+        </p>
+        <a href="/web/login">
+          <t t-out="'Sign in' if en else 'Iniciar sesión'" />
+        </a>
+      </div>
+    </t>
+  </template>
+  <template id="reference_contact">
+    <t t-set="panel_env" t-value="(panel_env or request.env)['res.users'].with_context(lang=(panel_env or request.env).user.lang or 'es_ES').env" />
+    <t t-set="u" t-value="panel_env.user" />
+    <t t-set="en" t-value="(u.lang or 'es_ES').startswith('en')" />
+    <t t-set="company" t-value="panel_env.company" />
+    <t t-set="visible" t-value="panel_env['ir.ui.menu']._visible_menu_ids() if u.has_group('base.group_user') else []" />
+    <t t-set="today" t-value="datetime.date.today()" />
+    <t t-if="u.has_group('base.group_user')">
+      <t t-set="page_key" t-value="'contacts'" />
+      <t t-set="rid" t-value="int(str(request.params.get('id','0'))) if str(request.params.get('id','0')).isdigit() else 0" />
+      <t t-set="can_read" t-value="panel_env['res.partner'].check_access_rights('read',raise_exception=False)" />
+      <t t-set="p" t-value="panel_env['res.partner'].with_context(bin_size=True).search([('id','=',rid)],limit=1) if can_read else False" />
+      <t t-set="tab" t-value="str(request.params.get('tab','summary'))" />
+      <t t-call="uno360x_workspace.shell">
+        <t t-if="p">
+          <p class="ux-breadcrumb">
+            <t t-out="'Sales / Contacts / Record' if en else 'Comercial / Contactos / Ficha'" />
+          </p>
+          <div class="ux-directory-head">
+            <a class="ux-small-link" href="/uno360x-contactos">
+              <t t-out="'← Back to contacts' if en else '← Volver a contactos'" />
+            </a>
+            <div class="ux-actions">
+              <a class="ux-action-button" t-att-href="'/odoo/res.partner/%s' % p.id">
+                <t t-out="'Edit' if en else 'Editar'" />
+              </a>
+              <a class="ux-action-button primary" t-att-href="'/odoo/res.partner/%s?ux_schedule=1' % p.id">
+                <t t-out="'+ New activity' if en else '+ Nueva actividad'" />
+              </a>
+            </div>
+          </div>
+          <section class="ux-record-hero">
+            <span t-att-class="'ux-record-avatar' if p.is_company else 'ux-record-avatar person'">
+              <img t-if="p.image_128" t-att-src="'/web/image/res.partner/%s/image_128' % p.id" t-att-alt="p.name" />
+              <t t-else="" t-call="uno360x_workspace.reference_icon">
+                <t t-set="icon_kind" t-value="'company' if p.is_company else 'client'" />
+              </t>
+            </span>
+            <div class="ux-hero-copy">
+              <h1 t-out="p.name" />
+              <p class="ux-record-subtitle">
+                <t t-out="('Company' if en else 'Empresa') if p.is_company else ('Person' if en else 'Persona')" />
+                <t t-if="p.city"> · <t t-out="p.city" />
+                </t>
+                <t t-if="p.parent_id"> · <t t-out="p.parent_id.name" />
+                </t>
+              </p>
+              <span class="ux-role-pill" t-out="('Customer' if en else 'Cliente') if 'customer_rank' in p._fields and p.customer_rank else (('Vendor' if en else 'Proveedor') if 'supplier_rank' in p._fields and p.supplier_rank else ('Contact' if en else 'Contacto'))" />
+            </div>
+            <div class="ux-hero-aside">
+              <t t-out="'Owner' if en else 'Responsable'" />
+              <strong t-out="p.user_id.name or ('Not assigned' if en else 'Sin asignar')" />
+            </div>
+          </section>
+          <nav class="ux-record-tabs">
+            <a t-foreach="[('summary','Resumen','Summary'),('contacts','Contactos','Contacts'),('sales','Ventas','Sales'),('invoices','Facturas','Invoices'),('documents','Documentos','Documents'),('history','Historial','History')]" t-as="t" t-att-href="'/uno360x-contacto?id=%s&amp;tab=%s' % (p.id,t[0])" t-att-class="'active' if tab == t[0] else ''" t-out="t[2] if en else t[1]" />
+          </nav>
+          <t t-set="can_sales" t-value="panel_env['sale.order'].check_access_rights('read',raise_exception=False)" />
+          <t t-set="can_finance" t-value="panel_env['account.move'].check_access_rights('read',raise_exception=False)" />
+          <t t-set="sales" t-value="panel_env['sale.order'].search([('company_id','=',company.id),('partner_id','child_of',p.id)],order='date_order desc',limit=50) if can_sales else []" />
+          <t t-set="invoices" t-value="panel_env['account.move'].search([('company_id','=',company.id),('commercial_partner_id','=',p.commercial_partner_id.id),('move_type','in',['out_invoice','out_refund']),('state','=','posted')],order='invoice_date desc,id desc',limit=50) if can_finance else []" />
+          <t t-if="tab == 'summary'">
+            <div class="ux-detail-layout">
+              <section class="ux-detail-box">
+                <h2>
+                  <t t-out="'Contact information' if en else 'Datos de contacto'" />
+                </h2>
+                <div t-foreach="[('Correo','Email',p.email),('Teléfono','Phone',p.phone or p.mobile),('Dirección','Address',', '.join([v for v in [p.street,p.street2,p.city,p.country_id.name] if v])),('Documento fiscal','Tax ID',p.vat)]" t-as="d" class="ux-data-line">
+                  <small t-out="d[1] if en else d[0]" />
+                  <div t-out="d[2] or ('Not recorded' if en else 'Sin registrar')" />
+                </div>
+              </section>
+              <div>
+                <section class="ux-summary-tiles">
+                  <article class="ux-summary-tile">
+                    <small>
+                      <t t-out="'Confirmed orders' if en else 'Pedidos confirmados'" />
+                    </small>
+                    <strong t-out="panel_env['sale.order'].search_count([('company_id','=',company.id),('partner_id','child_of',p.id),('state','=','sale')]) if can_sales else '—'" />
+                    <span>
+                      <t t-out="'History available to your profile' if en else 'Histórico disponible para tu perfil'" />
+                    </span>
+                  </article>
+                  <article class="ux-summary-tile dark">
+                    <small>
+                      <t t-out="'Outstanding balance' if en else 'Pendiente de cobro'" />
+                    </small>
+                    <strong t-out="company.currency_id.symbol+'{:,.0f}'.format(sum(panel_env['account.move'].search([('company_id','=',company.id),('commercial_partner_id','=',p.commercial_partner_id.id),('move_type','in',['out_invoice','out_refund']),('state','=','posted')]).mapped('amount_residual_signed'))) if can_finance else '—'" />
+                    <span>
+                      <t t-out="'Billing customer · company currency' if en else 'Cliente facturable · moneda de tu compañía'" />
+                    </span>
+                  </article>
+                  <article class="ux-summary-tile">
+                    <small>
+                      <t t-out="'Next activity' if en else 'Próxima actividad'" />
+                    </small>
+                    <t t-set="activities" t-value="panel_env['mail.activity'].search([('res_model','=','res.partner'),('res_id','=',p.id)],order='date_deadline,id',limit=1) if panel_env['mail.activity'].check_access_rights('read',raise_exception=False) else []" />
+                    <strong t-out="activities.date_deadline.strftime('%d %b') if activities and activities.date_deadline else ('None planned' if en else 'Sin programar')" />
+                    <span t-out="activities.summary or activities.activity_type_id.name if activities else ('Schedule from activities' if en else 'Programa desde actividades')" />
+                  </article>
+                </section>
+                <section class="ux-detail-box">
+                  <h2>
+                    <t t-out="'Upcoming and recent' if en else 'Lo próximo y lo reciente'" />
+                  </h2>
+                  <t t-set="msgs" t-value="panel_env['mail.message'].search([('model','=','res.partner'),('res_id','=',p.id)],order='date desc,id desc',limit=4) if panel_env['mail.message'].check_access_rights('read',raise_exception=False) else []" />
+                  <div class="ux-timeline-row" t-foreach="msgs" t-as="m">
+                    <time t-out="m.date.strftime('%d %b') if m.date else ''" />
+                    <div>
+                      <strong t-out="m.subject or ('Activity on this record' if en else 'Actividad en esta ficha')" />
+                      <small t-out="m.author_id.name or ('System' if en else 'Sistema')" />
+                    </div>
+                  </div>
+                  <p class="ux-business-note" t-if="not msgs">
+                    <t t-out="'No recent activity is visible to your profile.' if en else 'No hay actividad reciente visible para tu perfil.'" />
+                  </p>
+                  <a class="ux-small-link" t-att-href="'/uno360x-contacto?id=%s&amp;tab=history' % p.id">
+                    <t t-out="'View history →' if en else 'Ver historial →'" />
+                  </a>
+                </section>
+              </div>
+            </div>
+          </t>
+          <t t-elif="tab == 'contacts'">
+            <section class="ux-directory-grid">
+              <t t-set="related" t-value="panel_env['res.partner'].with_context(bin_size=True).search([('parent_id','=',p.id)],limit=50)" />
+              <t t-foreach="related" t-as="p">
+                <article class="ux-directory-card">
+                  <div class="ux-contact-identity">
+                    <span t-att-class="'ux-record-avatar' if p.is_company else 'ux-record-avatar person'">
+                      <img t-if="p.image_128" t-att-src="'/web/image/res.partner/%s/image_128' % p.id" t-att-alt="p.name" />
+                      <t t-else="" t-call="uno360x_workspace.reference_icon">
+                        <t t-set="icon_kind" t-value="'company' if p.is_company else 'client'" />
+                      </t>
+                    </span>
+                    <div>
+                      <a class="ux-record-name" t-att-title="p.name" t-att-href="'/uno360x-contacto?id=%s' % p.id" t-out="p.name" />
+                      <p class="ux-record-subtitle">
+                        <t t-out="('Company' if en else 'Empresa') if p.is_company else ('Person' if en else 'Persona')" />
+                        <t t-if="p.parent_id"> · <t t-out="p.parent_id.name" />
+                        </t>
+                        <t t-elif="p.city"> · <t t-out="p.city" />
+                        </t>
+                      </p>
+                      <span class="ux-role-pill" t-out="('Customer' if en else 'Cliente') if 'customer_rank' in p._fields and p.customer_rank else (('Vendor' if en else 'Proveedor') if 'supplier_rank' in p._fields and p.supplier_rank else ('Contact' if en else 'Contacto'))" />
+                    </div>
+                  </div>
+                  <div class="ux-contact-channels">
+                    <a t-if="p.email" t-att-href="'mailto:'+p.email" t-out="p.email" />
+                    <span t-else="" t-out="'No email recorded' if en else 'Correo sin registrar'" />
+                    <a t-if="p.phone or p.mobile" t-att-href="'tel:'+(p.phone or p.mobile)" t-out="p.phone or p.mobile" />
+                    <span t-else="" t-out="'No phone recorded' if en else 'Teléfono sin registrar'" />
+                  </div>
+                  <footer class="ux-record-foot">
+                    <span t-out="p.country_id.name or ('No country recorded' if en else 'País sin registrar')" />
+                    <a t-att-href="'/uno360x-contacto?id=%s' % p.id">
+                      <t t-out="'Open record →' if en else 'Abrir ficha →'" />
+                    </a>
+                  </footer>
+                </article>
+              </t>
+            </section>
+            <p class="ux-business-empty" t-if="not related">
+              <t t-out="'No related contacts are recorded.' if en else 'No hay contactos asociados a esta ficha.'" />
+            </p>
+          </t>
+          <t t-elif="tab == 'sales'">
+            <div class="ux-table-scroll">
+              <table class="ux-record-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <t t-out="'Order' if en else 'Pedido'" />
+                    </th>
+                    <th>
+                      <t t-out="'Date' if en else 'Fecha'" />
+                    </th>
+                    <th>
+                      <t t-out="'Status' if en else 'Estado'" />
+                    </th>
+                    <th>
+                      <t t-out="'Amount' if en else 'Importe'" />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr t-foreach="sales" t-as="s">
+                    <td>
+                      <a t-att-href="'/odoo/sale.order/%s' % s.id" t-out="s.name" />
+                    </td>
+                    <td t-out="s.date_order.strftime('%d/%m/%Y') if s.date_order else ''" />
+                    <td t-out="dict(s._fields['state']._description_selection(panel_env)).get(s.state,s.state)" />
+                    <td t-out="s.currency_id.symbol+'{:,.2f}'.format(s.amount_total)" />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="ux-business-note">
+              <t t-out="'Up to the 50 most recent transactions.' if en else 'Hasta los 50 movimientos más recientes.'" />
+            </p>
+            <p class="ux-business-empty" t-if="not sales">
+              <t t-out="'No sales are visible for this record.' if en else 'No hay ventas visibles para esta ficha.'" />
+            </p>
+          </t>
+          <t t-elif="tab == 'invoices'">
+            <div class="ux-table-scroll">
+              <table class="ux-record-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <t t-out="'Invoice' if en else 'Factura'" />
+                    </th>
+                    <th>
+                      <t t-out="'Date' if en else 'Fecha'" />
+                    </th>
+                    <th>
+                      <t t-out="'Amount' if en else 'Importe'" />
+                    </th>
+                    <th>
+                      <t t-out="'Outstanding' if en else 'Pendiente'" />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr t-foreach="invoices" t-as="i">
+                    <td>
+                      <a t-att-href="'/odoo/account.move/%s' % i.id" t-out="i.name" />
+                    </td>
+                    <td t-out="i.invoice_date" />
+                    <td t-out="i.currency_id.symbol+'{:,.2f}'.format(i.amount_total)" />
+                    <td t-out="i.currency_id.symbol+'{:,.2f}'.format(i.amount_residual)" />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="ux-business-note">
+              <t t-out="'Posted invoices for the billing customer, up to the 50 most recent.' if en else 'Facturas contabilizadas del cliente facturable, hasta las 50 más recientes.'" />
+            </p>
+            <p class="ux-business-empty" t-if="not invoices">
+              <t t-out="'No invoices are visible for this record.' if en else 'No hay facturas visibles para esta ficha.'" />
+            </p>
+          </t>
+          <t t-elif="tab == 'documents'">
+            <t t-set="docs" t-value="panel_env['ir.attachment'].search([('res_model','=','res.partner'),('res_id','=',p.id),('res_field','=',False)],order='create_date desc',limit=50) if panel_env['ir.attachment'].check_access_rights('read',raise_exception=False) else []" />
+            <section class="ux-detail-box">
+              <h2>
+                <t t-out="'Record documents' if en else 'Documentos de la ficha'" />
+              </h2>
+              <div class="ux-timeline-row" t-foreach="docs" t-as="d">
+                <a t-att-href="'/web/content/%s?download=true' % d.id" t-out="d.name" />
+              </div>
+              <p t-if="not docs" class="ux-business-note">
+                <t t-out="'No documents are available.' if en else 'No hay documentos disponibles.'" />
+              </p>
+              <a class="ux-small-link" t-att-href="'/odoo/res.partner/%s' % p.id">
+                <t t-out="'Manage attachments →' if en else 'Gestionar adjuntos →'" />
+              </a>
+            </section>
+          </t>
+          <t t-else="">
+            <section class="ux-detail-box">
+              <h2>
+                <t t-out="'History' if en else 'Historial'" />
+              </h2>
+              <t t-set="msgs" t-value="panel_env['mail.message'].search([('model','=','res.partner'),('res_id','=',p.id)],order='date desc,id desc',limit=30) if panel_env['mail.message'].check_access_rights('read',raise_exception=False) else []" />
+              <div class="ux-timeline-row" t-foreach="msgs" t-as="m">
+                <time t-out="m.date.strftime('%d %b') if m.date else ''" />
+                <div>
+                  <strong t-out="m.subject or ('Activity on this record' if en else 'Actividad en esta ficha')" />
+                  <small t-out="m.author_id.name or ('System' if en else 'Sistema')" />
+                  <div style="font-size:12px;line-height:1.7;margin-top:8px" t-field="m.body" />
+                </div>
+              </div>
+              <p t-if="not msgs" class="ux-business-note">
+                <t t-out="'No history is visible.' if en else 'No hay historial visible.'" />
+              </p>
+            </section>
+          </t>
+        </t>
+        <p t-else="" class="ux-business-empty">
+          <t t-out="'This record is not available to your profile.' if en else 'La ficha no está disponible para tu perfil.'" />
+        </p>
+      </t>
+    </t>
+    <t t-else="">
+      <div class="ux-public-message">
+        <p>
+          <t t-out="'Sign in to open your workspace.' if en else 'Inicia sesión para abrir tu espacio.'" />
+        </p>
+        <a href="/web/login">
+          <t t-out="'Sign in' if en else 'Iniciar sesión'" />
+        </a>
+      </div>
+    </t>
+  </template>
+  <template id="reference_projects">
+    <t t-set="panel_env" t-value="(panel_env or request.env)['res.users'].with_context(lang=(panel_env or request.env).user.lang or 'es_ES').env" />
+    <t t-set="u" t-value="panel_env.user" />
+    <t t-set="en" t-value="(u.lang or 'es_ES').startswith('en')" />
+    <t t-set="company" t-value="panel_env.company" />
+    <t t-set="visible" t-value="panel_env['ir.ui.menu']._visible_menu_ids() if u.has_group('base.group_user') else []" />
+    <t t-set="today" t-value="datetime.date.today()" />
+    <t t-if="u.has_group('base.group_user')">
+      <t t-set="page_key" t-value="'projects'" />
+      <t t-set="can_read" t-value="panel_env['project.project'].check_access_rights('read',raise_exception=False)" />
+      <t t-set="can_tasks" t-value="panel_env['project.task'].check_access_rights('read',raise_exception=False)" />
+      <t t-set="query" t-value="str(request.params.get('q',''))[:100].strip()" />
+      <t t-set="kind" t-value="str(request.params.get('kind','all'))" />
+      <t t-set="projects" t-value="panel_env['project.project'].search(['|',('company_id','=',company.id),('company_id','=',False)],order='write_date desc,id desc') if can_read else panel_env['project.project'].browse([])" />
+      <t t-set="attention" t-value="projects.filtered(lambda p: p.last_update_status in ['at_risk','off_track']) if 'last_update_status' in panel_env['project.project']._fields else projects.browse([])" />
+      <t t-set="finished" t-value="projects.filtered(lambda p: p.last_update_status == 'done') if 'last_update_status' in panel_env['project.project']._fields else projects.browse([])" />
+      <t t-set="due_month" t-value="projects.filtered(lambda p: p.date and p.date.year == today.year and p.date.month == today.month) if 'date' in panel_env['project.project']._fields else projects.browse([])" />
+      <t t-set="show" t-value="projects.filtered(lambda p: query.lower() in p.name.lower() or query.lower() in (p.partner_id.name or '').lower()) if query else projects" />
+      <t t-if="kind == 'mine'">
+        <t t-set="show" t-value="show.filtered(lambda p: p.user_id.id == u.id)" />
+      </t>
+      <t t-elif="kind == 'attention'">
+        <t t-set="show" t-value="show &amp; attention" />
+      </t>
+      <t t-elif="kind == 'due'">
+        <t t-set="show" t-value="show &amp; due_month" />
+      </t>
+      <t t-set="page_num" t-value="min(max(1,(len(show)+11)//12),max(1,int(str(request.params.get('page','1'))))) if str(request.params.get('page','1')).isdigit() else 1" />
+      <t t-call="uno360x_workspace.shell">
+        <p class="ux-breadcrumb">
+          <t t-out="'Operations / Projects' if en else 'Operaciones / Proyectos'" />
+        </p>
+        <section class="ux-directory-head">
+          <div>
+            <h1>
+              <t t-out="'Your projects' if en else 'Tus proyectos'" />
+            </h1>
+            <p>
+              <t t-out="'Progress, priorities and the team’s next step.' if en else 'Avance, prioridades y el siguiente paso del equipo.'" />
+            </p>
+          </div>
+          <div class="ux-actions">
+            <a class="ux-action-button" href="/uno360x/native/project.project">
+              <t t-out="'Full list' if en else 'Lista completa'" />
+            </a>
+            <a class="ux-action-button primary" t-if="panel_env['project.project'].check_access_rights('create',raise_exception=False)" href="/odoo/project.project/new">
+              <t t-out="'+ New project' if en else '+ Nuevo proyecto'" />
+            </a>
+          </div>
+        </section>
+        <section class="ux-project-summary">
+          <div>
+            <strong t-out="len(projects-finished)" />
+            <span>
+              <t t-out="'In progress' if en else 'En marcha'" />
+            </span>
+          </div>
+          <div style="background:#fff3dc">
+            <strong t-out="len(attention)" />
+            <span>
+              <t t-out="'Need attention' if en else 'Requieren atención'" />
+            </span>
+          </div>
+          <div>
+            <strong t-out="len(due_month)" />
+            <span>
+              <t t-out="'Due this month' if en else 'Entregas este mes'" />
+            </span>
+          </div>
+          <div style="background:#e1f3eb">
+            <strong t-out="len(finished)" />
+            <span>
+              <t t-out="'Completed' if en else 'Finalizados'" />
+            </span>
+          </div>
+        </section>
+        <div class="ux-filterbar">
+          <form class="ux-directory-search" method="get">
+            <input type="hidden" name="kind" t-att-value="kind" />
+            <input type="search" name="q" t-att-value="query" t-att-placeholder="'Search project or customer…' if en else 'Buscar proyecto o cliente…'" t-att-aria-label="'Find project' if en else 'Buscar proyecto'" />
+            <button class="ux-action-button">
+              <t t-out="'Search' if en else 'Buscar'" />
+            </button>
+          </form>
+          <form t-foreach="[('all','Todos','All'),('mine','Mis proyectos','My projects'),('attention','Con atención','Needs attention'),('due','Por entregar','Due this month')]" t-as="f" method="get">
+            <input type="hidden" name="q" t-att-value="query" />
+            <button name="kind" t-att-value="f[0]" t-att-class="'ux-filter-pill active' if kind == f[0] else 'ux-filter-pill'" style="border:0" t-out="f[2] if en else f[1]" />
+          </form>
+        </div>
+        <section class="ux-directory-grid">
+          <t t-foreach="show[(page_num-1)*12:page_num*12]" t-as="p">
+            <article class="ux-directory-card">
+              <t t-set="can_tasks" t-value="panel_env['project.task'].check_access_rights('read',raise_exception=False)" />
+              <t t-set="base_tasks" t-value="panel_env['project.task'].search([('project_id','=',p.id)]) if can_tasks else panel_env['project.task'].browse([])" />
+              <t t-set="tasks" t-value="panel_env['project.task'].search(['|',('project_id','=',p.id),'&amp;',('project_id','=',False),('id','child_of',base_tasks.ids)]) if can_tasks else base_tasks" />
+              <t t-set="task_ids" t-value="tasks.ids" />
+              <t t-set="leaves" t-value="tasks.filtered(lambda task: not (task.child_ids &amp; tasks))" />
+              <t t-set="work" t-value="leaves.filtered(lambda task: task.state != '1_canceled')" />
+              <t t-set="done" t-value="len(work.filtered(lambda task: task.state == '1_done'))" />
+              <t t-set="pct" t-value="done/len(work)*100 if work else 0" />
+              <t t-set="walk" t-value="lambda self,task: [] if not task or task.id not in task_ids else [task.id]+self(self,task.parent_id)" />
+              <t t-set="leaf_meta" t-value="[{'path':walk(walk,task),'done':task.state == '1_done'} for task in work]" />
+              <t t-set="roots" t-value="tasks.filtered(lambda task: task.parent_id.id not in task_ids)" />
+              <t t-set="stages" t-value="p.type_ids if 'type_ids' in p._fields else tasks.mapped('stage_id')" />
+              <t t-set="first_sequence" t-value="min(stages.mapped('sequence') or [0])" />
+              <t t-set="root_rows" t-value="[]" />
+              <t t-foreach="roots" t-as="root">
+                <t t-set="n" t-value="sum(1 for item in leaf_meta if root.id in item['path'])" />
+                <t t-set="closed" t-value="sum(1 for item in leaf_meta if root.id in item['path'] and item['done'])" />
+                <t t-set="root_kind" t-value="'canceled' if root.state == '1_canceled' else ('done' if n and closed == n else ('working' if closed or (root.stage_id and root.stage_id.sequence &gt; first_sequence) else 'pending'))" />
+                <t t-set="root_rows" t-value="root_rows+[{'task':root,'total':n,'done':closed,'kind':root_kind}]" />
+              </t>
+              <t t-set="status" t-value="p.last_update_status if 'last_update_status' in p._fields else 'on_track'" />
+              <t t-set="next_task" t-value="work.filtered(lambda task: task.state != '1_done').sorted(lambda task: (str(task.date_deadline or '9999'),task.id))[:1]" />
+              <div>
+                <span t-att-class="'ux-role-pill ux-status attention' if status in ['at_risk','off_track'] else 'ux-role-pill'" t-out="('Needs attention' if en else 'Requiere atención') if status in ['at_risk','off_track'] else (('Done' if en else 'Finalizado') if status == 'done' else ('In progress' if en else 'En marcha'))" />
+              </div>
+              <div>
+                <a class="ux-project-title" t-att-title="p.name" t-att-href="'/uno360x-proyecto?id=%s' % p.id" t-out="p.name" />
+                <p class="ux-record-subtitle" t-out="p.partner_id.name or ('No customer assigned' if en else 'Sin cliente asignado')" />
+              </div>
+              <div>
+                <div class="ux-project-meter">
+                  <span>
+                    <t t-if="can_tasks">
+                      <t t-out="done" /> / <t t-out="len(work)" />
+                      <t t-out="'tasks completed' if en else 'tareas completadas'" />
+                    </t>
+                    <t t-else="">
+                      <t t-out="'Tasks restricted' if en else 'Tareas restringidas'" />
+                    </t>
+                  </span>
+                  <strong t-out="'{:.0f}%'.format(pct) if tasks else '—'" />
+                </div>
+                <div class="ux-progress">
+                  <span t-att-style="'width:'+str(pct)+'%'" />
+                </div>
+                <p class="ux-next-task">
+                  <t t-if="next_task">
+                    <t t-out="'Next: ' if en else 'Próximo: '" />
+                    <t t-out="next_task.name" />
+                  </t>
+                  <t t-else="">
+                    <t t-out="'No pending tasks visible' if en else 'Sin tareas pendientes visibles'" />
+                  </t>
+                </p>
+              </div>
+              <footer class="ux-record-foot">
+                <span>
+                  <t t-out="'Due: ' if en else 'Entrega: '" />
+                  <t t-out="p.date.strftime('%d %b') if 'date' in p._fields and p.date else ('Not planned' if en else 'Sin fecha')" />
+                </span>
+                <span t-out="p.user_id.name or ('Not assigned' if en else 'Sin responsable')" />
+              </footer>
+            </article>
+          </t>
+        </section>
+        <p t-if="not show" class="ux-business-empty">
+          <t t-out="'No projects match these filters.' if en else 'No hay proyectos que coincidan con estos filtros.'" />
+        </p>
+        <p class="ux-business-note">
+          <t t-out="'Progress represents completed tasks divided by visible tasks. It does not represent financial progress.' if en else 'El avance representa tareas completadas sobre el total visible. No equivale al avance financiero.'" />
+        </p>
+        <div class="ux-pager">
+          <span>
+            <t t-out="min(len(show),(page_num-1)*12+1)" /> - <t t-out="min(len(show),page_num*12)" /> / <t t-out="len(show)" />
+          </span>
+          <div class="ux-actions">
+            <form t-if="page_num &gt; 1" method="get">
+              <input type="hidden" name="q" t-att-value="query" />
+              <input type="hidden" name="kind" t-att-value="kind" />
+              <button class="ux-action-button" name="page" t-att-value="page_num-1">
+                <t t-out="'← Previous' if en else '← Anterior'" />
+              </button>
+            </form>
+            <form t-if="len(show) &gt; page_num*12" method="get">
+              <input type="hidden" name="q" t-att-value="query" />
+              <input type="hidden" name="kind" t-att-value="kind" />
+              <button class="ux-action-button" name="page" t-att-value="page_num+1">
+                <t t-out="'Next →' if en else 'Siguiente →'" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </t>
+    </t>
+    <t t-else="">
+      <div class="ux-public-message">
+        <p>
+          <t t-out="'Sign in to open your workspace.' if en else 'Inicia sesión para abrir tu espacio.'" />
+        </p>
+        <a href="/web/login">
+          <t t-out="'Sign in' if en else 'Iniciar sesión'" />
+        </a>
+      </div>
+    </t>
+  </template>
+  <template id="reference_project">
+    <t t-set="panel_env" t-value="(panel_env or request.env)['res.users'].with_context(lang=(panel_env or request.env).user.lang or 'es_ES').env" />
+    <t t-set="u" t-value="panel_env.user" />
+    <t t-set="en" t-value="(u.lang or 'es_ES').startswith('en')" />
+    <t t-set="company" t-value="panel_env.company" />
+    <t t-set="visible" t-value="panel_env['ir.ui.menu']._visible_menu_ids() if u.has_group('base.group_user') else []" />
+    <t t-set="today" t-value="datetime.date.today()" />
+    <t t-if="u.has_group('base.group_user')">
+      <t t-set="page_key" t-value="'projects'" />
+      <t t-set="rid" t-value="int(str(request.params.get('id','0'))) if str(request.params.get('id','0')).isdigit() else 0" />
+      <t t-set="can_read" t-value="panel_env['project.project'].check_access_rights('read',raise_exception=False)" />
+      <t t-set="p" t-value="panel_env['project.project'].search([('id','=',rid)],limit=1) if can_read else False" />
+      <t t-set="tab" t-value="str(request.params.get('tab','summary'))" />
+      <t t-if="p">
+        <t t-set="company" t-value="p.company_id or company" />
+        <t t-set="currency" t-value="company.currency_id" />
+        <t t-set="can_tasks" t-value="panel_env['project.task'].check_access_rights('read',raise_exception=False)" />
+        <t t-set="can_write_tasks" t-value="panel_env['project.task'].check_access_rights('write',raise_exception=False)" />
+        <t t-set="base_tasks" t-value="panel_env['project.task'].search([('project_id','=',p.id)]) if can_tasks else panel_env['project.task'].browse([])" />
+        <t t-set="tasks" t-value="panel_env['project.task'].search(['|',('project_id','=',p.id),'&amp;',('project_id','=',False),('id','child_of',base_tasks.ids)]) if can_tasks else base_tasks" />
+        <t t-set="task_ids" t-value="tasks.ids" />
+        <t t-set="leaves" t-value="tasks.filtered(lambda task: not (task.child_ids &amp; tasks))" />
+        <t t-set="work" t-value="leaves.filtered(lambda task: task.state != '1_canceled')" />
+        <t t-set="done" t-value="len(work.filtered(lambda task: task.state == '1_done'))" />
+        <t t-set="pct" t-value="done/len(work)*100 if work else 0" />
+        <t t-set="walk" t-value="lambda self,task: [] if not task or task.id not in task_ids else [task.id]+self(self,task.parent_id)" />
+        <t t-set="leaf_meta" t-value="[{'path':walk(walk,task),'done':task.state == '1_done'} for task in work]" />
+        <t t-set="roots" t-value="tasks.filtered(lambda task: task.parent_id.id not in task_ids)" />
+        <t t-set="stages" t-value="p.type_ids if 'type_ids' in p._fields else tasks.mapped('stage_id')" />
+        <t t-set="first_sequence" t-value="min(stages.mapped('sequence') or [0])" />
+        <t t-set="root_rows" t-value="[]" />
+        <t t-foreach="roots" t-as="root">
+          <t t-set="n" t-value="sum(1 for item in leaf_meta if root.id in item['path'])" />
+          <t t-set="closed" t-value="sum(1 for item in leaf_meta if root.id in item['path'] and item['done'])" />
+          <t t-set="root_kind" t-value="'canceled' if root.state == '1_canceled' else ('done' if n and closed == n else ('working' if closed or (root.stage_id and root.stage_id.sequence &gt; first_sequence) else 'pending'))" />
+          <t t-set="root_rows" t-value="root_rows+[{'task':root,'total':n,'done':closed,'kind':root_kind}]" />
+        </t>
+        <t t-set="account" t-value="p.account_id if 'account_id' in p.fields_get(['account_id']) else False" />
+        <t t-set="budget_visible" t-value="'x_ux_cost_budget' in p.fields_get(['x_ux_cost_budget']) and 'x_ux_budget_set' in p.fields_get(['x_ux_budget_set'])" />
+        <t t-set="budget_set" t-value="budget_visible and p.x_ux_budget_set" />
+        <t t-set="budget" t-value="p.x_ux_cost_budget if budget_set else 0" />
+        <t t-set="cost_rights" t-value="panel_env['account.analytic.line'].check_access_rights('read',raise_exception=False) and panel_env['account.move.line'].check_access_rights('read',raise_exception=False) and panel_env['account.account'].check_access_rights('read',raise_exception=False)" />
+        <t t-set="cost_ready" t-value="cost_rights and account" />
+        <t t-set="analytic" t-value="panel_env['account.analytic.line'].search([('account_id','=',account.id),('company_id','=',company.id)],order='date desc,id desc') if cost_ready else panel_env['account.analytic.line'].browse([])" />
+        <t t-set="expense_types" t-value="['expense','expense_direct_cost','expense_depreciation']" />
+        <t t-set="cost_lines" t-value="analytic.filtered(lambda line: (not line.move_line_id or line.move_line_id.move_id.state == 'posted') and ((line.general_account_id and line.general_account_id.account_type in expense_types) or (not line.general_account_id and line.amount &lt; 0)))" />
+        <t t-set="spent" t-value="-sum(cost_lines.mapped('amount'))" />
+        <t t-set="cost_groups" t-value="[]" />
+        <t t-foreach="cost_lines.mapped('general_account_id')" t-as="a">
+          <t t-set="cost_groups" t-value="cost_groups+[{'name':a.name,'value':-sum(cost_lines.filtered(lambda line: line.general_account_id.id == a.id).mapped('amount'))}]" />
+        </t>
+        <t t-set="manual_costs" t-value="cost_lines.filtered(lambda line: not line.general_account_id)" />
+        <t t-if="manual_costs">
+          <t t-set="cost_groups" t-value="cost_groups+[{'name':('Other recorded costs' if en else 'Otros costos registrados'),'value':-sum(manual_costs.mapped('amount'))}]" />
+        </t>
+        <t t-set="cost_groups" t-value="sorted(cost_groups,key=lambda row: row['value'],reverse=True)" />
+        <t t-set="can_sales" t-value="panel_env['sale.order'].check_access_rights('read',raise_exception=False) and panel_env['sale.order.line'].check_access_rights('read',raise_exception=False)" />
+        <t t-set="can_purchase" t-value="panel_env['purchase.order'].check_access_rights('read',raise_exception=False) and panel_env['purchase.order.line'].check_access_rights('read',raise_exception=False)" />
+        <t t-set="direct_sales" t-value="panel_env['sale.order'].search([('project_id','=',p.id),('company_id','=',company.id)]) if can_sales else panel_env['sale.order'].browse([])" />
+        <t t-set="linked_sol" t-value="tasks.mapped('sale_line_id') if can_sales and 'sale_line_id' in panel_env['project.task'].fields_get(['sale_line_id']) else panel_env['sale.order.line'].browse([])" />
+        <t t-if="can_sales and 'sale_line_id' in p.fields_get(['sale_line_id'])">
+          <t t-set="linked_sol" t-value="linked_sol | p.sale_line_id" />
+        </t>
+        <t t-set="sol" t-value="panel_env['sale.order.line'].search([('company_id','=',company.id),'|','|','|',('order_id','in',direct_sales.ids),('id','in',linked_sol.ids),('project_id','=',p.id),('distribution_analytic_account_ids','in',account.ids if account else [])]) if can_sales else linked_sol" />
+        <t t-set="sol_weight_items" t-value="[]" />
+        <t t-foreach="sol" t-as="line">
+          <t t-set="weight" t-value="min(100,sum(value for key,value in (line.analytic_distribution or {}).items() if str(account.id) in key.split(',')))/100 if account and line.analytic_distribution else (1 if line.order_id.id in direct_sales.ids or line.id in linked_sol.ids or line.project_id.id == p.id else 0)" />
+          <t t-set="sol_weight_items" t-value="sol_weight_items+[(line.id,weight)]" />
+        </t>
+        <t t-set="sol_weights" t-value="dict(sol_weight_items)" />
+        <t t-set="sales" t-value="(sol.mapped('order_id') | direct_sales) if can_sales else direct_sales" />
+        <t t-set="direct_purchase" t-value="panel_env['purchase.order'].search([('project_id','=',p.id),('company_id','=',company.id)]) if can_purchase else panel_env['purchase.order'].browse([])" />
+        <t t-set="pol" t-value="panel_env['purchase.order.line'].search([('company_id','=',company.id),'|','|',('order_id','in',direct_purchase.ids),('sale_line_id','in',sol.ids),('distribution_analytic_account_ids','in',account.ids if account else [])]) if can_purchase else panel_env['purchase.order.line'].browse([])" />
+        <t t-set="pol_weight_items" t-value="[]" />
+        <t t-foreach="pol" t-as="line">
+          <t t-set="weight" t-value="min(100,sum(value for key,value in (line.analytic_distribution or {}).items() if str(account.id) in key.split(',')))/100 if account and line.analytic_distribution else (1 if line.order_id.id in direct_purchase.ids else sol_weights.get(line.sale_line_id.id,0))" />
+          <t t-set="pol_weight_items" t-value="pol_weight_items+[(line.id,weight)]" />
+        </t>
+        <t t-set="pol_weights" t-value="dict(pol_weight_items)" />
+        <t t-set="purchase" t-value="pol.mapped('order_id') | direct_purchase" />
+        <t t-set="order_rows" t-value="[]" />
+        <t t-foreach="sales" t-as="order">
+          <t t-set="share" t-value="sum(line.price_subtotal*sol_weights.get(line.id,0) for line in order.order_line)" />
+          <t t-set="order_rows" t-value="order_rows+[{'record':order,'kind':'sale','share':share,'base':order.currency_id._convert(share,currency,company,order.date_order.date() if order.date_order else today),'confirmed':order.state == 'sale'}]" />
+        </t>
+        <t t-foreach="purchase" t-as="order">
+          <t t-set="share" t-value="sum(line.price_subtotal*pol_weights.get(line.id,0) for line in order.order_line)" />
+          <t t-set="order_rows" t-value="order_rows+[{'record':order,'kind':'purchase','share':share,'base':order.currency_id._convert(share,currency,company,order.date_order.date() if order.date_order else today),'confirmed':order.state in ['purchase','done']}]" />
+        </t>
+        <t t-set="sale_amount" t-value="sum(row['base'] for row in order_rows if row['kind'] == 'sale' and row['confirmed'])" />
+        <t t-set="purchase_amount" t-value="sum(row['base'] for row in order_rows if row['kind'] == 'purchase' and row['confirmed'])" />
+        <t t-set="overdue" t-value="work.filtered(lambda task: task.state != '1_done' and task.date_deadline and task.date_deadline.date() &lt; today)" />
+        <t t-set="next_task" t-value="work.filtered(lambda task: task.state != '1_done').sorted(lambda task: (str(task.date_deadline or '9999'),task.id))[:1]" />
+        <t t-set="controls" t-value="{}" />
+        <t t-set="links" t-value="controls.get(p.id,{})" />
+        <t t-set="bill_rights" t-value="cost_rights and can_purchase and panel_env['account.move'].check_access_rights('read',raise_exception=False)" />
+        <t t-set="linked_bill_lines" t-value="panel_env['account.move.line'].search([('company_id','=',company.id),('purchase_line_id','in',pol.ids),('move_id.move_type','in',['in_invoice','in_refund']),('move_id.state','in',['posted','draft']),('display_type','=','product')]) if bill_rights else panel_env['account.move.line'].browse([])" />
+        <t t-set="bill_weight_items" t-value="[]" />
+        <t t-foreach="linked_bill_lines" t-as="bl">
+          <t t-set="bw" t-value="min(100,max(0,sum(value for key,value in (bl.analytic_distribution or {}).items() if account and str(account.id) in key.split(','))))/100 if bl.analytic_distribution else pol_weights.get(bl.purchase_line_id.id,0)" />
+          <t t-set="bill_weight_items" t-value="bill_weight_items+[(bl.id,bw)]" />
+        </t>
+        <t t-set="bill_weights" t-value="dict(bill_weight_items)" />
+        <t t-set="existing_cost_aml_ids" t-value="cost_lines.mapped('move_line_id').ids" />
+        <t t-set="extra_cost_lines" t-value="linked_bill_lines.filtered(lambda bl: bl.move_id.state == 'posted' and bl.account_id.account_type in expense_types and bl.id not in existing_cost_aml_ids and bill_weights.get(bl.id,0) &gt; 0)" />
+        <t t-set="cost_rows" t-value="[]" />
+        <t t-foreach="cost_lines" t-as="cl">
+          <t t-set="aml" t-value="cl.move_line_id" />
+          <t t-set="cost_rows" t-value="cost_rows+[{'date':cl.date,'name':cl.name,'value':-cl.amount,'account':cl.general_account_id.name or ('Other recorded costs' if en else 'Otros costos registrados'),'move':aml.move_id,'aml':aml,'analytic':cl,'order':aml.purchase_line_id.order_id if aml and can_purchase else False,'method':('Analytic allocation' if en else 'Distribución analítica')}]" />
+        </t>
+        <t t-foreach="extra_cost_lines" t-as="bl">
+          <t t-set="cost_rows" t-value="cost_rows+[{'date':bl.date,'name':bl.name,'value':bl.balance*bill_weights.get(bl.id,0),'account':bl.account_id.name,'move':bl.move_id,'aml':bl,'analytic':False,'order':bl.purchase_line_id.order_id,'method':('Linked order' if en else 'Orden vinculada')}]" />
+        </t>
+        <t t-set="cost_rows" t-value="sorted(cost_rows,key=lambda r: (str(r['date']),r['aml'].id if r['aml'] else r['analytic'].id),reverse=True)" />
+        <t t-set="spent" t-value="sum(r['value'] for r in cost_rows)" />
+        <t t-set="cost_groups" t-value="[]" />
+        <t t-foreach="sorted(set(r[&quot;account&quot;] for r in cost_rows))" t-as="cost_account_name">
+          <t t-set="cost_groups" t-value="cost_groups+[{'name':cost_account_name,'value':sum(r['value'] for r in cost_rows if r['account'] == cost_account_name)}]" />
+        </t>
+        <t t-set="cost_groups" t-value="sorted(cost_groups,key=lambda r:r['value'],reverse=True)" />
+        <t t-set="purchase_cost" t-value="sum(r['value'] for r in cost_rows if r['order'])" />
+        <t t-set="other_cost" t-value="spent-purchase_cost" />
+        <t t-set="purchase_reconciliation" t-value="[]" />
+        <t t-foreach="[r for r in order_rows if r['kind'] == 'purchase' and r['confirmed']]" t-as="po_row">
+          <t t-set="po" t-value="po_row['record']" />
+          <t t-set="po_bills" t-value="linked_bill_lines.filtered(lambda bl: bl.purchase_line_id.order_id.id == po.id and bl.move_id.state == 'posted')" />
+          <t t-set="po_posted" t-value="sum(bl.balance*bill_weights.get(bl.id,0) for bl in po_bills)" />
+          <t t-set="po_posted_original" t-value="sum((bl.amount_currency if bl.currency_id == po.currency_id else currency._convert(bl.balance,po.currency_id,company,bl.date))*bill_weights.get(bl.id,0) for bl in po_bills)" />
+          <t t-set="po_pending_original" t-value="0" />
+          <t t-foreach="po.order_line.filtered(lambda line: not line.display_type)" t-as="pending_line">
+            <t t-set="line_posted_bills" t-value="po_bills.filtered(lambda bl: bl.purchase_line_id.id == pending_line.id)" />
+            <t t-set="po_uom" t-value="pending_line['product_uom_id'] if 'product_uom_id' in pending_line._fields else (pending_line['product_uom'] if 'product_uom' in pending_line._fields else False)" />
+            <t t-set="posted_qty" t-value="sum((bl.product_uom_id._compute_quantity(bl.quantity,po_uom) if bl.product_uom_id and po_uom else bl.quantity)*(1 if bl.move_id.move_type == 'in_invoice' else -1) for bl in line_posted_bills)" />
+            <t t-set="po_pending_original" t-value="po_pending_original+max(0,pending_line.product_qty-posted_qty)*(pending_line.price_subtotal/pending_line.product_qty if pending_line.product_qty else 0)*pol_weights.get(pending_line.id,0)" />
+          </t>
+          <t t-set="po_pending" t-value="po.currency_id._convert(po_pending_original,currency,company,po.date_order.date() if po.date_order else today)" />
+          <t t-set="purchase_reconciliation" t-value="purchase_reconciliation+[{'order':po,'ordered':po_row['base'],'posted':po_posted,'pending':po_pending,'cost':sum(r['value'] for r in cost_rows if r['order'] and r['order'].id == po.id),'bill_currencies':', '.join(sorted(set(po_bills.mapped('currency_id.name')))),'currency_warning':any(bl.currency_id != po.currency_id for bl in po_bills),'price_difference':po_pending_original == 0 and abs(po_row['share']-po_posted_original) &gt; max(po.currency_id.rounding,0.01)}]" />
+        </t>
+        <t t-set="purchase_pending" t-value="sum(r['pending'] for r in purchase_reconciliation)" />
+        <t t-set="forecast" t-value="spent+purchase_pending" />
+        <t t-set="reconciliation_warnings" t-value="[r for r in purchase_reconciliation if r['currency_warning'] or r['price_difference']]" />
+        <t t-set="can_payments" t-value="'x_ux_project_id' in panel_env['account.payment']._fields and (panel_env['account.payment'].check_access_rights('read',raise_exception=False) and panel_env['account.move.line'].check_access_rights('read',raise_exception=False) and panel_env['account.move'].check_access_rights('read',raise_exception=False) and panel_env['account.partial.reconcile'].check_access_rights('read',raise_exception=False))" />
+        <t t-set="cost_moves" t-value="cost_lines.mapped('move_line_id.move_id') | extra_cost_lines.mapped('move_id')" />
+        <t t-set="cost_bills" t-value="cost_moves.filtered(lambda bill: bill.move_type in ['in_invoice','in_refund'])" />
+        <t t-set="full_project_bill_ids" t-value="[]" />
+        <t t-if="can_payments and account">
+          <t t-foreach="cost_bills" t-as="bill">
+            <t t-set="allocated_bill_base" t-value="abs(sum(r['value'] for r in cost_rows if r['move'].id == bill.id))" />
+            <t t-if="abs(allocated_bill_base-abs(bill.amount_untaxed_signed)) &lt; max(currency.rounding,0.01) and abs(bill.amount_untaxed_signed) &gt; 0">
+              <t t-set="full_project_bill_ids" t-value="full_project_bill_ids+[bill.id]" />
+            </t>
+          </t>
+        </t>
+        <t t-set="payments" t-value="panel_env['account.payment'].search([('company_id','=',company.id),('x_ux_project_id','in',[False,p.id]),'|','|','|',('x_ux_project_id','=',p.id),('move_id','in',analytic.mapped('move_line_id.move_id').ids),('move_id.line_ids.matched_debit_ids.debit_move_id.move_id','in',cost_bills.ids),('move_id.line_ids.matched_credit_ids.credit_move_id.move_id','in',cost_bills.ids)],order='date desc,id desc') if can_payments else panel_env['account.payment'].browse([])" />
+        <t t-set="payment_rows" t-value="[]" />
+        <t t-foreach="payments" t-as="payment">
+          <t t-set="base_amount" t-value="abs(payment.amount_company_currency_signed) or payment.currency_id._convert(payment.amount,currency,company,payment.date or today)" />
+          <t t-set="journal_lines" t-value="payment.move_id.line_ids" />
+          <t t-set="debit_share" t-value="sum(max(0,line.balance)*min(100,sum(value for key,value in (line.analytic_distribution or {}).items() if str(account.id) in key.split(',')))/100 for line in journal_lines) if account else 0" />
+          <t t-set="credit_share" t-value="sum(max(0,-line.balance)*min(100,sum(value for key,value in (line.analytic_distribution or {}).items() if str(account.id) in key.split(',')))/100 for line in journal_lines) if account else 0" />
+          <t t-set="journal_share" t-value="min(base_amount,max(debit_share,credit_share))" />
+          <t t-set="parts" t-value="journal_lines.mapped('matched_debit_ids') | journal_lines.mapped('matched_credit_ids')" />
+          <t t-set="bill_applied" t-value="0" />
+          <t t-set="related_bill_ids" t-value="[bid for bid in payment.invoice_ids.ids if bid in cost_bills.ids]" />
+          <t t-foreach="parts" t-as="part">
+            <t t-set="other" t-value="part.credit_move_id.move_id if part.debit_move_id.move_id.id == payment.move_id.id else part.debit_move_id.move_id" />
+            <t t-if="other.id in cost_bills.ids">
+              <t t-set="related_bill_ids" t-value="related_bill_ids+[other.id]" />
+              <t t-if="other.id in full_project_bill_ids">
+                <t t-set="bill_applied" t-value="bill_applied+part.amount" />
+              </t>
+            </t>
+          </t>
+          <t t-set="allocated" t-value="base_amount if payment.x_ux_project_id.id == p.id else (journal_share if journal_share &gt; 0 else (min(base_amount,bill_applied) if bill_applied &gt; 0 else None))" />
+          <t t-set="seen_in_cost" t-value="payment.move_id.id in cost_moves.ids or bool(related_bill_ids)" />
+          <t t-set="payment_rows" t-value="payment_rows+[{'record':payment,'allocated':allocated,'seen_in_cost':seen_in_cost,'method':('project' if payment.x_ux_project_id.id == p.id else ('analytic' if journal_share &gt; 0 else ('bill' if bill_applied &gt; 0 else 'review')))}]" />
+        </t>
+        <t t-set="paid_out" t-value="sum(row['allocated'] for row in payment_rows if row['allocated'] is not None and row['record'].state == 'paid' and row['record'].payment_type == 'outbound')" />
+        <t t-set="supplier_refunds" t-value="sum(row['allocated'] for row in payment_rows if row['allocated'] is not None and row['record'].state == 'paid' and row['record'].payment_type == 'inbound' and row['record'].partner_type == 'supplier')" />
+        <t t-set="payments_in_process" t-value="sum(row['allocated'] for row in payment_rows if row['allocated'] is not None and row['record'].state == 'in_process' and row['record'].payment_type == 'outbound')" />
+      </t>
+      <t t-call="uno360x_workspace.shell">
+        <t t-if="p">
+          <p class="ux-breadcrumb">
+            <t t-out="'Operations / Projects / Project control' if en else 'Operaciones / Proyectos / Control del proyecto'" />
+          </p>
+          <div class="ux-directory-head">
+            <div>
+              <a href="/uno360x-proyectos" class="ux-small-link">
+                <t t-out="'← Back to projects' if en else '← Volver a proyectos'" />
+              </a>
+              <h1 style="margin-top:18px" t-out="p.name" />
+              <p>
+                <t t-out="p.partner_id.name or ('No customer assigned' if en else 'Sin cliente asignado')" /> · <t t-out="p.user_id.name or ('No owner assigned' if en else 'Sin responsable')" /> · <t t-out="company.name" />
+              </p>
+            </div>
+            <div class="ux-actions">
+              <a class="ux-action-button" t-att-href="'/odoo/project.project/%s' % p.id">
+                <t t-out="'Edit project' if en else 'Editar proyecto'" />
+              </a>
+              <a class="ux-action-button primary" t-if="panel_env['project.task'].check_access_rights('create',raise_exception=False)" t-att-href="'/odoo/project.task/new'">
+                <t t-out="('New task' if en else '+ Nueva tarea') if links.get('new') else ('Manage tasks' if en else 'Gestionar tareas')" />
+              </a>
+            </div>
+          </div>
+          <nav class="ux-record-tabs">
+            <a t-foreach="[('summary','Resumen','Summary'),('orders','Órdenes y gastos','Orders and costs'),('payments','Pagos','Payments'),('tasks','Tareas y subtareas','Tasks and subtasks'),('documents','Documentos','Documents'),('team','Equipo','Team')]" t-as="nav" t-att-href="'/uno360x-proyecto?id=%s&amp;tab=%s' % (p.id,nav[0])" t-att-class="'active' if tab == nav[0] or (tab == 'costs' and nav[0] == 'orders') else ''" t-out="nav[2] if en else nav[1]" />
+          </nav>
+          <p id="ux-control-message" role="status" aria-live="polite" hidden="hidden" />
+          <t t-if="budget_visible and panel_env['project.project'].check_access_rights('write',raise_exception=False)">
+            <details class="ux-budget-editor">
+              <summary>
+                <t t-out="'Set or adjust cost budget' if en else 'Definir o ajustar presupuesto de costos'" />
+              </summary>
+              <form id="ux-budget-form" t-att-data-project-id="p.id">
+                <label for="ux-budget-input">
+                  <t t-out="'Budget in' if en else 'Presupuesto en'" />
+                  <t t-out="currency.name" />
+                </label>
+                <input id="ux-budget-input" name="budget" type="number" min="0" step="0.01" required="required" t-att-value="budget if budget_set else ''" />
+                <button class="ux-action-button primary" type="submit">
+                  <t t-out="'Save budget' if en else 'Guardar presupuesto'" />
+                </button>
+                <small>
+                  <t t-out="'Does not modify orders or record payments.' if en else 'No modifica las órdenes ni registra pagos.'" />
+                </small>
+              </form>
+            </details>
+          </t>
+          <t t-if="tab == 'summary'">
+            <section class="ux-control-kpis">
+              <article>
+                <small>
+                  <t t-out="'Cost budget' if en else 'Presupuesto de costos'" />
+                </small>
+                <strong>
+                  <t t-if="budget_set">
+                    <t t-out="currency.symbol+'{:,.2f}'.format(budget)" />
+                  </t>
+                  <t t-else="" t-out="('Not recorded' if en else 'Sin registrar') if budget_visible else ('Restricted' if en else 'Restringido')" />
+                </strong>
+                <span>
+                  <t t-out="'Approved project cost limit' if en else 'Límite aprobado del proyecto'" />
+                </span>
+              </article>
+              <article class="dark">
+                <small>
+                  <t t-out="'Recorded cost' if en else 'Gasto registrado'" />
+                </small>
+                <strong>
+                  <t t-if="cost_ready">
+                    <t t-out="currency.symbol+'{:,.2f}'.format(spent)" />
+                  </t>
+                  <t t-else="" t-out="('Link an account' if en else 'Falta vincular cuenta') if cost_rights else ('Restricted' if en else 'Restringido')" />
+                </strong>
+                <span>
+                  <t t-out="'Visible net costs · does not mean payments' if en else 'Costos netos visibles · no equivale a pagos'" />
+                </span>
+              </article>
+              <article>
+                <small>
+                  <t t-out="'Budget remaining' if en else 'Disponible del presupuesto'" />
+                </small>
+                <strong t-att-class="'ux-money-warning' if cost_ready and budget_set and spent &gt; budget else ''">
+                  <t t-if="cost_ready and budget_set">
+                    <t t-out="currency.symbol+'{:,.2f}'.format(budget-spent)" />
+                  </t>
+                  <t t-else="">—</t>
+                </strong>
+                <span>
+                  <t t-out="'Budget minus recorded cost' if en else 'Presupuesto menos gasto registrado'" />
+                </span>
+              </article>
+              <article>
+                <small>
+                  <t t-out="'Work progress' if en else 'Avance operativo'" />
+                </small>
+                <strong t-out="'{:.0f}%'.format(pct) if work else '—'" />
+                <span>
+                  <t t-out="done" /> / <t t-out="len(work)" />
+                  <t t-out="'leaf tasks completed' if en else 'tareas finales completadas'" />
+                </span>
+              </article>
+            </section>
+            <section class="ux-detail-box ux-cost-reconciliation" t-if="cost_ready and bill_rights">
+              <h2>
+                <t t-out="'How project costs reconcile' if en else 'Cómo se compone el costo del proyecto'" />
+              </h2>
+              <div class="ux-payment-metrics">
+                <article>
+                  <small>
+                    <t t-out="'Recorded order costs' if en else 'Costos registrados de órdenes'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(purchase_cost)" />
+                  </strong>
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Other recorded costs' if en else 'Otros gastos registrados'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(other_cost)" />
+                  </strong>
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Total recorded cost' if en else 'Costo registrado total'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(spent)" />
+                  </strong>
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Purchases awaiting posted bills · estimate' if en else 'Compras por facturar · estimado'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(purchase_pending)" />
+                  </strong>
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Recorded + unbilled purchases' if en else 'Registrado + compras por facturar'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(forecast)" />
+                  </strong>
+                </article>
+              </div>
+              <p class="ux-business-note">
+                <t t-out="'Recorded costs include posted bills and costs allocated through analytics or a linked purchase line. Each line is counted once. Unbilled purchases are order quantities without a posted bill, valued at order prices and converted at the order exchange rate. This is not a payment and excludes tax.' if en else 'El costo registrado incluye facturas publicadas y gastos asignados por distribución analítica o por la línea de una orden vinculada. Cada partida se cuenta una vez. Las compras por facturar son las cantidades de la orden aún sin factura publicada, valoradas al precio de la orden y convertidas a su cambio. No representa un pago ni incluye ITBIS.'" />
+              </p>
+              <div class="ux-table-scroll">
+                <table class="ux-record-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <t t-out="'Order' if en else 'Orden'" />
+                      </th>
+                      <th>
+                        <t t-out="'Confirmed purchase' if en else 'Compra confirmada'" />
+                      </th>
+                      <th>
+                        <t t-out="'Posted bill' if en else 'Factura publicada'" />
+                      </th>
+                      <th>
+                        <t t-out="'Included in cost' if en else 'Incluido en costo'" />
+                      </th>
+                      <th>
+                        <t t-out="'Awaiting bill · estimate' if en else 'Por facturar · estimado'" />
+                      </th>
+                      <th>
+                        <t t-out="'Review' if en else 'Revisión'" />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr t-foreach="purchase_reconciliation" t-as="rec">
+                      <td>
+                        <a t-att-href="'/odoo/purchase.order/%s' % rec['order'].id" t-out="rec['order'].name" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(rec['ordered'])" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(rec['posted'])" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(rec['cost'])" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(rec['pending'])" />
+                      </td>
+                      <td>
+                        <span t-if="rec['currency_warning']">
+                          <t t-out="'Currency mismatch: order ' if en else 'Diferencia de moneda: orden '" />
+                          <t t-out="rec['order'].currency_id.name" /> / <t t-out="rec['bill_currencies']" />
+                        </span>
+                        <span t-elif="rec['price_difference']">
+                          <t t-out="'Fully billed with a different amount' if en else 'Facturado completo con importe diferente'" />
+                        </span>
+                        <span t-else="">—</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="ux-business-note" t-if="reconciliation_warnings">
+                <strong>
+                  <t t-out="'Review required: ' if en else 'Requiere revisión: '" />
+                  <t t-out="len(reconciliation_warnings)" />
+                  <t t-out="'orders differ from their posted bills. Registered costs use the actual posted accounting amount; no exchange rates or amounts were corrected automatically.' if en else 'órdenes difieren de sus facturas publicadas. El costo registrado usa el importe contable publicado; no se corrigieron monedas ni importes automáticamente.'" />
+                </strong>
+              </p>
+              <p class="ux-business-note">
+                <t t-out="'Exchange or price differences between the order and bill can cause purchase and cost totals to differ. A bill explicitly allocated to another project retains that allocation.' if en else 'Las diferencias de cambio o de precio entre la orden y la factura pueden hacer que compras y costos no coincidan. Una factura asignada expresamente a otro proyecto conserva esa asignación.'" />
+              </p>
+            </section>
+            <div class="ux-control-overview">
+              <section class="ux-detail-box">
+                <div class="ux-control-heading">
+                  <h2>
+                    <t t-out="'Where the project stands' if en else 'Por dónde va el proyecto'" />
+                  </h2>
+                  <span class="ux-role-pill" t-out="p.date.strftime('%d %b') if p.date else ('No due date' if en else 'Sin fecha de entrega')" />
+                </div>
+                <div class="ux-control-milestone">
+                  <span class="done">✓</span>
+                  <div>
+                    <strong>
+                      <t t-out="len([row for row in root_rows if row['kind'] == 'done'])" />
+                      <t t-out="'workstreams completed' if en else 'frentes con trabajo completado'" />
+                    </strong>
+                    <small>
+                      <t t-out="'Parent tasks and their subtasks are not counted twice.' if en else 'Sin sumar dos veces las tareas principales y sus subtareas.'" />
+                    </small>
+                  </div>
+                </div>
+                <div class="ux-control-milestone">
+                  <span>↗</span>
+                  <div>
+                    <strong t-out="next_task.name if next_task else ('No pending tasks visible' if en else 'Sin tareas pendientes visibles')" />
+                    <small>
+                      <t t-if="next_task">
+                        <t t-out="', '.join(next_task.user_ids.mapped('name')) or ('Not assigned' if en else 'Sin asignar')" />
+                      </t>
+                      <t t-else="">
+                        <t t-out="'The board keeps all the work history.' if en else 'El tablero conserva todo el historial de trabajo.'" />
+                      </t>
+                    </small>
+                  </div>
+                </div>
+                <div class="ux-control-milestone">
+                  <span class="attention">!</span>
+                  <div>
+                    <strong>
+                      <t t-out="len(overdue)" />
+                      <t t-out="'overdue pending tasks' if en else 'tareas vencidas pendientes'" />
+                    </strong>
+                    <small>
+                      <t t-out="'Open the board to review assignees and due dates.' if en else 'Abre el tablero para revisar responsables y fechas.'" />
+                    </small>
+                  </div>
+                </div>
+                <a class="ux-small-link" t-att-href="'/uno360x-proyecto?id=%s&amp;tab=tasks' % p.id">
+                  <t t-out="'View tasks and subtasks →' if en else 'Ver tareas y subtareas →'" />
+                </a>
+              </section>
+              <section class="ux-detail-box">
+                <div class="ux-control-heading">
+                  <h2>
+                    <t t-out="'Cost breakdown' if en else 'En qué se ha gastado'" />
+                  </h2>
+                </div>
+                <t t-if="cost_ready">
+                  <div class="ux-cost-bar" t-foreach="cost_groups[:4]" t-as="group">
+                    <div>
+                      <span t-out="group['name']" />
+                      <strong>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(group['value'])" />
+                      </strong>
+                    </div>
+                    <div class="ux-progress">
+                      <span t-att-style="'width:'+str(min(100,max(0,group['value']/max([abs(g['value']) for g in cost_groups]+[1.0])*100)))+'%'" />
+                    </div>
+                  </div>
+                  <p class="ux-business-note" t-if="not cost_rows">
+                    <t t-out="'No costs are recorded in this project’s account.' if en else 'No hay costos registrados en la cuenta de este proyecto.'" />
+                  </p>
+                  <div class="ux-recent-costs" t-if="cost_rows">
+                    <h3>
+                      <t t-out="'Recent recorded costs' if en else 'Últimos gastos registrados'" />
+                    </h3>
+                    <div t-foreach="cost_rows[:3]" t-as="recent_cost">
+                      <a t-att-href="'/odoo/account.move/%s' % recent_cost['move'].id if recent_cost['move'] else '/odoo/account.analytic.line/%s' % recent_cost['analytic'].id" t-att-title="recent_cost['name']" t-out="recent_cost['name']" />
+                      <strong t-out="currency.symbol+'{:,.2f}'.format(recent_cost['value'])" />
+                    </div>
+                  </div>
+                  <a class="ux-small-link" t-att-href="'/uno360x-proyecto?id=%s&amp;tab=orders' % p.id">
+                    <t t-out="'View supporting records and adjustments →' if en else 'Ver respaldos y ajustes →'" />
+                  </a>
+                </t>
+                <t t-elif="cost_rights">
+                  <p class="ux-business-empty">
+                    <t t-out="'Link a cost account to identify the project’s expenses.' if en else 'Vincula una cuenta de costos al proyecto para identificar sus gastos.'" />
+                    <a class="ux-small-link" t-att-href="'/odoo/project.project/%s' % p.id">
+                      <t t-out="'Configure costs →' if en else 'Configurar costos →'" />
+                    </a>
+                  </p>
+                </t>
+                <t t-else="">
+                  <p class="ux-business-empty">
+                    <t t-out="'Your profile does not have access to this financial information.' if en else 'Tu perfil no tiene acceso a esta información financiera.'" />
+                  </p>
+                </t>
+              </section>
+            </div>
+            <section class="ux-order-preview">
+              <div>
+                <h2>
+                  <t t-out="'Linked project orders' if en else 'Órdenes vinculadas al proyecto'" />
+                </h2>
+                <p>
+                  <span>
+                    <t t-out="'Sales:' if en else 'Ventas:'" />
+                    <strong t-out="len(sales) if can_sales else '—'" />
+                  </span>
+                  <span>
+                    <t t-out="'Purchases:' if en else 'Compras:'" />
+                    <strong t-out="len(purchase) if can_purchase else '—'" />
+                  </span>
+                </p>
+              </div>
+              <a class="ux-action-button primary" t-att-href="'/uno360x-proyecto?id=%s&amp;tab=orders' % p.id">
+                <t t-out="'View orders and costs' if en else 'Ver órdenes y gastos'" />
+              </a>
+            </section>
+            <p class="ux-business-note">
+              <t t-if="cost_ready and budget_set and budget &gt; 0">
+                <t t-out="'Budget used:' if en else 'Presupuesto utilizado:'" />
+                <strong t-out="'{:.0f}%'.format(spent/budget*100)" /> · </t>
+              <t t-out="'Recorded costs may include unpaid amounts. Purchase commitments are not added again to costs.' if en else 'El gasto registrado puede incluir importes aún no pagados. Los compromisos de compra no se suman otra vez al gasto.'" />
+            </p>
+            <section class="ux-detail-box" t-if="p.description">
+              <h2>
+                <t t-out="'Description and scope' if en else 'Descripción y alcance'" />
+              </h2>
+              <div class="ux-project-description" t-field="p.description" />
+            </section>
+            <section class="ux-payment-preview" t-if="can_payments">
+              <div>
+                <small>
+                  <t t-out="'Paid project outflows' if en else 'Salidas pagadas del proyecto'" />
+                </small>
+                <strong t-out="currency.symbol+'{:,.2f}'.format(paid_out)" />
+                <span>
+                  <t t-out="'Payment view: not added again to recorded costs.' if en else 'Vista de pagos: no se suma otra vez al gasto registrado.'" />
+                </span>
+              </div>
+              <div>
+                <p>
+                  <t t-out="len(payments)" />
+                  <t t-out="'linked payments, with or without an order' if en else 'pagos vinculados, con o sin orden'" />
+                </p>
+                <a class="ux-action-button" t-att-href="'/uno360x-proyecto?id=%s&amp;tab=payments' % p.id">
+                  <t t-out="'View direct and applied payments →' if en else 'Ver pagos directos y aplicados →'" />
+                </a>
+              </div>
+            </section>
+          </t>
+          <t t-elif="tab in ['orders','costs']">
+            <section class="ux-summary-tiles">
+              <article class="ux-summary-tile">
+                <small>
+                  <t t-out="'Allocated confirmed sales' if en else 'Venta confirmada asignada'" />
+                </small>
+                <strong>
+                  <t t-if="can_sales">
+                    <t t-out="currency.symbol+'{:,.2f}'.format(sale_amount)" />
+                  </t>
+                  <t t-else="">—</t>
+                </strong>
+                <span>
+                  <t t-out="'Project allocation · excluding tax' if en else 'Parte vinculada a este proyecto · sin ITBIS'" />
+                </span>
+              </article>
+              <article class="ux-summary-tile">
+                <small>
+                  <t t-out="'Allocated confirmed purchases' if en else 'Compras confirmadas asignadas'" />
+                </small>
+                <strong>
+                  <t t-if="can_purchase">
+                    <t t-out="currency.symbol+'{:,.2f}'.format(purchase_amount)" />
+                  </t>
+                  <t t-else="">—</t>
+                </strong>
+                <span>
+                  <t t-out="'Committed amount · not an additional cost' if en else 'Importe comprometido · no es gasto adicional'" />
+                </span>
+              </article>
+              <article class="ux-summary-tile dark">
+                <small>
+                  <t t-out="'Recorded cost' if en else 'Gasto registrado'" />
+                </small>
+                <strong>
+                  <t t-if="cost_ready">
+                    <t t-out="currency.symbol+'{:,.2f}'.format(spent)" />
+                  </t>
+                  <t t-else="">—</t>
+                </strong>
+                <span>
+                  <t t-out="'Costs from analytics and linked order lines' if en else 'Costos por cuenta analítica y órdenes vinculadas'" />
+                </span>
+              </article>
+            </section>
+            <section class="ux-detail-box ux-cost-reconciliation" t-if="cost_ready and bill_rights">
+              <h2>
+                <t t-out="'How project costs reconcile' if en else 'Cómo se compone el costo del proyecto'" />
+              </h2>
+              <div class="ux-payment-metrics">
+                <article>
+                  <small>
+                    <t t-out="'Recorded order costs' if en else 'Costos registrados de órdenes'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(purchase_cost)" />
+                  </strong>
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Other recorded costs' if en else 'Otros gastos registrados'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(other_cost)" />
+                  </strong>
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Total recorded cost' if en else 'Costo registrado total'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(spent)" />
+                  </strong>
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Purchases awaiting posted bills · estimate' if en else 'Compras por facturar · estimado'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(purchase_pending)" />
+                  </strong>
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Recorded + unbilled purchases' if en else 'Registrado + compras por facturar'" />
+                  </small>
+                  <strong>
+                    <t t-out="currency.symbol+'{:,.2f}'.format(forecast)" />
+                  </strong>
+                </article>
+              </div>
+              <p class="ux-business-note">
+                <t t-out="'Recorded costs include posted bills and costs allocated through analytics or a linked purchase line. Each line is counted once. Unbilled purchases are order quantities without a posted bill, valued at order prices and converted at the order exchange rate. This is not a payment and excludes tax.' if en else 'El costo registrado incluye facturas publicadas y gastos asignados por distribución analítica o por la línea de una orden vinculada. Cada partida se cuenta una vez. Las compras por facturar son las cantidades de la orden aún sin factura publicada, valoradas al precio de la orden y convertidas a su cambio. No representa un pago ni incluye ITBIS.'" />
+              </p>
+              <div class="ux-table-scroll">
+                <table class="ux-record-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <t t-out="'Order' if en else 'Orden'" />
+                      </th>
+                      <th>
+                        <t t-out="'Confirmed purchase' if en else 'Compra confirmada'" />
+                      </th>
+                      <th>
+                        <t t-out="'Posted bill' if en else 'Factura publicada'" />
+                      </th>
+                      <th>
+                        <t t-out="'Included in cost' if en else 'Incluido en costo'" />
+                      </th>
+                      <th>
+                        <t t-out="'Awaiting bill · estimate' if en else 'Por facturar · estimado'" />
+                      </th>
+                      <th>
+                        <t t-out="'Review' if en else 'Revisión'" />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr t-foreach="purchase_reconciliation" t-as="rec">
+                      <td>
+                        <a t-att-href="'/odoo/purchase.order/%s' % rec['order'].id" t-out="rec['order'].name" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(rec['ordered'])" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(rec['posted'])" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(rec['cost'])" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(rec['pending'])" />
+                      </td>
+                      <td>
+                        <span t-if="rec['currency_warning']">
+                          <t t-out="'Currency mismatch: order ' if en else 'Diferencia de moneda: orden '" />
+                          <t t-out="rec['order'].currency_id.name" /> / <t t-out="rec['bill_currencies']" />
+                        </span>
+                        <span t-elif="rec['price_difference']">
+                          <t t-out="'Fully billed with a different amount' if en else 'Facturado completo con importe diferente'" />
+                        </span>
+                        <span t-else="">—</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="ux-business-note" t-if="reconciliation_warnings">
+                <strong>
+                  <t t-out="'Review required: ' if en else 'Requiere revisión: '" />
+                  <t t-out="len(reconciliation_warnings)" />
+                  <t t-out="'orders differ from their posted bills. Registered costs use the actual posted accounting amount; no exchange rates or amounts were corrected automatically.' if en else 'órdenes difieren de sus facturas publicadas. El costo registrado usa el importe contable publicado; no se corrigieron monedas ni importes automáticamente.'" />
+                </strong>
+              </p>
+              <p class="ux-business-note">
+                <t t-out="'Exchange or price differences between the order and bill can cause purchase and cost totals to differ. A bill explicitly allocated to another project retains that allocation.' if en else 'Las diferencias de cambio o de precio entre la orden y la factura pueden hacer que compras y costos no coincidan. Una factura asignada expresamente a otro proyecto conserva esa asignación.'" />
+              </p>
+            </section>
+            <div class="ux-control-heading">
+              <h2>
+                <t t-out="'Project orders' if en else 'Órdenes del proyecto'" />
+              </h2>
+              <details class="ux-link-order">
+                <summary class="ux-action-button">
+                  <t t-out="'+ Link an order' if en else '+ Vincular una orden'" />
+                </summary>
+                <div>
+                  <a t-if="can_sales" href="/uno360x/native/sale.order">
+                    <t t-out="'Sales order' if en else 'Orden de venta'" />
+                  </a>
+                  <a t-if="can_purchase" href="/uno360x/native/purchase.order">
+                    <t t-out="'Purchase order' if en else 'Orden de compra'" />
+                  </a>
+                  <small>
+                    <t t-out="'Open an order and select this project in its record.' if en else 'Abre una orden y asigna el proyecto en su ficha.'" />
+                  </small>
+                </div>
+              </details>
+            </div>
+            <div class="ux-table-scroll">
+              <table class="ux-record-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <t t-out="'Order' if en else 'Orden'" />
+                    </th>
+                    <th>
+                      <t t-out="'Type' if en else 'Tipo'" />
+                    </th>
+                    <th>
+                      <t t-out="'Customer / vendor' if en else 'Cliente / proveedor'" />
+                    </th>
+                    <th>
+                      <t t-out="'Status' if en else 'Estado'" />
+                    </th>
+                    <th>
+                      <t t-out="'Project allocation' if en else 'Asignado al proyecto'" />
+                    </th>
+                    <th>
+                      <t t-out="'Full order excluding tax' if en else 'Total de la orden sin ITBIS'" />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr t-foreach="order_rows" t-as="row">
+                    <td>
+                      <a t-att-href="'/odoo/%s/%s' % ('sale.order' if row['kind'] == 'sale' else 'purchase.order',row['record'].id)" t-out="row['record'].name" />
+                    </td>
+                    <td t-out="('Sale' if en else 'Venta') if row['kind'] == 'sale' else ('Purchase' if en else 'Compra')" />
+                    <td t-out="row['record'].partner_id.name" />
+                    <td>
+                      <span class="ux-role-pill" t-out="dict(row['record']._fields['state']._description_selection(panel_env)).get(row['record'].state,row['record'].state)" />
+                    </td>
+                    <td t-out="row['record'].currency_id.symbol+'{:,.2f}'.format(row['share'])" />
+                    <td t-out="row['record'].currency_id.symbol+'{:,.2f}'.format(row['record'].amount_untaxed)" />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="ux-business-empty" t-if="not order_rows">
+              <t t-out="'No linked orders are visible. Link an order to show it here.' if en else 'No hay órdenes vinculadas visibles. Vincula una orden para verla aquí.'" />
+            </p>
+            <p class="ux-business-note">
+              <t t-out="'The totals above use company currency and the recorded exchange rate on each order date. Each row keeps its original currency. Allocations come from project links, linked lines or analytic distribution.' if en else 'Los totales superiores usan la moneda de la compañía y el cambio registrado a la fecha de cada orden. Cada fila conserva su moneda original. La asignación se identifica por el proyecto, las partidas vinculadas o su distribución de costos.'" />
+            </p>
+            <div class="ux-control-heading">
+              <h2>
+                <t t-out="'Recorded project costs' if en else 'Gastos cargados al proyecto'" />
+              </h2>
+            </div>
+            <t t-if="cost_ready">
+              <div class="ux-table-scroll">
+                <table class="ux-record-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <t t-out="'Date' if en else 'Fecha'" />
+                      </th>
+                      <th>
+                        <t t-out="'Description' if en else 'Concepto'" />
+                      </th>
+                      <th>
+                        <t t-out="'Source' if en else 'Origen'" />
+                      </th>
+                      <th>
+                        <t t-out="'Cost / adjustment' if en else 'Costo / ajuste'" />
+                      </th>
+                      <th>
+                        <t t-out="'Supporting record' if en else 'Respaldo'" />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr t-foreach="cost_rows[:100]" t-as="cost_row">
+                      <td t-out="cost_row['date']" />
+                      <td>
+                        <span t-out="cost_row['name']" />
+                        <small style="display:block;margin-top:6px" t-out="cost_row['method']" />
+                      </td>
+                      <td>
+                        <span t-out="cost_row['account']" />
+                        <a style="display:block;margin-top:6px" t-if="cost_row['order']" t-att-href="'/odoo/purchase.order/%s' % cost_row['order'].id" t-out="cost_row['order'].name" />
+                      </td>
+                      <td>
+                        <t t-out="currency.symbol+'{:,.2f}'.format(cost_row['value'])" />
+                      </td>
+                      <td>
+                        <a t-if="cost_row['move']" t-att-href="'/odoo/account.move/%s' % cost_row['move'].id" t-out="cost_row['move'].name" />
+                        <a t-else="" t-att-href="'/odoo/account.analytic.line/%s' % cost_row['analytic'].id">Ver registro →</a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="ux-business-note" t-if="not cost_rows">
+                <t t-out="'No costs are recorded for this project.' if en else 'No hay costos registrados para este proyecto.'" />
+              </p>
+              <p class="ux-business-note">
+                <t t-out="'Up to 100 recent entries. Totals include all accessible records; bills and expenses are not added again outside their cost entries.' if en else 'Hasta 100 registros recientes. Los totales incluyen todos los registros accesibles; las facturas y gastos no se vuelven a sumar fuera de sus registros de costo.'" />
+              </p>
+            </t>
+            <t t-elif="cost_rights">
+              <p class="ux-business-empty">
+                <t t-out="'Link a cost account to identify the project’s expenses.' if en else 'Vincula una cuenta de costos al proyecto para identificar sus gastos.'" />
+                <a class="ux-small-link" t-att-href="'/odoo/project.project/%s' % p.id">
+                  <t t-out="'Configure costs →' if en else 'Configurar costos →'" />
+                </a>
+              </p>
+            </t>
+            <t t-else="">
+              <p class="ux-business-empty">
+                <t t-out="'Your profile does not have access to this financial information.' if en else 'Tu perfil no tiene acceso a esta información financiera.'" />
+              </p>
+            </t>
+            <t t-if="panel_env['stock.picking'].check_access_rights('read',raise_exception=False)">
+              <t t-set="pickings" t-value="panel_env['stock.picking'].search([('company_id','=',company.id),'|','|',('project_id','=',p.id),('sale_id','in',sales.ids),('purchase_id','in',purchase.ids)],order='scheduled_date desc',limit=50)" />
+              <section class="ux-detail-box" t-if="pickings">
+                <h2>
+                  <t t-out="'Linked deliveries and receipts' if en else 'Entregas y recepciones vinculadas'" />
+                </h2>
+                <div class="ux-timeline-row" t-foreach="pickings" t-as="picking">
+                  <a t-att-href="'/odoo/stock.picking/%s' % picking.id" t-out="picking.name" />
+                  <span class="ux-role-pill" t-out="dict(picking._fields['state']._description_selection(panel_env)).get(picking.state,picking.state)" />
+                </div>
+              </section>
+            </t>
+          </t>
+          <t t-elif="tab == 'tasks'">
+            <section class="ux-workspace-progress">
+              <small>
+                <t t-out="'Work progress' if en else 'Avance operativo'" />
+              </small>
+              <div>
+                <strong t-out="'{:.0f}%'.format(pct) if work else '—'" />
+                <span>
+                  <t t-out="done" /> / <t t-out="len(work)" />
+                  <t t-out="'leaf tasks completed' if en else 'tareas finales completadas'" />
+                </span>
+              </div>
+              <div class="ux-progress">
+                <span t-att-style="'width:'+str(pct)+'%'" />
+              </div>
+            </section>
+            <p class="ux-business-note">
+              <t t-out="'Progress counts subtasks, or tasks without children, without counting parents again, and excludes canceled tasks. The board groups work by progress while preserving each task’s original state.' if en else 'El avance cuenta las subtareas, o las tareas sin hijas; no vuelve a sumar sus padres y excluye las canceladas. El tablero agrupa por avance de trabajo y conserva el estado original de cada tarea.'" />
+            </p>
+            <div class="ux-task-board">
+              <section class="ux-board-column" t-foreach="[('pending','Pendiente','Pending'),('working','En ejecución','In progress'),('done','Trabajo completado','Work completed')]" t-as="column">
+                <header>
+                  <h2 t-out="column[2] if en else column[1]" />
+                  <span t-out="len([row for row in root_rows if row['kind'] == column[0]])" />
+                </header>
+                <t t-set="column_rows" t-value="[row for row in root_rows if row['kind'] == column[0]]" />
+                <article class="ux-parent-task" t-foreach="column_rows[:30]" t-as="row">
+                  <t t-set="task" t-value="row['task']" />
+                  <div class="ux-parent-head">
+                    <a t-att-href="'/odoo/project.task/%s' % task.id" t-out="task.name" />
+                    <small>
+                      <t t-out="', '.join(task.user_ids.mapped('name')) or ('Not assigned' if en else 'Sin asignar')" />
+                      <t t-if="task.date_deadline"> · <t t-out="task.date_deadline.strftime('%d %b')" />
+                      </t>
+                    </small>
+                    <span class="ux-role-pill">
+                      <t t-out="row['done']" /> / <t t-out="row['total']" />
+                      <t t-out="'completed' if en else 'completadas'" />
+                    </span>
+                  </div>
+                  <t t-if="task.child_ids &amp; tasks">
+                    <div class="ux-subtask-children">
+                      <t t-foreach="task.child_ids &amp; tasks" t-as="child">
+                        <t t-call="uno360x_workspace.reference_task_branch">
+                          <t t-set="task" t-value="child" />
+                        </t>
+                      </t>
+                    </div>
+                  </t>
+                  <t t-else="">
+                    <div class="ux-task-standalone-action">
+                      <button type="button" t-att-class="'ux-task-toggle done' if task.state == '1_done' else 'ux-task-toggle'" t-att-data-task-id="task.id" t-att-data-next-state="'01_in_progress' if task.state == '1_done' else '1_done'" t-att-disabled="not can_write_tasks" t-att-aria-pressed="str(task.state == '1_done').lower()" t-att-aria-label="('Reopen task' if en else 'Reabrir tarea') if task.state == '1_done' else ('Mark task complete' if en else 'Marcar tarea completada')">
+                        <span t-if="task.state == '1_done'">✓</span>
+                      </button>
+                      <span t-out="('Completed' if en else 'Completada') if task.state == '1_done' else ('Mark complete' if en else 'Marcar completada')" />
+                    </div>
+                  </t>
+                  <footer>
+                    <a t-att-href="'/odoo/project.task/%s' % row['task'].id">
+                      <t t-out="'Open task / add subtask →' if en else 'Abrir tarea / añadir subtarea →'" />
+                    </a>
+                  </footer>
+                </article>
+                <p class="ux-business-note" t-if="not column_rows">
+                  <t t-out="'No tasks in this state.' if en else 'Sin tareas en este estado.'" />
+                </p>
+                <p class="ux-business-note" t-if="len(column_rows) &gt; 30">
+                  <t t-out="'30 cards are shown. The full board retains all tasks.' if en else 'Se muestran 30 tarjetas. El tablero completo conserva todas.'" />
+                </p>
+              </section>
+            </div>
+            <details class="ux-task-canceled" t-if="any(row['kind'] == 'canceled' for row in root_rows)">
+              <summary>
+                <t t-out="'Canceled tasks' if en else 'Tareas canceladas'" />
+              </summary>
+              <div t-foreach="[row for row in root_rows if row['kind'] == 'canceled']" t-as="row">
+                <a t-att-href="'/odoo/project.task/%s' % row['task'].id" t-out="row['task'].name" />
+              </div>
+            </details>
+            <p class="ux-business-note">
+              <a class="ux-small-link" href="/uno360x/native/project.task">
+                <t t-out="'Open full board and all options →' if en else 'Abrir tablero completo y todas las opciones →'" />
+              </a>
+            </p>
+          </t>
+          <t t-elif="tab == 'payments'">
+            <section class="ux-project-payments" t-if="can_payments">
+              <div class="ux-control-heading ux-payment-heading">
+                <h2>
+                  <t t-out="'Project payments, with or without an order' if en else 'Pagos del proyecto, con o sin orden'" />
+                </h2>
+                <a class="ux-action-button" href="/uno360x/native/account.payment">
+                  <t t-out="'+ Link payment' if en else '+ Vincular pago'" />
+                </a>
+              </div>
+              <section class="ux-payment-metrics">
+                <article>
+                  <small>
+                    <t t-out="'Paid outflows' if en else 'Salidas pagadas'" />
+                  </small>
+                  <strong t-out="currency.symbol+'{:,.2f}'.format(paid_out)" />
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Outflows in process' if en else 'Salidas en proceso'" />
+                  </small>
+                  <strong t-out="currency.symbol+'{:,.2f}'.format(payments_in_process)" />
+                </article>
+                <article>
+                  <small>
+                    <t t-out="'Vendor refunds received' if en else 'Devoluciones de proveedores'" />
+                  </small>
+                  <strong t-out="currency.symbol+'{:,.2f}'.format(supplier_refunds)" />
+                </article>
+              </section>
+              <p class="ux-business-note">
+                <t t-out="'Each payment appears once. Payments already reflected in a bill or cost do not increase recorded costs again. For payments without another link, select the project in the payment record.' if en else 'Los pagos se muestran una sola vez. Si ya están reflejados en una factura o costo, no aumentan de nuevo el gasto registrado. Para pagos sin otro vínculo, selecciona el proyecto en la ficha del pago.'" />
+              </p>
+              <div class="ux-table-scroll">
+                <table class="ux-record-table ux-payment-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <t t-out="'Payment' if en else 'Pago'" />
+                      </th>
+                      <th>
+                        <t t-out="'Date' if en else 'Fecha'" />
+                      </th>
+                      <th>
+                        <t t-out="'Recipient / source' if en else 'Beneficiario / origen'" />
+                      </th>
+                      <th>
+                        <t t-out="'Direction' if en else 'Movimiento'" />
+                      </th>
+                      <th>
+                        <t t-out="'Status' if en else 'Estado'" />
+                      </th>
+                      <th>
+                        <t t-out="'Payment total' if en else 'Total del pago'" />
+                      </th>
+                      <th>
+                        <t t-out="'Project allocation' if en else 'Asignado al proyecto'" />
+                      </th>
+                      <th>
+                        <t t-out="'Cost relationship' if en else 'Relación con el gasto'" />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr t-foreach="payment_rows[:100]" t-as="pay_row">
+                      <t t-set="payment" t-value="pay_row['record']" />
+                      <td>
+                        <a t-att-href="'/odoo/account.payment/%s' % payment.id" t-out="payment.name or ('Draft' if en else 'Borrador')" />
+                        <small style="display:block;margin-top:6px;font-size:9px" t-out="payment.memo or ''" />
+                      </td>
+                      <td t-out="payment.date" />
+                      <td t-out="payment.partner_id.name or '—'" />
+                      <td t-out="('Outflow' if en else 'Salida') if payment.payment_type == 'outbound' else ('Inflow' if en else 'Entrada')" />
+                      <td>
+                        <span class="ux-role-pill" t-out="({'paid':('Paid' if en else 'Pagado'),'in_process':('In process' if en else 'En proceso'),'draft':('Draft' if en else 'Borrador'),'canceled':('Canceled' if en else 'Cancelado'),'rejected':('Rejected' if en else 'Rechazado')}).get(payment.state) or dict(payment._fields['state']._description_selection(panel_env)).get(payment.state,payment.state)" />
+                      </td>
+                      <td t-out="payment.currency_id.symbol+'{:,.2f}'.format(payment.amount)" />
+                      <td>
+                        <t t-if="pay_row['allocated'] is not None" t-out="currency.symbol+'{:,.2f}'.format(pay_row['allocated'])" />
+                        <span t-else="">
+                          <t t-out="'To be reviewed' if en else 'Por revisar'" />
+                        </span>
+                      </td>
+                      <td>
+                        <span t-if="pay_row['seen_in_cost']" class="ux-role-pill">
+                          <t t-out="'Already reflected in costs' if en else 'Ya reflejado en gasto'" />
+                        </span>
+                        <span t-else="" class="ux-payment-advance">
+                          <t t-out="'Direct payment / advance' if en else 'Pago directo / anticipo'" />
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="ux-business-empty" t-if="not payments">
+                <t t-out="'No linked payments are visible for this project. An order is not required: payments can be linked directly to the project.' if en else 'No hay pagos vinculados visibles para este proyecto. No es necesario que tengan una orden: pueden vincularse directamente al proyecto.'" />
+              </p>
+              <p class="ux-business-note">
+                <t t-out="'Payment figures use company currency and the paid amount. They are not the same as untaxed costs and are not automatically deducted from the cost budget. An unverifiable partial allocation is left for review and excluded from the total.' if en else 'Las cifras de pagos están en la moneda de la compañía e incluyen el importe pagado. No equivalen al costo sin impuestos ni se descuentan automáticamente del presupuesto de costos. Una asignación parcial no verificable queda por revisar, sin incorporarse al total.'" />
+              </p>
+            </section>
+            <p class="ux-business-empty" t-else="">
+              <t t-out="'Your profile does not have access to payments.' if en else 'Tu perfil no tiene acceso a los pagos.'" />
+            </p>
+          </t>
+          <t t-elif="tab == 'documents'">
+            <t t-set="docs" t-value="panel_env['ir.attachment'].search([('res_field','=',False),'|','&amp;',('res_model','=','project.project'),('res_id','=',p.id),'&amp;',('res_model','=','project.task'),('res_id','in',tasks.ids)],order='create_date desc',limit=50) if panel_env['ir.attachment'].check_access_rights('read',raise_exception=False) else []" />
+            <section class="ux-detail-box">
+              <h2>
+                <t t-out="'Project and task documents' if en else 'Documentos del proyecto y sus tareas'" />
+              </h2>
+              <div class="ux-timeline-row" t-foreach="docs" t-as="d">
+                <a t-att-href="'/web/content/%s?download=true' % d.id" t-out="d.name" />
+              </div>
+              <p t-if="not docs" class="ux-business-note">
+                <t t-out="'No documents available.' if en else 'No hay documentos disponibles.'" />
+              </p>
+              <a class="ux-small-link" t-att-href="'/odoo/project.project/%s' % p.id">
+                <t t-out="'Manage attachments →' if en else 'Gestionar adjuntos →'" />
+              </a>
+            </section>
+          </t>
+          <t t-elif="tab == 'team'">
+            <section class="ux-detail-box">
+              <h2>
+                <t t-out="'Owners and collaborators' if en else 'Responsables y colaboradores'" />
+              </h2>
+              <div class="ux-data-line">
+                <small>
+                  <t t-out="'Project owner' if en else 'Responsable del proyecto'" />
+                </small>
+                <div t-out="p.user_id.name or ('Not assigned' if en else 'Sin asignar')" />
+              </div>
+              <div class="ux-timeline-row" t-foreach="tasks.mapped('user_ids')" t-as="member">
+                <strong t-out="member.name" />
+              </div>
+            </section>
+          </t>
+          <t t-else="">
+            <p class="ux-business-empty">
+              <t t-out="'Select a project section.' if en else 'Selecciona una sección del proyecto.'" />
+            </p>
+          </t>
+          <p class="ux-business-note">
+            <t t-out="'Amounts follow accessible records in this company.' if en else 'Importes según los registros accesibles de esta compañía.'" />
+          </p>
+          <script>(function(){
+'use strict';
+var message=document.getElementById('ux-control-message');var english=(document.documentElement.lang||'').indexOf('en')===0;
+function tell(text,error){if(message){message.hidden=false;message.textContent=text;message.className=error?'ux-control-error':'ux-control-success';}}
+async function write(model,id,values){var response=await fetch('/web/dataset/call_kw/'+model+'/write',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'call',params:{model:model,method:'write',args:[[id],values],kwargs:{}}})});if(!response.ok)throw new Error('request');var data=await response.json();if(data.error||data.result!==true)throw new Error('access');}
+document.querySelectorAll('.ux-task-toggle[data-task-id]').forEach(function(button){button.addEventListener('click',async function(){button.disabled=true;button.setAttribute('aria-busy','true');try{await write('project.task',Number(button.dataset.taskId),{state:button.dataset.nextState});location.reload();}catch(e){button.disabled=false;button.removeAttribute('aria-busy');tell(english?'The task could not be updated. Check your permissions or try signing in again.':'No se pudo actualizar la tarea. Revisa tus permisos o vuelve a iniciar sesión.',true);}});});
+var budget=document.getElementById('ux-budget-form');if(budget){budget.addEventListener('submit',async function(event){event.preventDefault();if(!budget.reportValidity())return;var value=Number(budget.elements.budget.value);if(!Number.isFinite(value)||value&lt;0)return;var button=budget.querySelector('button[type="submit"]');button.disabled=true;try{await write('project.project',Number(budget.dataset.projectId),{x_ux_budget_set:true,x_ux_cost_budget:value});location.reload();}catch(e){button.disabled=false;tell(english?'The budget could not be saved. Check your permissions or try signing in again.':'No se pudo guardar el presupuesto. Revisa tus permisos o vuelve a iniciar sesión.',true);}});}
+})();
+</script>
+        </t>
+        <p class="ux-business-empty" t-else="">
+          <t t-out="'This project is not available to your profile.' if en else 'El proyecto no está disponible para tu perfil.'" />
+        </p>
+      </t>
+    </t>
+    <t t-else="">
+      <p>
+        <t t-out="'Sign in to view your projects.' if en else 'Inicia sesión para ver tus proyectos.'" />
+      </p>
+      <a href="/web/login">
+        <t t-out="'Sign in' if en else 'Iniciar sesión'" />
+      </a>
+    </t>
+  </template>
+  <template id="reference_employees">
+    <t t-set="panel_env" t-value="(panel_env or request.env)" />
+    <t t-set="u" t-value="panel_env.user" />
+    <t t-set="en" t-value="(u.lang or 'es_ES').startswith('en')" />
+    <t t-set="company" t-value="panel_env.company" />
+    <t t-set="visible" t-value="panel_env['ir.ui.menu']._visible_menu_ids() if u.has_group('base.group_user') else []" />
+    <t t-if="u.has_group('base.group_user')">
+      <t t-set="page_key" t-value="'employees'" />
+      <t t-set="hr" t-value="u.has_group('hr.group_hr_user')" />
+      <t t-set="model_name" t-value="'hr.employee' if hr else 'hr.employee.public'" />
+      <t t-set="EM" t-value="panel_env[model_name].with_context(active_test=False)" />
+      <t t-set="q" t-value="str(request.params.get('q',''))[:100].strip()" />
+      <t t-set="status" t-value="str(request.params.get('status','active')) if str(request.params.get('status','active')) in ['active','archived','all'] else 'active'" />
+      <t t-set="domain" t-value="[('company_id','in',panel_env.companies.ids)]+([('active','=',status == 'active')] if status != 'all' else [])" />
+      <t t-if="q">
+        <t t-set="domain" t-value="domain+['|',('name','ilike',q),('job_title','ilike',q)]" />
+      </t>
+      <t t-set="pn" t-value="max(1,min(10000,int(str(request.params.get('page','1'))))) if str(request.params.get('page','1')).isdigit() else 1" />
+      <t t-set="total" t-value="EM.search_count(domain)" />
+      <t t-set="pn" t-value="min(pn,max(1,(total+19)//20))" />
+      <t t-set="employees" t-value="EM.search(domain,order='name,id',offset=(pn-1)*20,limit=20)" />
+      <t t-set="eid" t-value="int(str(request.params.get('id','0'))) if str(request.params.get('id','0')).isdigit() else 0" />
+      <t t-set="e" t-value="EM.search(domain+[('id','=',eid)],limit=1) if eid else employees[:1]" />
+      <t t-set="tab" t-value="str(request.params.get('tab','info'))" />
+      <t t-call="uno360x_workspace.shell">
+        <style>
+.ue-head{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:22px 0 28px}.ue-head h1{font-size:30px;font-weight:750;margin:0 0 8px;color:#192a42}.ue-head p{color:#6b7d99;margin:0}.ue-btn{border:0;border-radius:9px;background:#10b5a6;color:white!important;font-weight:700;font-size:13px;padding:13px 20px;display:inline-block}.ue-btn.secondary{color:#078d83!important;background:#e1f5f1}.ue-grid{display:grid;grid-template-columns:minmax(270px,36%) minmax(0,1fr);gap:20px;align-items:stretch}.ue-directory,.ue-card{background:white;border:1px solid #e1e8f1;border-radius:12px;min-width:0;padding:22px;min-height:515px}.ue-directory h2{font-size:18px;font-weight:750;margin:0 0 20px;color:#192a42}.ue-search{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}.ue-filter{flex:0 0 100%;display:block;color:#6b7d99;font-size:11px;margin-bottom:7px}.ue-filter span{display:block;margin-bottom:7px}.ue-filter select{width:100%;padding:11px 12px;border:1px solid #e1e8f1;background:white;border-radius:8px;color:#192a42;font-size:12px}.ue-search input[type=search]{flex:1}.ue-status.archived{background:#fff1df;color:#9a5d0b}.ue-search input{width:100%;min-width:0;background:#f3f6fa;border:1px solid transparent;border-radius:8px;padding:13px;color:#192a42}.ue-search button{border:0;border-radius:8px;background:#e1f5f1;color:#078d83;padding:0 12px}.ue-list{max-height:445px;overflow:auto}.ue-person{width:100%;text-align:left;border:0;background:transparent;padding:15px 10px;display:flex;align-items:center;gap:13px;border-radius:9px;margin:3px 0;color:#192a42}.ue-person.active{background:#e1f5f1}.ue-person:hover{background:#f3f6fa}.ue-avatar{border-radius:50%;background:#101f37;color:white;display:flex;justify-content:center;align-items:center;width:43px;height:43px;flex-shrink:0;font-weight:750;font-size:14px}.ue-avatar{overflow:hidden}.ue-avatar img{width:100%;height:100%;object-fit:cover}.ue-photo-edit{display:inline-block;font-size:11px;font-weight:700;margin-top:7px;color:#00998c!important}.ue-person strong{font-size:12px;display:block;line-height:1.5}.ue-person small{font-size:11px;color:#6b7d99;display:block;margin-top:5px}.ue-hero{display:flex;gap:17px;align-items:center;margin-bottom:28px}.ue-hero .ue-avatar{width:64px;height:64px;font-size:22px}.ue-hero h2{font-size:22px;font-weight:750;color:#192a42;margin:0 0 9px;line-height:1.3;overflow-wrap:anywhere}.ue-hero p{color:#6b7d99;margin:0;line-height:1.5}.ue-status{font-size:10px;color:#078366;background:#e1f5f1;padding:8px 15px;border-radius:20px;align-self:flex-start;margin-left:auto}.ue-tabs{display:flex;border-bottom:1px solid #e1e8f1;margin-bottom:22px;gap:16px}.ue-tabs form{flex:1}.ue-tabs button{background:none;border:0;border-bottom:3px solid transparent;color:#6b7d99;padding:13px 0;white-space:nowrap;width:100%;text-align:left;font-size:12px}.ue-tabs button.active{border-color:#10b5a6;color:#00998c;font-weight:750}.ue-row{display:grid;grid-template-columns:40% 1fr;gap:15px;padding:14px 0;font-size:12px}.ue-row&gt;span{color:#6b7d99}.ue-row&gt;strong{color:#192a42;overflow-wrap:anywhere}.ue-note{font-size:10px;color:#6b7d99;margin-top:28px;line-height:1.7}.ue-empty{color:#6b7d99;font-size:13px;line-height:1.8;padding:20px 0}.ue-document{background:#f3f6fa;border-radius:8px;padding:16px;display:flex;justify-content:space-between;gap:20px;margin:12px 0;align-items:center;font-size:12px;overflow-wrap:anywhere}.ue-document a{font-weight:700;flex-shrink:0}.ue-pager{display:flex;justify-content:space-between;margin-top:15px;align-items:center;font-size:11px;color:#6b7d99}.ue-pager button{border:0;background:#e1f5f1;padding:7px 10px;border-radius:6px;color:#078366}.ue-actions{display:flex;gap:8px;flex-wrap:wrap}.ue-card h3{font-size:16px;color:#192a42;margin-bottom:18px}.ue-meta{display:block;color:#6b7d99;font-size:10px;margin-top:6px}@media(max-width:980px){.ue-grid{grid-template-columns:minmax(220px,38%) minmax(0,1fr)}.ue-directory,.ue-card{padding:16px}.ue-status{display:none}.ue-hero h2{font-size:18px}.ue-row{grid-template-columns:1fr;gap:7px}}@media(max-width:700px){.ue-grid{grid-template-columns:1fr}.ue-directory,.ue-card{min-height:0}.ue-list{max-height:240px}.ue-head{align-items:flex-start}.ue-head h1{font-size:26px}.ue-btn{padding:12px}.ue-card{padding:20px}.ue-row{grid-template-columns:42% 1fr}}
+</style>
+        <section class="ue-head">
+          <div>
+            <h1 t-out="'Employees' if en else 'Empleados'" />
+            <p t-out="'Team, contracts and employment details' if en else 'Equipo, contratos y datos laborales'" />
+          </div>
+          <a t-if="hr and EM.check_access_rights('create',raise_exception=False)" class="ue-btn" href="/odoo/hr.employee/new" t-out="'+ Employee' if en else '+ Empleado'" />
+        </section>
+        <div class="ue-grid">
+          <section class="ue-directory">
+            <h2 t-out="'Team directory' if en else 'Directorio del equipo'" />
+            <form class="ue-search" method="get" action="/uno360x-empleados">
+              <label class="ue-filter">
+                <span t-out="'Show employees' if en else 'Mostrar empleados'" />
+                <select name="status" aria-label="Estado de empleados" onchange="this.form.submit()">
+                  <option value="active" t-att-selected="status == 'active'" t-out="'Active' if en else 'Activos'" />
+                  <option value="archived" t-att-selected="status == 'archived'" t-out="'Archived' if en else 'Archivados'" />
+                  <option value="all" t-att-selected="status == 'all'" t-out="'All' if en else 'Todos'" />
+                </select>
+              </label>
+              <input name="q" type="search" t-att-value="q" t-att-placeholder="'Find employee...' if en else 'Buscar empleado...'" aria-label="Buscar empleado" />
+              <button type="submit" t-out="'Go' if en else 'Buscar'" />
+            </form>
+            <div class="ue-list">
+              <form t-foreach="employees" t-as="person" method="get">
+                <input type="hidden" name="status" t-att-value="status" />
+                <input type="hidden" name="q" t-att-value="q" />
+                <input type="hidden" name="page" t-att-value="pn" />
+                <button type="submit" name="id" t-att-value="person.id" t-att-class="'ue-person active' if e and e.id == person.id else 'ue-person'">
+                  <span class="ue-avatar">
+                    <img t-if="person.image_128" t-att-src="'/web/image/%s/%s/image_128' % (model_name,person.id)" t-att-alt="person.name" />
+                    <t t-else="" t-out="''.join([n[0] for n in person.name.split()[:2]]).upper()" />
+                  </span>
+                  <span>
+                    <strong t-out="person.name" />
+                    <small t-out="person.job_title or ('Position not recorded' if en else 'Puesto sin registrar')" />
+                  </span>
+                </button>
+              </form>
+              <p class="ue-empty" t-if="not employees" t-out="'No matching employees.' if en else 'No hay empleados que coincidan con la búsqueda.'" />
+            </div>
+            <div class="ue-pager">
+              <span>
+                <t t-out="total" />
+                <t t-out="('person' if total == 1 else 'people') if en else ('persona' if total == 1 else 'personas')" />
+              </span>
+              <form method="get">
+                <input type="hidden" name="status" t-att-value="status" />
+                <input type="hidden" name="q" t-att-value="q" />
+                <button t-if="pn &gt; 1" name="page" t-att-value="pn-1">←</button>
+                <button t-if="pn*20 &lt; total" name="page" t-att-value="pn+1">→</button>
+              </form>
+            </div>
+          </section>
+          <section class="ue-card">
+            <t t-if="e">
+              <div class="ue-hero">
+                <span class="ue-avatar">
+                  <img t-if="e.image_128" t-att-src="'/web/image/%s/%s/image_128' % (model_name,e.id)" t-att-alt="e.name" />
+                  <t t-else="" t-out="''.join([n[0] for n in e.name.split()[:2]]).upper()" />
+                </span>
+                <div>
+                  <h2 t-out="e.name" />
+                  <p t-out="e.job_title or ('Position not recorded' if en else 'Puesto sin registrar')" />
+                  <a t-if="hr and EM.check_access_rights('write',raise_exception=False)" class="ue-photo-edit" t-att-href="'/odoo/hr.employee/%s' % e.id" t-out="'Change photo' if en else 'Cambiar foto'" />
+                </div>
+                <span t-att-class="'ue-status' if e.active else 'ue-status archived'" t-out="('Active' if en else 'Activo') if e.active else ('Archived' if en else 'Archivado')" />
+              </div>
+              <nav class="ue-tabs" aria-label="Ficha del empleado">
+                <form t-foreach="[('info','Información','Information'),('contract','Contrato','Contract'),('docs','Documentos','Documents')]" t-as="item" method="get">
+                  <input type="hidden" name="id" t-att-value="e.id" />
+                  <input type="hidden" name="status" t-att-value="status" />
+                  <input type="hidden" name="q" t-att-value="q" />
+                  <input type="hidden" name="page" t-att-value="pn" />
+                  <button name="tab" t-att-value="item[0]" t-att-class="'active' if tab == item[0] else ''" t-out="item[2] if en else item[1]" />
+                </form>
+              </nav>
+              <t t-if="tab not in ['contract','docs']">
+                <div class="ue-row">
+                  <span t-out="'Department' if en else 'Departamento'" />
+                  <strong t-out="e.department_id.name or ('Not recorded' if en else 'Sin registrar')" />
+                </div>
+                <div class="ue-row" t-if="hr and 'x_outs_engagement_type' in EM.fields_get(['x_outs_engagement_type'])">
+                  <span t-out="'Relationship' if en else 'Tipo de vinculación'" />
+                  <strong t-if="e.x_outs_engagement_type" t-field="e.x_outs_engagement_type" />
+                  <strong t-else="" t-out="'Not recorded' if en else 'Sin registrar'" />
+                </div>
+                <div class="ue-row" t-elif="hr and 'employee_type' in EM.fields_get(['employee_type'])">
+                  <span t-out="'Relationship' if en else 'Tipo de vinculación'" />
+                  <strong t-field="e.employee_type" />
+                </div>
+                <div class="ue-row">
+                  <span t-out="'Manager' if en else 'Responsable'" />
+                  <strong t-out="e.parent_id.name or ('Not assigned' if en else 'Sin asignar')" />
+                </div>
+                <div class="ue-row" t-if="'resource_calendar_id' in EM.fields_get(['resource_calendar_id'])">
+                  <span t-out="'Working schedule' if en else 'Jornada'" />
+                  <strong t-out="e.resource_calendar_id.name or ('Not recorded' if en else 'Sin registrar')" />
+                </div>
+                <div class="ue-row">
+                  <span t-out="'Work email' if en else 'Correo laboral'" />
+                  <strong t-out="e.work_email or ('Not recorded' if en else 'Sin registrar')" />
+                </div>
+                <div class="ue-row">
+                  <span t-out="'Work phone' if en else 'Teléfono laboral'" />
+                  <strong t-out="e.work_phone or ('Not recorded' if en else 'Sin registrar')" />
+                </div>
+                <div class="ue-actions">
+                  <a class="ue-btn secondary" t-att-href="'/odoo/%s/%s' % (model_name,e.id)" t-out="'Open full record' if en else 'Abrir ficha completa'" />
+                </div>
+              </t>
+              <t t-elif="tab == 'contract'">
+                <t t-set="C" t-value="panel_env['hr.contract']" />
+                <t t-if="hr and C.check_access_rights('read',raise_exception=False)">
+                  <t t-set="contracts" t-value="C.search([('employee_id','=',e.id)],order='date_start desc,id desc',limit=10)" />
+                  <t t-foreach="contracts" t-as="ct">
+                    <h3 t-out="ct.name" />
+                    <div class="ue-row">
+                      <span t-out="'Status' if en else 'Estado'" />
+                      <strong t-field="ct.state" />
+                    </div>
+                    <div class="ue-row">
+                      <span t-out="'Start date' if en else 'Fecha de inicio'" />
+                      <strong t-field="ct.date_start" />
+                    </div>
+                    <div class="ue-row">
+                      <span t-out="'End date' if en else 'Fecha de finalización'" />
+                      <strong t-out="ct.date_end or ('Not set' if en else 'Sin fecha definida')" />
+                    </div>
+                    <div class="ue-row" t-if="'wage' in C.fields_get(['wage'])">
+                      <span t-out="'Monthly wage' if en else 'Salario mensual'" />
+                      <strong>
+                        <t t-out="ct.currency_id.symbol" />
+                        <t t-out="'{:,.2f}'.format(ct.wage)" />
+                      </strong>
+                    </div>
+                    <a class="ue-btn secondary" t-att-href="'/odoo/hr.contract/%s' % ct.id" t-out="'Open contract' if en else 'Abrir contrato'" />
+                  </t>
+                  <p class="ue-empty" t-if="not contracts" t-out="'No contracts available in this record.' if en else 'No hay contratos disponibles en esta ficha.'" />
+                </t>
+                <p class="ue-empty" t-else="" t-out="'Contract details are restricted to authorized HR staff.' if en else 'La información del contrato está restringida al personal autorizado de Recursos Humanos.'" />
+              </t>
+              <t t-else="">
+                <h3 t-out="'Employee file' if en else 'Expediente del empleado'" />
+                <t t-if="hr and panel_env['ir.attachment'].check_access_rights('read',raise_exception=False)">
+                  <t t-set="docs" t-value="panel_env['ir.attachment'].search([('res_model','=','hr.employee'),('res_id','=',e.id),('res_field','=',False),('type','=','binary')],order='create_date desc',limit=30)" />
+                  <div class="ue-document" t-foreach="docs" t-as="doc">
+                    <div>
+                      <strong t-out="doc.name" />
+                      <small class="ue-meta" t-out="doc.mimetype or ''" />
+                    </div>
+                    <a t-att-href="'/web/content/%s?download=true' % doc.id" t-out="'Download' if en else 'Descargar'" />
+                  </div>
+                  <p class="ue-empty" t-if="not docs" t-out="'No attachments are available in this employee record.' if en else 'No hay archivos adjuntos disponibles en la ficha de este empleado.'" />
+                  <a class="ue-btn secondary" t-att-href="'/odoo/hr.employee/%s' % e.id" t-out="'Manage employee attachments' if en else 'Gestionar adjuntos de la ficha'" />
+                </t>
+                <p class="ue-empty" t-else="" t-out="'Documents are restricted to authorized HR staff.' if en else 'Los documentos están restringidos al personal autorizado de Recursos Humanos.'" />
+              </t>
+              <p class="ue-note" t-out="'Employment details, documents and wages follow your existing access permissions.' if en else 'Información laboral, documentos y salarios según tus permisos de acceso.'" />
+            </t>
+            <p class="ue-empty" t-else="" t-out="'Select an available employee.' if en else 'Selecciona un empleado disponible.'" />
+          </section>
+        </div>
+      </t>
+    </t>
+    <t t-else="">
+      <p>Inicia sesión para consultar el directorio del equipo.</p>
+      <a href="/web/login">Iniciar sesión</a>
+    </t>
+  </template>
+  <template id="reference_task_branch">
+    <t t-set="children" t-value="task.child_ids &amp; tasks" />
+    <t t-if="children">
+      <details class="ux-subtask-group">
+        <summary>
+          <strong t-out="task.name" />
+          <a t-att-href="'/odoo/project.task/%s' % task.id">
+            <t t-out="'Open →' if en else 'Abrir →'" />
+          </a>
+        </summary>
+        <div class="ux-subtask-children">
+          <t t-foreach="children" t-as="child">
+            <t t-call="uno360x_workspace.reference_task_branch">
+              <t t-set="task" t-value="child" />
+            </t>
+          </t>
+        </div>
+      </details>
+    </t>
+    <t t-else="">
+      <div class="ux-subtask-item">
+        <button type="button" t-att-class="'ux-task-toggle done' if task.state == '1_done' else 'ux-task-toggle'" t-att-data-task-id="task.id" t-att-data-next-state="'01_in_progress' if task.state == '1_done' else '1_done'" t-att-disabled="not can_write_tasks or task.state == '1_canceled'" t-att-aria-pressed="str(task.state == '1_done').lower()" t-att-aria-label="('Reopen task' if en else 'Reabrir tarea') if task.state == '1_done' else ('Mark task complete' if en else 'Marcar tarea completada')">
+          <span t-if="task.state == '1_done'">✓</span>
+        </button>
+        <div>
+          <a t-att-href="'/odoo/project.task/%s' % task.id" t-out="task.name" />
+          <small>
+            <t t-out="', '.join(task.user_ids.mapped('name')) or ('Not assigned' if en else 'Sin asignar')" />
+            <t t-if="task.date_deadline"> · <t t-out="task.date_deadline.strftime('%d %b')" />
+            </t>
+            <t t-if="task.state == '1_canceled'"> · <t t-out="'Canceled' if en else 'Cancelada'" />
+            </t>
+          </small>
+        </div>
+      </div>
+    </t>
+  </template>
+  <template id="reference_icon">
+    <svg class="ux-menu-icon ux-duo-icon" viewBox="0 0 24 24" aria-hidden="true" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+      <t t-if="icon_kind == 'overview'">
+        <rect x="3" y="3" width="7" height="7" rx="2.1" stroke="#11283b" fill="#64d5af" />
+        <rect x="14" y="3" width="7" height="7" rx="2.1" stroke="#11283b" fill="none" />
+        <rect x="3" y="14" width="7" height="7" rx="2.1" stroke="#11283b" fill="none" />
+        <rect x="14" y="14" width="7" height="7" rx="2.1" stroke="#11283b" fill="#64d5af" />
+        <path d="M5 7L8 7" stroke="#11283b" fill="none" />
+        <path d="M17.5 16L17.5 19" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'commercial'">
+        <rect x="3" y="7" width="18" height="14" rx="3" stroke="#11283b" fill="#64d5af" />
+        <rect x="8" y="3" width="8" height="5" rx="2" stroke="#11283b" fill="#FFFFFF" />
+        <path d="M3 12L21 12" stroke="#11283b" fill="none" />
+        <rect x="10" y="10" width="4" height="5" rx="1" stroke="#11283b" fill="#FFFFFF" />
+      </t>
+      <t t-elif="icon_kind == 'client'">
+        <circle cx="9" cy="6.5" r="3.4" stroke="#11283b" fill="#64d5af" />
+        <path d="M2.5 20 C2.5 11.7 15.4 11.7 15.4 20" stroke="#11283b" fill="none" />
+        <path d="M15.5 19 L15 22 L18.5 20 Z" stroke="#11283b" fill="#11283b" />
+        <circle cx="18" cy="17" r="4.3" stroke="none" fill="#11283b" />
+        <path d="M15.9 16L20.1 16" stroke="#64d5af" fill="none" />
+        <path d="M15.9 18.4L18.9 18.4" stroke="#64d5af" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'company'">
+        <rect x="9" y="2" width="11" height="19" rx="2.2" stroke="#11283b" fill="#64d5af" />
+        <rect x="3" y="8" width="11" height="13" rx="2.1" stroke="#11283b" fill="#FFFFFF" />
+        <path d="M12 6L12 6.8" stroke="#11283b" fill="none" />
+        <path d="M17 6L17 6.8" stroke="#11283b" fill="none" />
+        <path d="M17 10L17 10.8" stroke="#11283b" fill="none" />
+        <path d="M17 14L17 14.8" stroke="#11283b" fill="none" />
+        <path d="M6 12L6 12.8" stroke="#11283b" fill="none" />
+        <path d="M10.5 12L10.5 12.8" stroke="#11283b" fill="none" />
+        <path d="M6 16L6 16.8" stroke="#11283b" fill="none" />
+        <path d="M10.5 16L10.5 16.8" stroke="#11283b" fill="none" />
+        <path d="M2 22L22 22" stroke="#11283b" fill="none" />
+        <path d="M8.5 19L8.5 22" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'crm'">
+        <path d="M5 6L12 6" stroke="#11283b" fill="none" />
+        <path d="M12 6L19 6" stroke="#11283b" fill="none" />
+        <path d="M12 6L12 17" stroke="#11283b" fill="none" />
+        <path d="M5 17L19 17" stroke="#11283b" fill="none" />
+        <circle cx="5" cy="6" r="2.5" stroke="#11283b" fill="#64d5af" />
+        <circle cx="19" cy="6" r="2.5" stroke="#11283b" fill="none" />
+        <circle cx="5" cy="17" r="2.5" stroke="#11283b" fill="none" />
+        <circle cx="19" cy="17" r="2.5" stroke="#11283b" fill="#64d5af" />
+        <circle cx="12" cy="6" r="2.5" stroke="#11283b" fill="#FFFFFF" />
+      </t>
+      <t t-elif="icon_kind == 'quote'">
+        <path d="M3 3 L20 3 L20 17 L9 17 L4 22 L4 17 L3 17 L3 3 Z" stroke="#11283b" fill="#64d5af" />
+        <path d="M7 8L16 8" stroke="#11283b" fill="none" />
+        <path d="M7 12L13 12" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'finance'">
+        <rect x="2" y="6" width="20" height="15" rx="3" stroke="#11283b" fill="#64d5af" />
+        <path d="M3 7 L17 2 L18 6" stroke="#11283b" fill="none" />
+        <rect x="14" y="11" width="8" height="6" rx="2" stroke="#11283b" fill="#FFFFFF" />
+        <circle cx="17.3" cy="14" r="0.6" stroke="none" fill="#11283b" />
+      </t>
+      <t t-elif="icon_kind == 'invoice'">
+        <path d="M4 2 L19 2 L19 22 L16 20 L13 22 L10 20 L7 22 L4 20 L4 2 Z" stroke="#11283b" fill="#64d5af" />
+        <path d="M8 7L15 7" stroke="#11283b" fill="none" />
+        <path d="M8 11L15 11" stroke="#11283b" fill="none" />
+        <path d="M8 15L12 15" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'collections'">
+        <circle cx="14" cy="14" r="7" stroke="#11283b" fill="#64d5af" />
+        <text x="14" y="17" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" font-weight="700" stroke="none" fill="#11283b">$</text>
+        <path d="M2 3L9 3" stroke="#11283b" fill="none" />
+        <path d="M9 3L9 9" stroke="#11283b" fill="none" />
+        <path d="M4 6L9 3" stroke="#11283b" fill="none" />
+        <path d="M3 12L3 17" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'inventory'">
+        <path d="M3 7 L12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z" stroke="#11283b" fill="#64d5af" />
+        <path d="M3 7L12 12" stroke="#11283b" fill="none" />
+        <path d="M21 7L12 12" stroke="#11283b" fill="none" />
+        <path d="M12 12L12 22" stroke="#11283b" fill="none" />
+        <path d="M7 4.8L16.4 9.7" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'operations'">
+        <path d="M14 3 L12 7 L15 10 L19 8 L21 4 L22 11 L17 15 L13 14 L5 22 L2 19 L10 11 L9 7 L14 3 Z" stroke="#11283b" fill="#64d5af" />
+      </t>
+      <t t-elif="icon_kind == 'purchase'">
+        <rect x="4" y="7" width="16" height="15" rx="3" stroke="#11283b" fill="#64d5af" />
+        <path d="M8 8 C8 1 16 1 16 8" stroke="#11283b" fill="none" />
+        <path d="M9 14L15 14" stroke="#11283b" fill="none" />
+        <path d="M12 11L12 17" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'project'">
+        <path d="M2 6 L9 6 L11 9 L22 9 L22 21 L2 21 L2 6 Z" stroke="#11283b" fill="#64d5af" />
+        <path d="M14 14L16 16" stroke="#11283b" fill="none" />
+        <path d="M16 16L20 12" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'team'">
+        <circle cx="9" cy="6.5" r="3.4" stroke="#11283b" fill="#64d5af" />
+        <path d="M2.5 20 C2.5 11.7 15.4 11.7 15.4 20" stroke="#11283b" fill="none" />
+        <circle cx="18" cy="8" r="2.5" stroke="#11283b" fill="none" />
+        <path d="M16.5 12.5 C21 12.7 22 15 22 19" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'employee'">
+        <circle cx="9" cy="6.5" r="3.4" stroke="#11283b" fill="#64d5af" />
+        <path d="M2.5 20 C2.5 11.7 15.4 11.7 15.4 20" stroke="#11283b" fill="none" />
+        <rect x="14" y="13" width="7" height="8" rx="1.5" stroke="#11283b" fill="#64d5af" />
+        <path d="M16 15.5L19 15.5" stroke="#11283b" fill="none" />
+        <path d="M16 18L18 18" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'payroll'">
+        <rect x="2" y="6" width="20" height="15" rx="3" stroke="#11283b" fill="#64d5af" />
+        <path d="M3 7 L17 2 L18 6" stroke="#11283b" fill="none" />
+        <rect x="14" y="11" width="8" height="6" rx="2" stroke="#11283b" fill="#FFFFFF" />
+        <circle cx="17.3" cy="14" r="0.6" stroke="none" fill="#11283b" />
+        <circle cx="7.5" cy="11.5" r="1.7" stroke="#11283b" fill="none" />
+        <path d="M4.5 17 C4.5 13.8 10.5 13.8 10.5 17" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'jenifer'">
+        <rect x="3" y="5" width="18" height="16" rx="5" stroke="#11283b" fill="#64d5af" />
+        <path d="M12 2L12 5" stroke="#11283b" fill="none" />
+        <circle cx="8" cy="12" r="1" stroke="none" fill="#11283b" />
+        <circle cx="16" cy="12" r="1" stroke="none" fill="#11283b" />
+        <path d="M8 17 C10 19 14 19 16 17" stroke="#11283b" fill="none" />
+        <path d="M1 10L1 16" stroke="#11283b" fill="none" />
+        <path d="M23 10L23 16" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'reports'">
+        <path d="M3 22L22 22" stroke="#11283b" fill="none" />
+        <rect x="4" y="13" width="3" height="6" rx="1" stroke="#11283b" fill="#64d5af" />
+        <rect x="11" y="9" width="3" height="10" rx="1" stroke="#11283b" fill="#64d5af" />
+        <rect x="18" y="4" width="3" height="15" rx="1" stroke="#11283b" fill="#64d5af" />
+        <path d="M3 8 L9 3 L14 5 L20 1" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'documents'">
+        <rect x="3" y="2" width="14" height="17" rx="2" stroke="#11283b" fill="#64d5af" />
+        <rect x="8" y="7" width="13" height="15" rx="2" stroke="#11283b" fill="#FFFFFF" />
+        <path d="M11.5 12L17.5 12" stroke="#11283b" fill="none" />
+        <path d="M11.5 16L17.5 16" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'calendar'">
+        <rect x="2" y="4" width="20" height="18" rx="3" stroke="#11283b" fill="#64d5af" />
+        <path d="M2 10L22 10" stroke="#11283b" fill="none" />
+        <path d="M7 1L7 6" stroke="#11283b" fill="none" />
+        <path d="M17 1L17 6" stroke="#11283b" fill="none" />
+        <circle cx="7" cy="14" r="0.65" stroke="none" fill="#11283b" />
+        <circle cx="12" cy="14" r="0.65" stroke="none" fill="#11283b" />
+        <circle cx="17" cy="14" r="0.65" stroke="none" fill="#11283b" />
+        <circle cx="7" cy="18" r="0.65" stroke="none" fill="#11283b" />
+        <circle cx="12" cy="18" r="0.65" stroke="none" fill="#11283b" />
+      </t>
+      <t t-elif="icon_kind == 'notifications'">
+        <path d="M5 16 L5 9 C5 1 19 1 19 9 L19 16 L22 19 L2 19 L5 16 Z" stroke="#11283b" fill="#64d5af" />
+        <path d="M9 22 C10 23 14 23 15 22" stroke="#11283b" fill="none" />
+      </t>
+      <t t-elif="icon_kind == 'settings'">
+        <path d="M12 2 L14.5882 2.34074 L16 5.0718 L17.6569 6.34315 L20.6603 7 L21.6593 9.41181 L20 12 L19.7274 14.0706 L20.6603 17 L19.0711 19.0711 L16 18.9282 L14.0706 19.7274 L12 22 L9.41181 21.6593 L8 18.9282 L6.34315 17.6569 L3.33975 17 L2.34074 14.5882 L4 12 L4.27259 9.92945 L3.33975 7 L4.92893 4.92893 L8 5.0718 L9.92945 4.27259 Z" stroke="#11283b" fill="#64d5af" />
+        <circle cx="12" cy="12" r="3.5" stroke="#11283b" fill="#FFFFFF" />
+      </t>
+      <t t-elif="icon_kind == 'apps'">
+        <rect x="3" y="3" width="7" height="7" rx="2.1" stroke="#11283b" fill="#64d5af" />
+        <rect x="14" y="3" width="7" height="7" rx="2.1" stroke="#11283b" fill="none" />
+        <rect x="3" y="14" width="7" height="7" rx="2.1" stroke="#11283b" fill="none" />
+        <rect x="14" y="14" width="7" height="7" rx="2.1" stroke="#11283b" fill="#64d5af" />
+      </t>
+      <t t-elif="icon_kind == 'help'">
+        <path d="M3 3 L21 3 L21 18 L10 18 L5 22 L5 18 L3 18 L3 3 Z" stroke="#11283b" fill="#64d5af" />
+        <text x="12" y="14" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" font-weight="700" stroke="none" fill="#11283b">?</text>
+      </t>
+    </svg>
+  </template>
+  <template id="reference_billing">
+    <t t-set="u" t-value="request.env.user" />
+    <t t-if="u.has_group('base.group_user') and (u.has_group('account.group_account_invoice') or u.has_group('account.group_account_readonly'))">
+      <t t-set="panel_env" t-value="request.env" />
+      <t t-set="company" t-value="panel_env.company" />
+      <t t-set="en" t-value="(u.lang or 'es_ES').startswith('en')" />
+      <t t-set="visible" t-value="panel_env['ir.ui.menu']._visible_menu_ids()" />
+      <t t-set="page_key" t-value="'billing'" />
+      <t t-set="args" t-value="request.httprequest.args" />
+      <t t-set="q" t-value="args.get('q', '')[:120]" />
+      <t t-set="state" t-value="args.get('state', 'all')" />
+      <t t-set="period" t-value="args.get('period', 'all')" />
+      <t t-set="raw_page" t-value="args.get('page', '1')" />
+      <t t-set="page" t-value="max(1, min(100000, int(raw_page))) if raw_page.isdigit() and len(raw_page) &lt; 7 else 1" />
+      <t t-set="base_domain" t-value="[('move_type','=','out_invoice'),('company_id','in',panel_env.companies.ids)]" />
+      <t t-set="month_start" t-value="(datetime.datetime.utcnow() - datetime.timedelta(hours=4)).date().replace(day=1)" />
+      <t t-set="next_month" t-value="(month_start + datetime.timedelta(days=32)).replace(day=1)" />
+      <t t-set="period_domain" t-value="[('invoice_date','&gt;=',month_start),('invoice_date','&lt;',next_month)] if period == 'month' else []" />
+      <t t-set="scope" t-value="base_domain + period_domain" />
+      <t t-set="state_domain" t-value="[('state','=','draft')] if state == 'draft' else ([('state','=','posted'),('amount_residual','&gt;',0)] if state == 'pending' else ([('state','=','posted'),('payment_state','=','paid')] if state == 'paid' else ([('state','=','cancel')] if state == 'cancel' else ([('state','=','posted'),('payment_state','=',state)] if state in ['partial','in_payment'] else []))))" />
+      <t t-set="query_domain" t-value="['|',('name','ilike',q),('partner_id','ilike',q)] if q else []" />
+      <t t-set="domain" t-value="scope + state_domain + query_domain" />
+      <t t-set="Invoice" t-value="panel_env['account.move']" />
+      <t t-set="total" t-value="Invoice.search_count(domain)" />
+      <t t-set="page" t-value="min(page, max(1, (total + 24)//25))" />
+      <t t-set="invoices" t-value="Invoice.search(domain, order='invoice_date desc, id desc', limit=25, offset=(page-1)*25)" />
+      <t t-call="uno360x_workspace.shell">
+        <style>
+.ux-billing-intro{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:20px 0 28px}.ux-billing-intro h1{font-size:30px;font-weight:750;letter-spacing:-.6px;margin:0 0 8px}.ux-billing-intro p{color:#71858f;margin:0;font-size:13px}.ux-billing-new{display:inline-flex;align-items:center;gap:9px;background:#138a73;color:white!important;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap}.ux-billing-new:hover{background:#0d6c59}.ux-billing-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-bottom:26px}.ux-billing-kpi{display:block;border:1px solid #e1e9ee;border-radius:14px;padding:23px;background:white;color:#153143!important}.ux-billing-kpi small{display:block;color:#71858f;font-size:12px;margin-bottom:16px}.ux-billing-kpi strong{font-size:30px;font-weight:750;letter-spacing:-.5px}.ux-billing-kpi em{display:block;font-size:10px;font-style:normal;color:#71858f;margin-top:8px}.ux-billing-table-card{background:white;border:1px solid #e1e9ee;border-radius:15px;padding:24px}.ux-billing-table-top{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:23px}.ux-billing-table-top h2{font-size:18px;font-weight:750;margin:0}.ux-billing-table-top small{display:block;margin-top:6px;color:#71858f;font-size:11px}.ux-billing-native{font-size:11px;color:#138a73!important}.ux-billing-filters{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px}.ux-billing-filters input,.ux-billing-filters select{border:1px solid #e1e9ee;background:#f5f8fa;border-radius:9px;padding:10px 12px;color:#153143;font:inherit;font-size:12px;min-height:39px}.ux-billing-filters input{flex:1;min-width:180px}.ux-billing-filters button,.ux-billing-pager button{border:1px solid #b1dccc;background:#eef7f3;color:#0d6c59;border-radius:9px;padding:10px 14px;font-size:12px}.ux-billing-scroll{overflow-x:auto}.ux-billing-table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}.ux-billing-table th{background:#f3f6fa;color:#71858f;padding:14px 12px;font-size:10px;font-weight:700;text-align:left}.ux-billing-table th:first-child{border-radius:7px 0 0 7px}.ux-billing-table th:last-child{border-radius:0 7px 7px 0}.ux-billing-table td{border-bottom:1px solid #e5ecef;padding:19px 12px;color:#153143}.ux-billing-table .ux-number{text-align:right;font-variant-numeric:tabular-nums}.ux-billing-doc{font-weight:750;color:#153143!important}.ux-billing-doc:hover{color:#138a73!important}.ux-billing-client{max-width:260px;overflow:hidden;text-overflow:ellipsis}.ux-billing-badge{display:inline-flex;align-items:center;border-radius:20px;padding:6px 11px;font-size:10px;background:#f2f5f9;color:#71858f}.ux-billing-badge.paid{background:#218544;color:#fff;border:1px solid #1c743b;font-weight:650}.ux-billing-badge.pending{background:#fff2d8;color:#855c16}.ux-billing-badge.cancel{background:#f5f5f5;color:#78838b}.ux-billing-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:20px;font-size:11px;color:#71858f}.ux-billing-pager button:disabled{opacity:.45;cursor:default}.ux-billing-foot{margin:20px 4px;color:#71858f;font-size:11px}.ux-billing-empty{text-align:center!important;padding:40px!important;color:#71858f!important}.ux-billing-tools{display:flex;gap:12px}.ux-billing-tools a{font-size:11px;color:#138a73!important}
+@media(max-width:700px){.ux-billing-intro{align-items:flex-start;flex-direction:column;margin-top:14px}.ux-billing-intro h1{font-size:25px}.ux-billing-new{width:100%;justify-content:center}.ux-billing-kpis{grid-template-columns:1fr;gap:10px;margin-bottom:16px}.ux-billing-kpi{padding:16px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px}.ux-billing-kpi small{margin:0}.ux-billing-kpi strong{font-size:25px}.ux-billing-kpi em{grid-column:1/-1;margin:0}.ux-billing-table-card{padding:16px 12px}.ux-billing-table-top{gap:10px;align-items:flex-start}.ux-billing-table-top h2{font-size:16px}.ux-billing-filters input{flex-basis:100%;min-width:0}.ux-billing-filters select{flex:1;min-width:0}.ux-billing-table td{padding:15px 10px}.ux-billing-table .ux-billing-date{display:none}.ux-billing-pager{flex-wrap:wrap}}
+.ux-billing-all-options{border:1px solid #e1e9ee;border-radius:12px;background:#fff;padding:14px 18px;margin-bottom:22px}.ux-billing-all-options&gt;summary{cursor:pointer;font-size:12px;font-weight:650;color:#138a73}.ux-billing-all-options .ux-billing-options-tree{position:static;width:100%;max-height:none;border:0;box-shadow:none;padding:12px 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ux-billing-all-options p{font-size:11px;margin:6px 0}.ux-billing-all-options .ux-menu-children{padding-left:12px}@media(max-width:700px){.ux-billing-all-options .ux-billing-options-tree{grid-template-columns:1fr}}
+</style>
+        <div class="ux-billing-intro">
+          <div>
+            <h1 t-out="'Invoicing' if en else 'Facturación'" />
+            <p t-out="'Manage documents, due dates and collections.' if en else 'Gestiona documentos, vencimientos y seguimiento.'" />
+          </div>
+          <a class="ux-billing-new" href="/uno360x/invoice/new" t-if="panel_env['account.move'].check_access_rights('create',raise_exception=False)">
+            <span>+</span>
+            <span t-out="'New invoice' if en else 'Nueva factura'" />
+          </a>
+        </div>
+        <details class="ux-billing-all-options">
+          <summary t-out="'All invoicing and accounting options' if en else 'Todas las opciones de facturación y contabilidad'" />
+          <p>
+            <a href="/uno360x/native/account.journal" t-out="'Accounting dashboard →' if en else 'Tablero contable →'" />
+          </p>
+          <div class="ux-flyout ux-billing-options-tree">
+            <t t-foreach="[node for group in groups if group['name']=='Finanzas' for node in group['nodes']]" t-as="finance_node">
+              <t t-call="uno360x_workspace.tree">
+                <t t-set="node" t-value="finance_node" />
+              </t>
+            </t>
+          </div>
+          <p>
+            <a href="/uno360x/native/account.move" t-out="'Full invoice tools: selection, import, export, grouping and actions →' if en else 'Herramientas completas de facturas: selección, importar, exportar, agrupación y acciones →'" />
+          </p>
+        </details>
+        <div class="ux-billing-kpis">
+          <a class="ux-billing-kpi" t-att-href="'/uno360x-facturacion?state=draft&amp;period=%s' % period">
+            <small t-out="'Drafts' if en else 'Borradores'" />
+            <strong t-out="Invoice.search_count(scope + [('state','=','draft')])" />
+            <em t-out="'Invoices to review' if en else 'Facturas por revisar'" />
+          </a>
+          <a class="ux-billing-kpi" t-att-href="'/uno360x-facturacion?state=pending&amp;period=%s' % period">
+            <small t-out="'Pending collection' if en else 'Pendientes de cobro'" />
+            <strong t-out="Invoice.search_count(scope + [('state','=','posted'),('amount_residual','&gt;',0)])" />
+            <em t-out="'Posted invoices with an outstanding balance' if en else 'Facturas publicadas con saldo pendiente'" />
+          </a>
+          <div class="ux-billing-kpi">
+            <small t-out="'Accepted by DGII' if en else 'Aceptados por DGII'" />
+            <strong>—</strong>
+            <em t-out="'No verified tax confirmation' if en else 'Sin confirmación fiscal verificada'" />
+          </div>
+        </div>
+        <div class="ux-billing-table-card">
+          <div class="ux-billing-table-top">
+            <div>
+              <h2 t-out="'Customer invoices' if en else 'Todas las facturas'" />
+              <small>
+                <t t-out="total" />
+                <t t-out="'documents found' if en else 'documentos encontrados'" />
+              </small>
+            </div>
+            <a class="ux-billing-native" href="/uno360x/native/account.move" t-out="'Advanced view →' if en else 'Vista avanzada →'" />
+          </div>
+          <form method="get" action="/uno360x-facturacion">
+            <div class="ux-billing-filters">
+              <input type="search" name="q" t-att-value="q" t-att-placeholder="'Invoice or customer…' if en else 'Factura o cliente…'" t-att-aria-label="'Search invoices' if en else 'Buscar facturas'" />
+              <select name="period" t-att-aria-label="'Period' if en else 'Período'">
+                <option value="all" t-att-selected="period != 'month'" t-out="'All dates' if en else 'Todas las fechas'" />
+                <option value="month" t-att-selected="period == 'month'" t-out="'This month' if en else 'Este mes'" />
+              </select>
+              <select name="state" t-att-aria-label="'Status' if en else 'Estado'">
+                <option value="all" t-att-selected="state not in ['draft','pending','paid','cancel','partial','in_payment']" t-out="'All statuses' if en else 'Todos los estados'" />
+                <option value="draft" t-att-selected="state == 'draft'" t-out="'Drafts' if en else 'Borradores'" />
+                <option value="pending" t-att-selected="state == 'pending'" t-out="'Pending collection' if en else 'Pendientes de cobro'" />
+                <option value="paid" t-att-selected="state == 'paid'" t-out="'Paid' if en else 'Pagadas'" />
+                <option value="partial" t-att-selected="state == 'partial'" t-out="'Partial payment' if en else 'Abono parcial'" />
+                <option value="in_payment" t-att-selected="state == 'in_payment'" t-out="'In payment' if en else 'En pago'" />
+                <option value="cancel" t-att-selected="state == 'cancel'" t-out="'Cancelled' if en else 'Canceladas'" />
+              </select>
+              <button type="submit" name="page" value="1" t-out="'Filter' if en else 'Filtrar'" />
+            </div>
+            <div class="ux-billing-scroll">
+              <table class="ux-billing-table">
+                <thead>
+                  <tr>
+                    <th t-out="'Document' if en else 'Documento'" />
+                    <th t-out="'Customer' if en else 'Cliente'" />
+                    <th class="ux-billing-date" t-out="'Due date' if en else 'Vencimiento'" />
+                    <th class="ux-number" t-out="'Total' if en else 'Total'" />
+                    <th t-out="'Collection' if en else 'Cobro'" />
+                    <th>DGII</th>
+                    <th t-out="'Documents' if en else 'Documentos'" />
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr t-foreach="invoices" t-as="inv">
+                    <td>
+                      <a class="ux-billing-doc" t-att-href="'/odoo/account.move/%s' % inv.id" t-out="inv.name if inv.name and inv.name != '/' else (('Draft' if en else 'Borrador') if inv.state == 'draft' else ('Unnumbered' if en else 'Sin número'))" />
+                    </td>
+                    <td class="ux-billing-client" t-att-title="inv.partner_id.display_name" t-out="inv.partner_id.display_name or '—'" />
+                    <td class="ux-billing-date">
+                      <span t-if="inv.invoice_date_due" t-field="inv.invoice_date_due" />
+                      <t t-else="">—</t>
+                    </td>
+                    <td class="ux-number">
+                      <span t-field="inv.amount_total" t-options="{'widget':'monetary','display_currency':inv.currency_id}" />
+                    </td>
+                    <td>
+                      <span t-att-class="'ux-billing-badge ' + ('cancel' if inv.state == 'cancel' else ('paid' if inv.payment_state == 'paid' else ('pending' if inv.state == 'posted' else '')))" t-out="('Cancelled' if en else 'Cancelada') if inv.state == 'cancel' else (('Draft' if en else 'Borrador') if inv.state == 'draft' else (('Paid' if en else 'Pagado') if inv.payment_state == 'paid' else (('Partial payment' if en else 'Abono parcial') if inv.payment_state == 'partial' else (('In payment' if en else 'En pago') if inv.payment_state == 'in_payment' else ('Pending' if en else 'Pendiente')))))" />
+                    </td>
+                    <td>
+                      <span class="ux-billing-badge" t-out="'Unverified' if en else 'No verificado'" />
+                    </td>
+                    <td>
+                      <div class="ux-billing-tools">
+                        <a t-att-href="'/odoo/account.move/%s' % inv.id" t-out="'Open' if en else 'Abrir'" />
+                        <a t-att-href="'/report/pdf/account.report_invoice/%s' % inv.id" target="_blank" rel="noopener">PDF</a>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr t-if="not invoices">
+                    <td colspan="7" class="ux-billing-empty" t-out="'No invoices match these filters.' if en else 'No hay facturas que coincidan con estos filtros.'" />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ux-billing-pager">
+              <button type="submit" name="page" t-att-value="max(1,page-1)" t-att-disabled="page == 1" t-out="'← Previous' if en else '← Anterior'" />
+              <span>
+                <t t-out="'Page' if en else 'Página'" />
+                <t t-out="page" /> / <t t-out="max(1,(total+24)//25)" />
+              </span>
+              <button type="submit" name="page" t-att-value="page+1" t-att-disabled="page*25 &gt;= total" t-out="'Next →' if en else 'Siguiente →'" />
+            </div>
+          </form>
+        </div>
+        <p class="ux-billing-foot" t-out="'PDF · Invoice details · History · Tax status requires a verified DGII response.' if en else 'PDF · Detalle de factura · Historial · El estado fiscal requiere una respuesta verificada de DGII.'" />
+      </t>
+    </t>
+    <t t-else="">
+      <t t-call="website.layout">
+        <div class="container py-5">
+          <h1>Facturación UNO360X</h1>
+          <p>Accede con una cuenta autorizada para consultar facturas.</p>
+          <a href="/web/login?redirect=/uno360x-facturacion">Iniciar sesión</a>
+        </div>
+      </t>
+    </t>
+  </template>
+  <record id="reference_crm_kanban" model="ir.ui.view">
+    <field name="name">UNO360X CRM - diseño aprobado</field>
+    <field name="model">crm.lead</field>
+    <field name="inherit_id" ref="crm.crm_case_kanban_view_leads" />
+    <field name="arch" type="xml">
+      <xpath expr="//kanban" position="attributes">
+        <attribute name="class" add="ux-crm-kanban" separator=" " />
+      </xpath>
+      <xpath expr="//kanban/templates" position="before">
+        <field name="activity_summary" />
+        <field name="activity_date_deadline" />
+      </xpath>
+      <xpath expr="//t[@t-name='card']/field[@name='name']" position="before">
+        <xpath expr="//t[@t-name='card']/field[@name='partner_id']" position="move" />
+      </xpath>
+      <xpath expr="//t[@t-name='card']/field[@name='partner_id']" position="attributes">
+        <attribute name="class" add="ux-crm-client" separator=" " />
+      </xpath>
+      <xpath expr="//t[@t-name='card']/field[@name='name']" position="attributes">
+        <attribute name="class" add="ux-crm-opportunity-name" separator=" " />
+      </xpath>
+      <xpath expr="//t[@t-name='card']//field[@name='expected_revenue']" position="attributes">
+        <attribute name="class" add="ux-crm-amount" separator=" " />
+      </xpath>
+      <xpath expr="//t[@t-name='card']/footer" position="before">
+        <div class="ux-crm-next-activity">
+          <span class="ux-crm-next-label">Próximo paso</span>
+          <div t-if="record.activity_date_deadline.raw_value" class="ux-crm-next-content">
+            <span t-if="!record.activity_summary.raw_value">Actividad pendiente</span>
+            <field t-if="record.activity_summary.raw_value" name="activity_summary" class="ux-crm-next-summary" />
+            <field name="activity_date_deadline" class="ux-crm-next-date" />
+          </div>
+          <span t-else="" class="ux-crm-no-activity">Sin actividad programada</span>
+        </div>
+      </xpath>
+      <xpath expr="//t[@t-name='card']/footer" position="attributes">
+        <attribute name="class" add="ux-crm-card-footer" separator=" " />
+      </xpath>
+    </field>
+  </record>
+</odoo>
