@@ -1,6 +1,6 @@
 # Consola privada de administración UNO360X
 
-Estado al 2 de noviembre de 2026 (hora dominicana): servicio privado instalado y probado en la VM; publicación de admin.uno360x.com y activación del propietario pendientes. No considerar esta URL disponible hasta verificar DNS, certificado y regla Full (strict) de Cloudflare.
+Estado al 2 de noviembre de 2026 (hora dominicana): servicio publicado en https://admin.uno360x.com, DNS proxied y regla por host Full (strict) verificados. Certificado de origen válido hasta 1 de febrero de 2027. Pendiente la activación personal del propietario (contraseña y TOTP).
 
 ## Funciones implementadas
 Consulta de clientes reales del SaaS, módulos, pruebas y vencimientos, miembros y uso de base/archivos. Cuatro combinaciones comerciales visibles, precios por definir. Recursos globales CPU, RAM y disco, última ejecución e historial de ClamAV, firmas y próxima ejecución en hora dominicana. Registro de accesos del panel y eventos del SaaS.
@@ -19,7 +19,7 @@ Estado privado en /var/lib/uno360x-admin (0700), auth.sqlite3 y mfa.key (0600). 
 
 Una vez publicado HTTPS y confirmado el acceso cerrado sin sesión, emitir localmente un enlace de activación mediante Auth('/var/lib/uno360x-admin','ecueto@outsolutech.com').new_enrollment() ejecutado como uno360x-admin, desde /opt/uno360x-admin/current. Enlace /activar#token=VALOR: dura 24 horas y se consume una vez; una nueva emisión invalida la anterior. Solo funciona si el propietario aún no está configurado. Entregar privadamente al propietario: él introduce y confirma su nueva contraseña y configura TOTP; el agente no escribe credenciales nuevas. Guardar los ocho códigos de recuperación fuera del navegador. No existe recuperación pública ni restablecimiento por correo en esta versión. La recuperación operativa del propietario y el respaldo cifrado del estado de autenticación siguen pendientes de definir antes de comercializar.
 
-## Publicación preparada, pendiente de confirmación
+## Publicación aprobada y ejecutada
 Nuevo A admin.uno360x.com a 140.82.47.80 con proxy Cloudflare; no cambiar registros existentes, MX, SPF o DKIM. Tras aprobación específica de la exposición administrativa, ejecutar deployment/publish_admin_https.py como root. Crea únicamente el vhost nuevo, obtiene un certificado dedicado mediante webroot usando la cuenta ACME existente y recarga nginx tras nginx -t. Si falla elimina solo su nuevo enlace y mantiene cerrado el proxy. Requiere directorio /var/lib/uno360x-acme y certbot existentes.
 
 Extender la regla por host de Cloudflare Full (strict) a admin.uno360x.com después de obtener el certificado; conservar el modo y reglas del resto de hosts. Probar HTTPS público, /health, /api/overview=401, propietario activable, contraseña incorrecta, TOTP, sesión y cierre. No publicar como terminado antes de estas pruebas. Plantilla de nginx en deployment/nginx-admin-console.conf.
@@ -31,3 +31,5 @@ Para revertir: deshabilitar exclusivamente el nuevo vhost admin, comprobar nginx
 
 ## Verificación
 11 pruebas de autenticación/HTTP incluidas en tests/test_admin_console.py. Regresión VM: 146 pruebas Python y dos suites Node aprobadas, logs /var/lib/uno360x-saas/qa-runs/20261103T011044Z. Recorrido de vistas, búsqueda y ficha en escritorio; menú y recursos en móvil 390 px sin desbordamiento horizontal de página. QA visual usa frontend exacto desplegado y snapshot real con autenticación simulada solo en un servidor temporal localhost; no existe ese acceso simulado en el servicio desplegado. Activación real y recorrido por HTTPS público pendientes de los pasos anteriores.
+
+Verificación pública posterior a publicación: inicio y health HTTP 200; APIs overview/session/activity HTTP 401 sin sesión; certificado de origen validado por CA y hostname, TLS 1.3. Regla Cloudflare d7938cbb203c4c0ab5826b835ebedc27 ampliada únicamente con admin.uno360x.com, manteniendo cuenta y piloto en Strict. Odoo PID 2195, cero reinicios, configuración y 67 grupos intactos. Alta del propietario y recorrido autenticado real pendientes de su intervención personal.
