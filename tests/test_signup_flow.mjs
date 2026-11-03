@@ -143,3 +143,16 @@ await vm.runInContext("history.replaceState({},'','/web/login?cambiar=cuenta');r
 assert(element('#screen').innerHTML.includes('Iniciar sesión con otra cuenta'));
 vm.runInContext('clearTimeout(timer)',context);
 console.log('Pending creation permits account switching without cancelling or duplicating the company.');
+
+const pendingMarkup=vm.runInContext("preparationMarkup({name:'Empresa <script>',status:'preparing',completed_steps:['network']})",context);
+assert(pendingMarkup.includes('Empresa &lt;script&gt;'));
+assert(pendingMarkup.includes('aria-current="step"'));
+assert.equal((pendingMarkup.match(/class="complete"/g)||[]).length,1,'Only completed server steps may be shown as done');
+assert(pendingMarkup.includes('creation-wait is-running'));
+const queuedMarkup=vm.runInContext("preparationMarkup({name:'Empresa',status:'queued',current_step:'capacity',completed_steps:[]})",context);
+assert(!queuedMarkup.includes('is-running'),'Capacity queues must not pretend to be configuring');
+assert(!queuedMarkup.includes('aria-current="step"'));
+const failedMarkup=vm.runInContext("preparationMarkup({name:'Empresa',status:'failed',completed_steps:['network']})",context);
+assert(!failedMarkup.includes('is-running'),'Failure must stop the waiting animation');
+assert(failedMarkup.includes('Pendiente de revisión'));
+console.log('Creation stages follow server progress, escape company names and stop animation for queues or failures.');
