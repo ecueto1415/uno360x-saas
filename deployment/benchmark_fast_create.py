@@ -9,9 +9,13 @@ from deployment.pilot_adapter import PilotAdapter
 class Benchmark(PilotAdapter):
  def __init__(self,images):
   ContainerAdapter.__init__(self,CACHE/'bench',images,ROOT,'template-benchmark','uno360x-bench-')
+  self.startup_database_cpus='0.75';self.restore_database_cpus='1'
   self.database_limits=['--cpus','0.25','--memory','192m'];self.database_command=['postgres','-c','shared_buffers=32MB','-c','max_connections=25','-c','max_locks_per_transaction=256']
  lock=ContainerAdapter.lock
  def identity(self,s):
+  if self.runtime_identity(s,lambda:self._shell_identity(s)):return
+  self._shell_identity(s)
+ def _shell_identity(self,s):
   with self.batch_shell(s):
    ContainerAdapter.identity(self,s)
    self.sync_user(s,{'tenant_id':s['tenant_id'],'account_id':s['qa_account'],'email':'benchmark@example.test','role':'owner','display_name':'Administrador ficticio QA'})

@@ -15,7 +15,7 @@ class TemplateInstallMixin:
   else:
    journal.write_text(json.dumps({'fingerprint':fingerprint,'cache':cache.name,'started':time.time()}));journal.chmod(0o600)
    original_cpus='0.25'
-   self.run('update','--cpus','0.75',n['database'])
+   self.run('update','--cpus',getattr(self,'restore_database_cpus','0.75'),n['database'])
    try:
     with (cache/'database.dump').open('rb') as incoming:
      result=subprocess.run(['podman','exec','-i',n['database'],'pg_restore','-U','postgres','-d',n['role'],'--role',n['role'],'--no-owner','--no-acl','--single-transaction','--exit-on-error'],stdin=incoming,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=180)

@@ -18,6 +18,7 @@ class SharedHostAdapter(TemplateInstallMixin,ContainerAdapter):
   settings=json.loads(policy.read_text()) if policy.exists() else {'max_active_tenants':1}
   cap=settings.get('max_active_tenants',1);self.max_active=None if cap is None else int(cap)
   if self.max_active is not None and self.max_active not in (1,2,3):raise RuntimeError('Invalid explicit pilot admission policy')
+  self.startup_database_cpus='0.75';self.restore_database_cpus='1'
   self.database_limits=['--cpus','0.25','--memory','192m']
   self.database_command=['postgres','-c','shared_buffers=32MB','-c','max_connections=40','-c','maintenance_work_mem=32MB','-c','max_locks_per_transaction=256']
   info=json.loads(self.run('info','--format','json').stdout)
@@ -77,6 +78,9 @@ class SharedHostAdapter(TemplateInstallMixin,ContainerAdapter):
     if not all(info['Config']['Labels'].get(k)==v for k,v in self.labels(s).items()):raise RuntimeError('Foreign expired resource')
     if info['State']['Running']:self.run('stop',name)
  def identity(self,s):
+  if self.runtime_identity(s,lambda:self._shell_identity(s)):return
+  self._shell_identity(s)
+ def _shell_identity(self,s):
   with self.batch_shell(s):
    super().identity(s)
    db=sqlite3.connect('file:/var/lib/uno360x-saas/control/control.sqlite3?mode=ro',uri=True)

@@ -1,5 +1,6 @@
 """Shared container provisioning mechanics. Environment guards live in adapters."""
 from contextlib import contextmanager
+from .runtime_identity import RuntimeIdentityMixin
 import subprocess
 import json
 import os
@@ -11,7 +12,7 @@ import urllib.request
 
 
 
-class ContainerAdapter:
+class ContainerAdapter(RuntimeIdentityMixin):
     def __init__(self, state, images, root, environment, prefix):
         self.state=Path(state);self.root=Path(root)
         self.environment,self.prefix=environment,prefix
@@ -122,20 +123,30 @@ without_demo = all
 http_interface = 0.0.0.0
 '''%(secrets.token_hex(32),n['database'],n['role'],password,n['role'],n['role']))
         os.chmod(sql,0o644);os.chmod(config,0o644)
-        if not self.exists('container',n['database']):
-            self.run('run','-d','--name',n['database'],'--network',n['network'],*self.label_args(s),
-                *getattr(self,'database_limits',['--cpus','0.4','--memory','384m']),'--env-file',str(pg_env),
-                '-v',n['pgvolume']+':/var/lib/postgresql/data','-v',str(sql)+':/docker-entrypoint-initdb.d/01-tenant.sql:ro',self.images['postgres:16'],*getattr(self,'database_command',[]))
-        else:
-            self.check_container(n['database'],s);self.run('start',n['database'])
-        for _ in range(60):
-            # pg_isready alone also succeeds during the image's temporary
-            # bootstrap server, before the tenant DB exists. Wait for PID 1
-            # to be the final PostgreSQL server and verify the actual database.
-            probe=self.run('exec',n['database'],'sh','-c',"test \"$(cat /proc/1/comm)\" = postgres && psql -U postgres -d "+n['role']+" -Atc 'SELECT 1'",check=False)
-            if probe.returncode==0 and probe.stdout.strip()=='1':return
-            time.sleep(1)
-        raise RuntimeError('Base de datos no disponible.')
+        fresh=not self.exists('container',n['database'])
+        database_limits=list(getattr(self,'database_limits',['--cpus','0.4','--memory','384m']))
+        startup_cpu=getattr(self,'startup_database_cpus',None) if fresh else None
+        if startup_cpu:database_limits[database_limits.index('--cpus')+1]=startup_cpu
+        try:
+            if fresh:
+                self.run('run','-d','--name',n['database'],'--network',n['network'],*self.label_args(s),
+                    *database_limits,'--env-file',str(pg_env),
+                    '-v',n['pgvolume']+':/var/lib/postgresql/data','-v',str(sql)+':/docker-entrypoint-initdb.d/01-tenant.sql:ro',self.images['postgres:16'],*getattr(self,'database_command',[]))
+            else:
+                self.check_container(n['database'],s);self.run('start',n['database'])
+            for _ in range(60):
+                # pg_isready alone also succeeds during the image's temporary
+                # bootstrap server, before the tenant DB exists. Wait for PID 1
+                # to be the final PostgreSQL server and verify the actual database.
+                probe=self.run('exec',n['database'],'sh','-c',"test \"$(cat /proc/1/comm)\" = postgres && psql -U postgres -d "+n['role']+" -Atc 'SELECT 1'",check=False)
+                if probe.returncode==0 and probe.stdout.strip()=='1':
+                    return
+                time.sleep(1)
+            raise RuntimeError('Base de datos no disponible.')
+        finally:
+            if startup_cpu and self.exists('container',n['database']):
+                self.check_container(n['database'],s)
+                self.run('update','--cpus',getattr(self,'database_limits')[getattr(self,'database_limits').index('--cpus')+1],n['database'])
 
     def common(self,s):
         n=self.names(s)
@@ -191,6 +202,8 @@ http_interface = 0.0.0.0
     def shell(self,s,code):
         if hasattr(self,'_shell_scripts'):
             self._shell_scripts.append(code);return 'UNO360X_OK'
+        if hasattr(self,'_startup_scripts'):
+            self._startup_scripts.append(code);return 'UNO360X_OK'
         result=self.run('run','--rm','-i','--oom-score-adj','500',*self.common(s),self.images['odoo:18.0'],
                    'odoo','shell','-c','/etc/odoo/odoo.conf','--no-http',input=code,check=False)
         if result.returncode or 'UNO360X_OK' not in result.stdout:
@@ -199,32 +212,37 @@ http_interface = 0.0.0.0
 
     def identity(self,s):
         n=self.names(s)
+        current=self.sql(s,"SELECT tenant_id,hostname FROM uno360x_tenant_identity; SELECT login FROM res_users WHERE id=(SELECT res_id FROM ir_model_data WHERE module='base' AND name='user_admin' AND model='res.users'); SELECT count(*) FROM ir_cron WHERE active;")
+        if current==s['tenant_id']+'|'+s['hostname']+'\noperator_'+s['tenant_id']+'\n0':return
         p={'tenant':s['tenant_id'],'hostname':s['hostname'],'slug':s['slug'],
            'operator_password':(n['directory']/'operator-password').read_text(),
            'company_profile':s.get('company_profile')}
         self.shell(s,"""import json
 p=json.loads(%r)
 identity=env['uno360x.tenant.identity'].search([])
+new_identity=not bool(identity)
 if identity:
  assert len(identity)==1 and identity.tenant_id==p['tenant'] and identity.hostname==p['hostname']
 else:
  env['uno360x.tenant.identity'].create({'tenant_id':p['tenant'],'hostname':p['hostname']})
-env.ref('base.main_company').name=p['slug']+' (LABORATORIO)'
-if p['company_profile']:
- profile=p['company_profile']
- assert profile['country']=='DO' and profile['currency'] in ('DOP','USD')
- company=env.ref('base.main_company')
- country=env['res.country'].search([('code','=',profile['country'])],limit=1)
- currency=env['res.currency'].with_context(active_test=False).search([('name','=',profile['currency'])],limit=1)
- assert country and currency
- if company.currency_id!=currency:
-  assert not env['account.move'].search_count([]) and not env['sale.order'].search_count([]) and not env['purchase.order'].search_count([])
- currency.active=True
- company.write({'name':profile['name'],'country_id':country.id,'currency_id':currency.id})
- lang=env['res.lang'].with_context(active_test=False).search([('code','=','es_DO')])
- assert len(lang)==1
- if not lang.active:
-  env['base.language.install'].create({'lang_ids':[(6,0,lang.ids)],'overwrite':False}).lang_install()
+if new_identity:
+ env.ref('base.main_company').name=p['slug']+' (LABORATORIO)'
+ if p['company_profile']:
+  profile=p['company_profile']
+  assert profile['country']=='DO' and profile['currency'] in ('DOP','USD')
+  company=env.ref('base.main_company')
+  country=env['res.country'].search([('code','=',profile['country'])],limit=1)
+  currency=env['res.currency'].with_context(active_test=False).search([('name','=',profile['currency'])],limit=1)
+  assert country and currency
+  if company.currency_id!=currency:
+   assert not env['account.move'].search_count([]) and not env['sale.order'].search_count([]) and not env['purchase.order'].search_count([])
+  currency.active=True
+  company.write({'name':profile['name'],'country_id':country.id,'currency_id':currency.id})
+  lang=env['res.lang'].with_context(active_test=False).search([('code','=','es_DO')])
+  assert len(lang)==1
+  if not lang.active:
+   env['base.language.install'].create({'lang_ids':[(6,0,lang.ids)],'overwrite':False}).lang_install()
+
 env.ref('base.user_admin').with_context(no_reset_password=True).write({'login':'operator_'+p['tenant'],'password':p['operator_password']})
 env['ir.cron'].search([]).write({'active':False})
 env.cr.commit()
