@@ -238,6 +238,20 @@ action = {'type': 'ir.actions.act_window', 'name': 'Versiones del presupuesto %s
 .ux_quote_form .o-mail-Composer-actions button[name='upload-files']{aspect-ratio:auto!important;width:auto!important;height:32px!important;min-height:0!important;align-self:center!important;white-space:nowrap!important;padding:5px 8px!important;}
 .ux_quote_form .o-mail-Composer-input::placeholder{color:#687d92!important;opacity:1!important;}
 .ux_quote_form .o-mail-Chatter .text-truncate:has(.o-mail-SuggestedRecipient){margin-left:0!important;}
+
+/* Approved complete quotation v4: preserve the native actions and all tabs. */
+.ux_quote_form .o_form_renderer{max-width:1540px!important;gap:16px 20px;padding:20px 26px 28px!important;background:#f0f7fa!important}
+.ux_quote_form .o_statusbar_buttons .ux_quote_refresh_action{grid-row:3;grid-column:1 / -1;white-space:normal!important}
+.ux_quote_form .o_statusbar_buttons .ux_quote_save_action{background:#008b86!important;border-color:#008b86!important;color:white!important}
+.ux_quote_form .o_statusbar_buttons .btn{min-height:38px}
+.ux_quote_form .o_notebook .nav-tabs{display:flex;flex-wrap:wrap;gap:8px;border-bottom:0!important}
+.ux_quote_form .o_notebook .nav-link{border-radius:6px!important;background:#e7eff4!important;border:0!important;padding:11px 18px!important;color:#152f4b!important}
+.ux_quote_form .o_notebook .nav-link.active{background:#008b86!important;color:#fff!important;border-bottom:0!important}
+.ux_quote_form .ux_quote_customer_card{border:0;border-radius:10px;padding:18px 20px}
+.ux_quote_form .ux_quote_versions_panel{border:0;border-radius:10px;padding:16px}
+.ux_quote_form .o-mail-Form-chatter{border-radius:10px}
+.ux_quote_form .btn:focus-visible,.ux_quote_form .nav-link:focus-visible{outline:3px solid #64d5af!important;outline-offset:2px}
+@media(max-width:767px){.ux_quote_form .o_form_renderer{padding:12px!important;gap:12px!important}.ux_quote_form .o_statusbar_buttons{grid-template-columns:repeat(2,minmax(0,1fr))!important}.ux_quote_form .o_statusbar_buttons .btn{white-space:normal!important;font-size:12px!important}.ux_quote_form .o_notebook .nav-link{padding:9px 12px!important}.ux_quote_form .ux_quote_customer_card{padding:14px}}
 </style></xpath>
 <xpath expr="//header" position="inside">
 <button name="%(action_preview_quote_pdf)d" type="action" string="Vista previa PDF" icon="fa-file-pdf-o" class="ux_quote_pdf_action"/>

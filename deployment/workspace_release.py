@@ -21,7 +21,7 @@ def main():
  # This rollout installs the approved common workspace; business migrations need their own review.
  if set(target['addons'])-set(old['installation']['addons'])-{'uno360x_workspace'}:raise RuntimeError('Unexpected new business module')
  for name,version in old['installation']['addons'].items():
-  if name not in {'uno360x_workspace','uno360x_payroll_hr'} and target['addons'].get(name)!=version:raise RuntimeError('Unreviewed business change: '+name)
+  if name not in {'uno360x_workspace','uno360x_payroll_hr','uno360x_quote_ui'} and target['addons'].get(name)!=version:raise RuntimeError('Unreviewed business change: '+name)
  if row['fingerprint']==target['fingerprint']:
   print(json.dumps({'tenant':args.tenant,'status':'already_current','fingerprint':target['fingerprint']}));return
  new=dict(old,installation=target,resource_fingerprint=old.get('resource_fingerprint',old['installation']['fingerprint']))
@@ -37,7 +37,7 @@ def main():
   adapter.run('stop',n['app'])
   (backup/'tenant.sql').write_text(adapter.run('exec',n['database'],'pg_dump','-U','postgres','--no-owner','--no-acl',n['role']).stdout)
   adapter.run('volume','export','--output',str(backup/'files.tar'),n['files'])
-  visual_modules=','.join(x for x in ('uno360x_workspace','uno360x_payroll_hr') if x in target['addons'])
+  visual_modules=','.join(x for x in ('uno360x_workspace','uno360x_payroll_hr','uno360x_quote_ui') if x in target['addons'])
   result=adapter.run('run','--rm','--name',n['prefix']+'-workspace-upgrade',*adapter.common(new),adapter.images['odoo:18.0'],'odoo','-c','/etc/odoo/odoo.conf','-i','uno360x_workspace','-u',visual_modules,'--without-demo=all','--stop-after-init','--test-enable','--test-tags','/uno360x_workspace',check=False)
   (backup/'upgrade.log').write_text(result.stdout+'\n'+result.stderr)
   if result.returncode:raise RuntimeError('Workspace update failed. SaaS backup retained; native Odoo unaffected.')
