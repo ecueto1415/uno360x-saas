@@ -28,6 +28,9 @@ def main():
   db=sqlite3.connect('file:/var/lib/uno360x-saas/control/control.sqlite3?mode=ro',uri=True)
   if db.execute("SELECT 1 FROM preparation_jobs WHERE status='running'").fetchone():raise RuntimeError('Wait for the current creation to finish')
   db.close()
+  pool_config=pathlib.Path('/etc/uno360x-saas/shared-postgres.json')
+  if pool_config.exists() and json.loads(pool_config.read_text()).get('enabled') is True and (ROOT/'deployment/prepare_reserve_version.py').exists():
+   saas(['python3',str(ROOT/'deployment/prepare_reserve_version.py')],check=True)
   # Keep identity and customer applications available during sequential staging.
   subprocess.run(['systemctl','stop','uno360x-saas-worker'],check=True)
   if saas(command+['--apply']).returncode:

@@ -77,6 +77,16 @@ class OnboardingTests(unittest.TestCase):
         with self.assertRaises(PreparationError):self.jobs.run(job['job_id'],FakeAdapter(fail='validation'))
         self.assertFalse(self.jobs.status(self.owner,self.tenant['id'])['local_ready'])
 
+    def test_maintenance_blocks_existing_handoffs_and_recovers_without_new_company(self):
+        job,adapter=self.ready()
+        self.identity.db.execute('CREATE TABLE tenant_maintenance(tenant_id TEXT PRIMARY KEY,reason TEXT,started REAL)')
+        with self.identity.db:self.identity.db.execute('INSERT INTO tenant_maintenance VALUES (?,?,?)',(self.tenant['id'],'Migration',self.now))
+        status=self.jobs.status(self.owner,self.tenant['id']);self.assertTrue(status['maintenance']);self.assertFalse(status['local_ready'])
+        with self.assertRaises(PreparationError):self.jobs.issue_handoff(self.owner,self.tenant['id'])
+        with self.identity.db:self.identity.db.execute('DELETE FROM tenant_maintenance')
+        self.assertTrue(self.jobs.status(self.owner,self.tenant['id'])['local_ready'])
+        self.assertEqual(self.identity.db.execute('SELECT count(*) FROM tenants').fetchone()[0],1)
+
     def test_product_change_is_rejected_instead_of_silent_update(self):
         job=self.jobs.request(self.owner,self.tenant['id'])
         with patch('control.onboarding.installation_profile',return_value={'fingerprint':'different'}):

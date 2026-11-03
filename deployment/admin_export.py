@@ -53,14 +53,26 @@ def export():
   r['modules']=json.loads(r['modules']);r['quota_bytes']=5_000_000_000;r['quota_enforced']=False
   r['days_remaining']=max(0,int((r['expires']-now+86399)//86400)) if r['expires'] else None
   r['status']='inactive' if not r['active'] else 'failed' if r['preparation_status']=='failed' else 'preparing' if r['preparation_status']!='ready_local' else 'expired' if r['expires'] and r['expires']<=now else 'trial' if r['expires'] else 'existing'
-  role='tenant_'+r['id'];container='uno360x-pilot-'+r['id']+'-db';size=None
+  role='tenant_'+r['id'];container='uno360x-pilot-'+r['id']+'-db';size=None;binding=None
+  inventory=pathlib.Path('/var/lib/uno360x-saas/shared-postgres/inventory.sqlite3')
+  if inventory.exists():
+   with sqlite3.connect('file:'+str(inventory)+'?mode=ro',uri=True) as pool:
+    pool.row_factory=sqlite3.Row;found=pool.execute('SELECT * FROM reserve_bindings WHERE tenant_id=?',(r['id'],)).fetchone()
+    if found:binding=dict(found)
+  if binding:
+   role=binding['database_name'];container='uno360x-shared-postgres-v1'
+   if not re.fullmatch('tenant_[a-f0-9]{32}',role):raise ValueError('Invalid shared database')
   try:
    inspect=json.loads(podman('inspect',container))[0]
-   if inspect['Config']['Labels'].get('uno360x.tenant')!=r['id']:raise ValueError('Foreign container')
+   if binding:
+    if inspect['Config']['Labels'].get('uno360x.environment')!='shared-postgres-reserve' or inspect['Config']['Labels'].get('uno360x.managed')!='uno360x-saas':raise ValueError('Foreign shared container')
+   elif inspect['Config']['Labels'].get('uno360x.tenant')!=r['id']:raise ValueError('Foreign container')
    if inspect['State']['Running']:
-    size=int(podman('exec','-u','postgres',container,'psql','-U',role,'-d',role,'-Atc','BEGIN READ ONLY; SELECT pg_database_size(current_database()); COMMIT;').splitlines()[1])
+    size=int(podman('exec','-u','postgres',container,'psql','-U','postgres' if binding else role,'-d',role,'-Atc','BEGIN READ ONLY; SELECT pg_database_size(current_database()); COMMIT;').splitlines()[1])
   except Exception:pass
-  files=pathlib.Path('/var/lib/uno360x-saas/.local/share/containers/storage/volumes')/('uno360x-pilot-'+r['id']+'-odoodata')/'_data'/'filestore'
+  volume=binding['files_volume'] if binding else 'uno360x-pilot-'+r['id']+'-odoodata'
+  if not re.fullmatch(r'uno360x-(?:pilot-[a-f0-9]{32}-odoodata|reserve-[a-f0-9]{32}-files)',volume):raise ValueError('Invalid files volume')
+  files=pathlib.Path('/var/lib/uno360x-saas/.local/share/containers/storage/volumes')/volume/'_data'/'filestore'
   r['files_bytes']=tree_size(files);r['database_bytes']=size;r['storage_bytes']=(size+r['files_bytes']) if size is not None and r['files_bytes'] is not None else None
   clients.append(r)
  events=[]

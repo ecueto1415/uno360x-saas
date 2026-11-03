@@ -71,5 +71,9 @@ class PilotAdapter(SharedHostAdapter):
   return self.wait_backend(port)
  def configure_company(self,s,profile,origin):
   checked_origin(origin)
+  import base64
+  payload=base64.b64encode(json.dumps(profile).encode()).decode()
+  query="WITH p AS (SELECT convert_from(decode('%s','base64'),'UTF8')::jsonb v) SELECT c.id FROM res_company c JOIN res_partner partner ON partner.id=c.partner_id JOIN res_country country ON country.id=partner.country_id JOIN res_currency currency ON currency.id=c.currency_id,p WHERE c.id=(SELECT res_id FROM ir_model_data WHERE model='res.company' AND module='base' AND name='main_company') AND c.name=p.v->>'name' AND country.code=p.v->>'country' AND currency.name=p.v->>'currency' AND EXISTS(SELECT 1 FROM ir_config_parameter WHERE key='web.base.url' AND value='%s') AND EXISTS(SELECT 1 FROM ir_config_parameter WHERE key='web.base.url.freeze' AND value='True')"%(payload,origin)
+  if self.sql(s,query).isdigit():return
   super().configure_company(s,profile,'http://127.0.0.1:18184')
   self.shell(s,"env['ir.config_parameter'].sudo().set_param('web.base.url',%r);env.cr.commit();print('UNO360X_OK')"%origin)

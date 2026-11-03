@@ -4,16 +4,19 @@ import json,os,pwd,re,sqlite3,time
 from pathlib import Path
 from control.container_adapter import ContainerAdapter
 from control.template_install import TemplateInstallMixin
+from control.shared_database import SharedDatabaseMixin
 ROOT=Path(__file__).resolve().parents[1]
 STATE=Path('/var/lib/uno360x-saas/tenants')
 class CapacityUnavailable(RuntimeError):pass
 
-class SharedHostAdapter(TemplateInstallMixin,ContainerAdapter):
+class SharedHostAdapter(SharedDatabaseMixin,TemplateInstallMixin,ContainerAdapter):
  def __init__(self):
   if os.name!='posix' or os.geteuid()==0 or pwd.getpwuid(os.geteuid()).pw_name!='uno360x-saas':
    raise RuntimeError('Exclusive unprivileged SaaS account required')
   images=json.loads(Path('/etc/uno360x-saas/images.json').read_text())
   super().__init__(STATE,images,ROOT,'private-pilot','uno360x-pilot-')
+  shared=Path('/etc/uno360x-saas/shared-postgres.json')
+  self.shared_pg_enabled=shared.exists() and json.loads(shared.read_text()).get('enabled') is True
   policy=Path('/etc/uno360x-saas/resource-policy.json')
   settings=json.loads(policy.read_text()) if policy.exists() else {'max_active_tenants':1}
   cap=settings.get('max_active_tenants',1);self.max_active=None if cap is None else int(cap)
@@ -25,22 +28,23 @@ class SharedHostAdapter(TemplateInstallMixin,ContainerAdapter):
   if not info['host']['security']['rootless']:raise RuntimeError('Rootless runtime required')
  def common(self,s):
   args=super().common(s);args[args.index('--memory')+1]='640m';args[args.index('--cpus')+1]='0.5';return args
- def _allocated(self,except_tid):
+ def _allocated(self,except_tid):return len(self._allocated_ids(except_tid))
+ def _allocated_ids(self,except_tid):
   directories=[p.name for p in self.state.iterdir() if p.is_dir() and re.fullmatch('[a-f0-9]{32}',p.name) and p.name!=except_tid]
   control=Path('/var/lib/uno360x-saas/control/control.sqlite3')
-  if not control.exists():return len(directories)
+  if not control.exists():return directories
   db=sqlite3.connect('file:'+str(control)+'?mode=ro',uri=True)
   try:
-   if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():return len(directories)
-   count=0
+   if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():return directories
+   allocated=[]
    for tid in directories:
     row=db.execute('SELECT expires FROM trial_workspaces WHERE tenant_id=?',(tid,)).fetchone()
     if row and row[0] and row[0]<=time.time():
      # Expiration frees a slot only after owned compute is actually stopped.
      names=[self.prefix+tid+'-'+suffix for suffix in ('db','app','proxy')]
      if not any(self.exists('container',name) and self.inspect(name)['State']['Running'] for name in names):continue
-    count+=1
-   return count
+    allocated.append(tid)
+   return allocated
   finally:db.close()
  def has_headroom(self,except_tid):
   # Open registration, bounded admission. Never stop an existing tenant to
@@ -50,8 +54,13 @@ class SharedHostAdapter(TemplateInstallMixin,ContainerAdapter):
   mem={k:int(v.split()[0])*1024 for k,v in [l.split(':',1) for l in Path('/proc/meminfo').read_text().splitlines()]}
   if maximum=='max' or quota=='max':return False
   if int(maximum)>mem['MemTotal']//2 or int(quota)/int(period)>max(1,os.cpu_count()/2):return False
-  committed=self._allocated(except_tid)*832*1024**2
-  return int(maximum)-max(used,committed)>=1088*1024**2 and mem['MemAvailable']>=2*1024**3
+  if getattr(self,'shared_pg_enabled',False):
+   committed=sum(672 if self.shared_binding({'tenant_id':tid}) else 864 for tid in self._allocated_ids(except_tid))*1024**2
+   committed+=(512+128)*1024**2
+   needed=(672+256)*1024**2
+  else:
+   committed=self._allocated(except_tid)*832*1024**2;needed=1088*1024**2
+  return int(maximum)-max(used,committed)>=needed and mem['MemAvailable']>=2*1024**3
  @contextmanager
  def lock(self,tid):
   import fcntl
@@ -69,6 +78,7 @@ class SharedHostAdapter(TemplateInstallMixin,ContainerAdapter):
   # Do not hold the global admission lock during another tenant's installation.
   with super().lock(tid):yield
  def stop_expired(self,s):
+  if self.stop_shared_expired(s):return
   with self.lock(s['tenant_id']):
    names=self.names(s)
    for suffix in ('app','db','proxy'):
@@ -83,10 +93,15 @@ class SharedHostAdapter(TemplateInstallMixin,ContainerAdapter):
  def _shell_identity(self,s):
   with self.batch_shell(s):
    super().identity(s)
-   db=sqlite3.connect('file:/var/lib/uno360x-saas/control/control.sqlite3?mode=ro',uri=True)
+   db=sqlite3.connect('file:'+str(getattr(self,'control_database',Path('/var/lib/uno360x-saas/control/control.sqlite3')))+'?mode=ro',uri=True)
    try:
     row=db.execute("SELECT a.id,a.email,d.name FROM preparation_jobs p JOIN accounts a ON a.id=p.requested_by LEFT JOIN trial_signup_drafts d ON d.account_id=a.id JOIN memberships m ON m.account_id=a.id AND m.tenant_id=p.tenant_id WHERE p.tenant_id=? AND a.verified=1 AND a.active=1 AND m.active=1 AND m.role='owner'",(s['tenant_id'],)).fetchone()
    finally:db.close()
+   config=Path('/etc/uno360x-saas/https-pilot.json')
+   if config.exists():
+    origin=json.loads(config.read_text()).get('tenant_origin','')
+    if re.fullmatch(r'https://[a-z0-9-]+\.uno360x\.com',origin) and self.sql(s,"SELECT value FROM ir_config_parameter WHERE key='web.base.url'")!=origin:
+     self.shell(s,"env['ir.config_parameter'].sudo().set_param('web.base.url',%r);env['ir.config_parameter'].sudo().set_param('web.base.url.freeze','True');env.cr.commit();print('UNO360X_OK')"%origin)
    if not row:raise RuntimeError('Verified owner required before readiness')
    self.sync_user(s,{'tenant_id':s['tenant_id'],'account_id':row[0],'email':row[1],'role':'owner','display_name':row[2]})
  def validate_runtime(self,s,inspected=None):

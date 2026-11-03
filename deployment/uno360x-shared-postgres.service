@@ -1,0 +1,22 @@
+[Unit]
+Description=Ensure private UNO360X shared PostgreSQL is running
+After=network-online.target user@996.service
+Requires=user@996.service
+[Service]
+Type=oneshot
+RemainAfterExit=true
+User=uno360x-saas
+Group=uno360x-saas
+Slice=user-996.slice
+WorkingDirectory=/var/lib/uno360x-saas
+Environment=XDG_RUNTIME_DIR=/run/user/996
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/996/bus
+ExecStart=/usr/bin/python3 /srv/uno360x-saas/master-current/deployment/ensure_shared_postgres.py
+MemoryMax=128M
+CPUQuota=30%
+CPUWeight=20
+UMask=0077
+Restart=on-failure
+RestartSec=10
+[Install]
+WantedBy=multi-user.target

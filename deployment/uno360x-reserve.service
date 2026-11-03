@@ -1,0 +1,19 @@
+[Unit]
+Description=UNO360X prepared spaces replenisher (5 to 15)
+After=network-online.target user@996.service uno360x-shared-postgres.service
+Requires=user@996.service uno360x-shared-postgres.service
+[Service]
+Type=oneshot
+User=uno360x-saas
+Group=uno360x-saas
+Slice=user-996.slice
+WorkingDirectory=/var/lib/uno360x-saas
+Environment=XDG_RUNTIME_DIR=/run/user/996
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/996/bus
+ExecStart=/usr/bin/python3 /srv/uno360x-saas/master-current/deployment/run_reserve_builder.py
+MemoryMax=160M
+CPUQuota=50%
+CPUWeight=10
+TasksMax=64
+UMask=0077
+TimeoutStartSec=3600

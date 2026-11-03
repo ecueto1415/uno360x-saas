@@ -16,7 +16,7 @@ def main():
  payload=json.loads(pathlib.Path('/run/uno360x/initial-owner.json').read_text())
  names=config['db_name']
  if isinstance(names,str):names=[n.strip() for n in names.split(',') if n.strip()]
- assert len(names)==1 and names[0]=='tenant_'+payload['tenant_id']
+ assert len(names)==1 and names[0]==payload.get('database_name','tenant_'+payload['tenant_id'])
  server.load_server_wide_modules()
  registry=Registry(names[0])
  with registry.cursor() as cr:

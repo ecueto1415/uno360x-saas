@@ -70,9 +70,12 @@ class Onboarding:
         tenant=self.db.execute('SELECT modules FROM tenants WHERE id=?',(tenant_id,)).fetchone()
         changed=installation_profile(json.loads(tenant['modules']))['fingerprint']!=row['fingerprint']
         done={r[0] for r in self.db.execute('SELECT step FROM preparation_steps WHERE job_id=?',(row['id'],))}
+        maintenance=False
+        if self.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='tenant_maintenance'").fetchone():
+            maintenance=bool(self.db.execute('SELECT 1 FROM tenant_maintenance WHERE tenant_id=?',(tenant_id,)).fetchone())
         return {'job_id':row['id'],'tenant_id':tenant_id,'status':row['status'],
                 'current_step':row['current_step'],'completed_steps':[s for s in STEPS if s in done],
-                'public_access':False,'local_ready':row['status']=='ready_local' and not changed,
+                'public_access':False,'local_ready':row['status']=='ready_local' and not changed and not maintenance,'maintenance':maintenance,
                 'requires_migration':changed}
 
     def run(self, job_id, adapter):

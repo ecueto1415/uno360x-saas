@@ -4,6 +4,9 @@ import json,time
 class RuntimeIdentityMixin:
  def runtime_identity(self,s,configure):
   n=self.names(s);payload_file=n['directory']/'initial-owner.json'
+  if self.exists('container',n['app']):
+   info=self.check_container(n['app'],s)
+   if not isinstance(info,dict) or '/run/uno360x/runtime_bootstrap.py' not in (info.get('Config',{}).get('Cmd') or []):return False
   if not payload_file.exists():
    marker=n['directory']/'installed.json'
    if not marker.exists() or not json.loads(marker.read_text()).get('template'):return False
@@ -15,11 +18,12 @@ class RuntimeIdentityMixin:
     configure();script='\n'.join(self._startup_scripts)
    finally:del self._startup_scripts
    if not script:raise RuntimeError('Missing initial owner setup')
-   self.protected(payload_file,json.dumps({'tenant_id':s['tenant_id'],'hostname':s['hostname'],'fingerprint':s['installation']['fingerprint'],'script':script}))
+   self.protected(payload_file,json.dumps({'tenant_id':s['tenant_id'],'hostname':s['hostname'],'database_name':n['role'],'fingerprint':s['installation']['fingerprint'],'script':script}))
    # Same isolation as odoo.conf: private 0700 parent, read-only file mount.
    payload_file.chmod(0o644)
   payload=json.loads(payload_file.read_text())
   if payload['tenant_id']!=s['tenant_id'] or payload['hostname']!=s['hostname'] or payload['fingerprint']!=s['installation']['fingerprint']:raise RuntimeError('Bootstrap identity or release mismatch')
+  if payload.get('database_name','tenant_'+s['tenant_id'])!=n['role']:raise RuntimeError('Bootstrap database mismatch')
   if not self.exists('container',n['app']):
    args=self.common(s);args[args.index('--cpus')+1]='1'
    self.run('run','-d','--name',n['app'],'--log-driver','k8s-file','--oom-score-adj','500',*args,
