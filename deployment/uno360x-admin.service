@@ -1,0 +1,32 @@
+[Unit]
+Description=UNO360X private SaaS owner console
+After=network.target
+[Service]
+Type=simple
+User=uno360x-admin
+Group=uno360x-admin
+WorkingDirectory=/opt/uno360x-admin/current
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m admin_console.server
+Restart=on-failure
+RestartSec=5
+UMask=0077
+Nice=10
+CPUWeight=10
+CPUQuota=25%
+MemoryHigh=128M
+MemoryMax=192M
+TasksMax=32
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ReadWritePaths=/var/lib/uno360x-admin
+IPAddressDeny=any
+IPAddressAllow=localhost
+[Install]
+WantedBy=multi-user.target

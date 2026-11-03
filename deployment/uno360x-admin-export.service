@@ -1,0 +1,18 @@
+[Unit]
+Description=Read-only SaaS metadata and host metrics for owner console
+After=local-fs.target
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/var/lib/uno360x-saas
+ExecStart=/usr/bin/python3 /usr/local/lib/uno360x-admin/export.py
+Nice=15
+CPUWeight=10
+IOWeight=10
+MemoryMax=160M
+TimeoutStartSec=50
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/lib/uno360x-admin-export /run/user/996 /var/lib/uno360x-saas/.local/share/containers/storage
