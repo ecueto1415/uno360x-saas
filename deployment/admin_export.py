@@ -18,16 +18,10 @@ def tree_size(path):
    except FileNotFoundError:pass
  return total
 def antivirus():
- history=[]
- for log in sorted(pathlib.Path('/var/log/uno360x-antivirus').glob('scan-*.log*'),reverse=True)[:24]:
-  if log.stat().st_size>10_000_000:continue
-  with (gzip.open(log,'rb') if log.suffix=='.gz' else log.open('rb')) as f:
-   f.seek(0,2);size=f.tell();f.seek(max(0,size-20000));text=f.read().decode(errors='replace')
-  scanned=re.search(r'Scanned files:\s*(\d+)',text);infected=re.search(r'Infected files:\s*(\d+)',text)
-  duration=re.search(r'Time:\s*([\d.]+)',text)
-  if not scanned or not infected:continue
-  stamp=datetime.datetime.strptime(re.search(r'scan-(\d{8}-\d{6})',log.name)[1],'%Y%m%d-%H%M%S').replace(tzinfo=datetime.timezone(datetime.timedelta(hours=-4))).timestamp()
-  history.append({'started':stamp,'files':int(scanned[1]),'detections':int(infected[1]),'seconds':float(duration[1]) if duration else None})
+ import importlib.util
+ spec=importlib.util.spec_from_file_location('uno360x_av_history','/usr/local/lib/uno360x-antivirus/history.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+ review_file=pathlib.Path('/var/lib/uno360x-antivirus/reviews.json');reviews=json.loads(review_file.read_text()) if review_file.exists() else {}
+ history,_=module.collect('/var/log/uno360x-antivirus',reviews=reviews)
  p=pathlib.Path('/var/lib/uno360x-antivirus/latest.json');latest=json.loads(p.read_text()) if p.exists() else None
  if latest:latest={k:v for k,v in latest.items() if k in ('started','finished','mode','automatic_deletion','status','elapsed_seconds','infected_files','internal_scanner_errors')}
  sigs=[f.stat().st_mtime for name in ['daily.cld','daily.cvd'] if (f:=pathlib.Path('/var/lib/clamav')/name).exists()]
@@ -35,7 +29,7 @@ def antivirus():
  try:next_epoch=datetime.datetime.strptime(nxt,'%a %Y-%m-%d %H:%M:%S %Z').replace(tzinfo=datetime.timezone.utc).timestamp()
  except ValueError:next_epoch=None
  history=list({r['started']:r for r in history}.values());history.sort(key=lambda r:r['started'],reverse=True)
- return {'latest':latest,'history':history[:12],'signatures_updated':max(sigs) if sigs else None,'next_scan':nxt,'next_scan_epoch':next_epoch,'mode':'detection_only'}
+ return {'latest':latest,'history':history,'retention_days':30,'signatures_updated':max(sigs) if sigs else None,'next_scan':nxt,'next_scan_epoch':next_epoch,'mode':'detection_only'}
 def export():
  now=time.time();previous=STATE/'cpu.json';current=cpu_counts();prior=json.loads(previous.read_text()) if previous.exists() else None
  if not prior:

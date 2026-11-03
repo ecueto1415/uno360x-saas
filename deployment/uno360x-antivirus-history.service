@@ -1,0 +1,14 @@
+[Unit]
+Description=UNO360X 30-day antivirus history retention
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/uno360x-antivirus/history.py --apply
+Nice=19
+IOSchedulingClass=idle
+MemoryMax=64M
+CPUQuota=10%
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/log/uno360x-antivirus /var/lib/uno360x-antivirus
