@@ -56,6 +56,16 @@ def main():
    if target['fingerprint']!=item['target']:raise RuntimeError('Candidate product changed during rollout')
    if item['current']==item['target']:continue
    pending=adapter.state/tid/'workspace-pending.json'
+   if pending.exists():
+    previous=json.loads(pending.read_text())
+    if previous['snapshot']['installation']['fingerprint']!=item['target']:
+     current=db.execute('SELECT fingerprint,snapshot FROM preparation_jobs WHERE tenant_id=?',(tid,)).fetchone()
+     if previous['snapshot']!=json.loads(current['snapshot']) or previous['snapshot']['installation']['fingerprint']!=current['fingerprint']:
+      raise RuntimeError('Unpublished pending tenant belongs to another release')
+     adapter.validate_runtime(previous['snapshot']);adapter.check_modules(previous['snapshot'])
+     archived=pending.with_name('workspace-published-'+current['fingerprint']+'.json')
+     if archived.exists():raise RuntimeError('Published marker archive already exists; review required')
+     pending.rename(archived)
    if not pending.exists():
     run=subprocess.run([sys.executable,str(ROOT/'deployment/workspace_release.py'),tid,'--apply','--defer-publish'],capture_output=True,text=True)
     (directory/(tid+'.log')).write_text(run.stdout+'\n'+run.stderr)
