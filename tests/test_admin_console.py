@@ -51,7 +51,7 @@ class OwnerAuthTests(unittest.TestCase):
 
 class OwnerHTTPTests(unittest.TestCase):
  def setUp(self):
-  self.tmp=tempfile.TemporaryDirectory();self.state=pathlib.Path(self.tmp.name)/'auth';self.snapshot=pathlib.Path(self.tmp.name)/'snapshot.json';self.snapshot.write_text(json.dumps({'generated':time.time(),'clients':[{'name':'private-company'}]}));self.now=2000000000
+  self.tmp=tempfile.TemporaryDirectory();self.state=pathlib.Path(self.tmp.name)/'auth';self.snapshot=pathlib.Path(self.tmp.name)/'snapshot.json';self.snapshot.write_text(json.dumps({'generated':time.time(),'clients':[{'id':'a'*32,'name':'private-company','quota_bytes':5000000000}]}));self.now=2000000000
   self.server=Server(0,self.state,self.snapshot,OWNER);self.server.clock=lambda:self.now
   self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start();self.cookies={};self.csrf=''
  def tearDown(self):self.server.shutdown();self.server.server_close();self.thread.join();self.tmp.cleanup()
@@ -88,6 +88,16 @@ class OwnerHTTPTests(unittest.TestCase):
   self.now+=30;self.assertEqual(self.request('/api/mfa',{'code':otp(setup['secret'],int(self.now//30))})[0],200)
   self.csrf='invalid';self.assertEqual(self.request('/api/logout',{})[0],403)
   self.assertEqual(self.request('/api/clients/change-plan',{'id':'x'})[0],404)
+ def test_storage_assignment_requires_session_csrf_and_real_tenant(self):
+  payload={'tenant_id':'a'*32,'quota_gb':10,'expected_bytes':5000000000,'request_id':'b'*32,'reason':'Customer expansion'}
+  self.assertNotEqual(self.request('/api/storage/quota',payload)[0],200)
+  self.activate();self.csrf=self.request('/api/session')[2]['csrf_token']
+  self.snapshot.write_text(json.dumps({'generated':self.now,'clients':[{'id':'a'*32,'quota_bytes':5000000000,'storage_bytes':4000000000}],'server':{'disk_available':100000000000}}))
+  good=self.csrf;self.csrf='wrong';self.assertEqual(self.request('/api/storage/quota',payload)[0],403);self.csrf=good
+  self.assertEqual(self.request('/api/storage/quota',payload)[0],200)
+  self.assertTrue(self.request('/api/storage/quota',payload)[2]['duplicate'])
+  self.assertEqual(self.request('/api/overview')[2]['snapshot']['clients'][0]['quota_bytes'],10000000000)
+  self.assertEqual(self.request('/api/storage/quota',dict(payload,tenant_id='f'*32,request_id='c'*32))[0],400)
  def test_assets_have_no_external_scripts_and_strict_csp(self):
   status,headers,_,body=self.request('/');self.assertEqual(status,200);self.assertNotIn('unsafe-inline',headers['Content-Security-Policy']);self.assertEqual(headers['X-Frame-Options'],'DENY')
   self.assertNotIn(b'https://cdn',body)
