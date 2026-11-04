@@ -1,7 +1,7 @@
 # Emision E31/E45 desde Odoo de OUTSOLUTECH
 
 Modulo independiente `native_addons/outsolutech_ecf_production`, version
-18.2.1.0.0, exclusivo de la instancia nativa `Outsolutech_prueba` y del RNC
+18.2.1.0.1, exclusivo de la instancia nativa `Outsolutech_prueba` y del RNC
 132364805. No se instala en el SaaS ni comparte la identidad de OUTSOLUTECH
 con otros clientes. Depende del modulo nativo de precertificacion ya instalado
 y conserva los documentos anteriores, las acciones de pruebas y sus secuencias.
@@ -89,3 +89,28 @@ restaurar una DB antigua sobre nuevas facturas. En caso de fallo de codigo,
 restaurar la version compatible del addon manteniendo DB, adjuntos y acuses.
 La copia completa previa es recuperacion de emergencia con revision de
 operaciones posteriores, no reversion automatica de datos financieros.
+
+## Confirmacion y entrada visible (18.2.1.0.1)
+
+El boton Factura fiscal electronica se muestra tambien en borrador, con una
+indicacion de confirmar primero la factura; esa confirmacion contable no envia
+un e-CF. El generador y bloque legacy Laboratorio e-CF se ocultan cuando la
+empresa tiene emision productiva habilitada. Los borradores anteriores se
+conservan. La vista productiva y la vista fallback muestran el mismo aviso:
+
+Enviar este comprobante real a la DGII; revisar cliente, RNC, tipo y total.
+Una vez aceptado no se edita ni elimina y una correccion puede requerir nota
+de credito. Cancelar conserva el XML preparado sin enviarlo.
+
+Titulo: Confirmar emision fiscal. Botones: Si, enviar a la DGII / Cancelar.
+Se usa ConfirmationDialog estandar de Odoo: solo confirm ejecuta la accion;
+cancel no la ejecuta. Esto fue verificado en el codigo frontend instalado y
+ambas vistas compiladas con los permisos y lenguaje del operador. La nueva
+vista heredada del laboratorio fue validada por Odoo en el upgrade. No se
+crearon comprobantes ni se reservaron numeros por este cambio.
+
+Fuente actual: /opt/uno360x-outsolutech-ecf/releases/20261104T160953Z.
+Backup de vistas y fuente anterior en
+/var/lib/uno360x-dgii-install/confirmation-20261104T160953Z.
+
+Criterio de correcciones: [Preguntas frecuentes DGII](https://dgii.gov.do/publicacionesOficiales/bibliotecaVirtual/contribuyentes/Otros/Documents/Preguntas-frecuentes-Nuevos-Contribuyentes.pdf), pregunta 22.
