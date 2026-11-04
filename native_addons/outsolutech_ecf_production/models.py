@@ -1,4 +1,6 @@
 import base64
+import io
+import qrcode
 import hashlib
 import json
 import re
@@ -6,7 +8,8 @@ from urllib.parse import urlencode, quote
 from lxml import etree
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.addons.outsolutech_ecf_flujo.builder import build_invoice, validate_signed
+from odoo.addons.outsolutech_ecf_flujo.builder import validate_signed
+from .invoice_xml import build_invoice
 from .crypto import sign_xml, load_identity, verify_xml
 from .client import Client
 from .production_trust import validate_certificate
@@ -245,7 +248,9 @@ class Document(models.Model):
         super()._compute_qr()
         for doc in self.filtered(lambda d:d.environment=='ecf' and d.qr_url):
             doc.qr_url=doc.qr_url.replace('/testecf/','/ecf/')
-            doc.qr_image='/report/barcode/?barcode_type=QR&value='+quote(doc.qr_url,safe='')+'&width=220&height=220'
+            buffer=io.BytesIO()
+            qrcode.make(doc.qr_url).save(buffer,format='PNG')
+            doc.qr_image='data:image/png;base64,'+base64.b64encode(buffer.getvalue()).decode('ascii')
 
     def action_print(self):
         if self.environment!='ecf':return super().action_print()

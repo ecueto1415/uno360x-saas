@@ -128,3 +128,13 @@ Por instrucción del propietario, se bloquea _post de facturas y notas de client
 OUTSOLUTECH: diario nuevo FAC (id36), nombre Facturas electrónicas UNO360X y prioridad1, con cuentas copiadas del diario9. Se movieron únicamente seis borradores sin número ni publicación previa (1088,1086,1085,1083,1082,1081), conservando importes. Diarios B02/B14/B15/B16 archivados y cinco secuencias ir.sequence B archivadas sin alterar contadores. B01 se conserva activo por la restricción estándar de Odoo ante dos borradores históricos previamente publicados (139,526); nombre Histórico B01 - emisión desactivada, prioridad99 y emisión bloqueada por código. No se forzó el archivado ni se renumeró el historial. Factura1087 conserva B0100000270.
 
 Respaldo previo: 20261104T173113Z. Validación: 18 pruebas sin errores en base aislada, bloqueo en producción comprobado sobre borrador histórico sin publicación, selección predeterminada FAC, rangos electrónicos intactos y 261 asientos publicados preservados. Release /opt/uno360x-outsolutech-ecf/releases/20261104T173347Z; reinicio controlado y HTTP200. No se enviaron comprobantes a DGII.
+
+### Primera emisión real aceptada y descripciones — 18.2.1.0.5
+
+El propietario autorizó expresamente enviar FAC/2026/00001 (account.move1088). La descripción de línea de105 caracteres impedía preparar el XML: NombreItem admite80. El adaptador productivo conserva la etiqueta completa en DescripcionItem (máximo1000), usa la primera línea abreviada como NombreItem y valida nuevamente el XSD; no altera los importes ni la factura original. Textos mayores de1000 se bloquean antes de reservar número.
+
+Se preparó y envió E310000000001 con un intento. DGII devolvió código1, estado Aceptado y secuenciaUtilizada=true el04/11/2026 a las13:44:16, hora dominicana. El expediente9 conserva TrackId, XML firmado y respuesta oficial. No se reenvió al corregir la impresión.
+
+La revisión del PDF detectó QR vacío por falta del backend gráfico de reportlab en el servidor. Ahora se genera PNG con qrcode y se incrusta en el reporte; no depende de una petición HTTP al controlador de código de barras. PDF final revisado visualmente, e-NCF y detalle completos. Se conserva la plantilla corporativa previa.
+
+Validación final:20 pruebas sin errores en PostgreSQL aislado (incluye descripción larga, límite previo a reserva, integridad firmada y PNG incrustado). Release productivo /opt/uno360x-outsolutech-ecf/releases/20261104T174734Z, respaldo posterior a aceptación20261104T174719Z, reinicio controlado y HTTP200. No se modificaron credenciales ni el certificado existente.

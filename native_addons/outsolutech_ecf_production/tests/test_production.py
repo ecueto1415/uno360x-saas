@@ -52,6 +52,7 @@ class TestProduction(TransactionCase):
         doc._set({'track_id':'qa-track','state':'sent'})
         doc._apply_result({'codigo':'1','rnc':'132364805','eNCF':doc.encf,'trackId':'qa-track','secuenciaUtilizada':True})
         self.assertEqual(doc.state,'accepted');self.assertIn('/ecf/ConsultaTimbre?',doc.qr_url);self.assertNotIn('/testecf/',doc.qr_url)
+        self.assertTrue(base64.b64decode(doc.qr_image.split(',',1)[1]).startswith(b'\x89PNG'))
         self.assertEqual(doc.action_print()['report_name'],'outsolutech_ecf_production.template_report')
         html,_=self.env['ir.actions.report']._render_qweb_html('account.account_invoices',doc.move_id.ids)
         self.assertIn(doc.encf.encode(),html)
@@ -166,3 +167,23 @@ class TestProduction(TransactionCase):
         self.assertEqual(doc.move_id.state,'posted')
         self.assertFalse(doc.encf)
         self.assertEqual(self.authorization.next_number,'0000000100')
+
+    def test_long_invoice_label_preserved_as_description_in_signed_xml(self):
+        from lxml import etree
+        doc=self.document()
+        original='SERVICIO DE MANTENIMIENTO\n'+'DETALLE COMPLETO DEL SERVICIO '*5
+        doc.move_id.invoice_line_ids[0].write({'name':original})
+        doc.action_prepare()
+        root=etree.fromstring(base64.b64decode(doc.signed_xml))
+        item=root.find('DetallesItems/Item')
+        self.assertEqual(item.findtext('NombreItem'),'SERVICIO DE MANTENIMIENTO')
+        self.assertEqual(item.findtext('DescripcionItem'),original.strip())
+        self.assertTrue(doc._check_integrity())
+
+    def test_description_above_schema_limit_blocks_before_reservation(self):
+        doc=self.document()
+        doc.move_id.invoice_line_ids[0].write({'name':'X'*1001})
+        with self.assertRaises(UserError):doc.action_prepare()
+        self.assertFalse(doc.encf)
+        self.assertEqual(self.authorization.next_number,'0000000100')
+
