@@ -1,18 +1,98 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
-<record id="report_production" model="ir.actions.report"><field name="name">Factura fiscal electronica</field><field name="model">outsolutech.ecf.document</field><field name="report_type">qweb-pdf</field><field name="report_name">outsolutech_ecf_production.template_report</field><field name="report_file">outsolutech_ecf_production.template_report</field><field name="attachment_use" eval="False"/></record>
-<template id="template_report"><t t-call="web.html_container"><t t-foreach="docs" t-as="o"><t t-set="s" t-value="o._report_data()"/><t t-call="web.external_layout"><div class="page">
-<div style="border:2px solid #b64e0b;padding:10px;color:#963800;text-align:center;font-weight:bold;">FACTURA FISCAL ELECTRONICA - PRODUCCION</div>
-<h2 t-if="o.document_type == '31'">Factura de Crédito Fiscal Electrónica · E31</h2><h2 t-else="">Comprobante Gubernamental Electrónico · E45</h2><p>Vencimiento secuencia: <span t-field="o.production_range_id.valid_until"/></p><p><strong t-esc="o.encf"/> · Estado: <span t-esc="o.state"/></p>
-<table style="width:100%;margin-bottom:20px;"><tr><td style="width:50%;vertical-align:top"><strong t-esc="s['seller']['name']"/><br/>RNC: <span t-esc="s['seller']['rnc']"/><br/><span t-esc="s['seller']['address']"/></td><td style="vertical-align:top">Cliente: <strong t-esc="s['buyer']['name']"/><br/>RNC/Cédula: <span t-esc="s['buyer']['rnc']"/><br/>Fecha: <span t-esc="s['invoice_date']"/><br/>Referencia Odoo: <span t-field="o.move_id.name"/></td></tr></table>
-<table class="table table-sm"><thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio RD$</th><th>Descuento %</th><th>ITBIS %</th><th>Importe RD$</th></tr></thead><tbody><tr t-foreach="s['lines']" t-as="line"><td t-esc="line['name']"/><td t-esc="line['quantity']"/><td t-esc="'%.2f' % line['price_unit']"/><td t-esc="'%.2f' % line.get('discount',0)"/><td t-esc="'Exento' if line.get('tax_category') == '4' else '%.2f' % line['tax_rate']"/><td t-esc="'%.2f' % line['subtotal']"/></tr></tbody></table>
-<div style="text-align:right"><p>Subtotal RD$ <span t-esc="'%.2f' % s['amount_untaxed']"/></p><p>ITBIS RD$ <span t-esc="'%.2f' % s['amount_tax']"/></p><h3>Total RD$ <span t-esc="'%.2f' % s['amount_total']"/></h3></div>
-<div style="margin:20px 0 0 0;padding:12px 0 0 0;page-break-inside:avoid"><t t-if="o.qr_image"><img t-att-src="o.qr_image" style="width:25mm;height:25mm;margin:3mm;"/><p>Código de seguridad: <strong t-esc="o.security_code"/></p></t><t t-else=""><p>Pendiente de aceptacion de DGII.</p></t><p>Fecha de firma: <span t-esc="o.signature_time"/></p><p>TrackId: <span t-esc="o.track_id or 'Pendiente'"/></p></div>
-<p style="font-size:10px">Representacion impresa del comprobante fiscal electronico. Conserve el XML firmado y su respuesta DGII.</p>
-</div></t></t></t></template>
 
-<template id="invoice_production_reference" inherit_id="account.report_invoice_document" priority="40">
-<xpath expr="//div[@id='informations']" position="after"><t t-set="fiscal" t-value="o._outs_ecf_production_report()"/><div t-if="fiscal" class="row mb-4" style="page-break-inside:avoid">
-<div class="col-8"><strong>Comprobante fiscal electronico</strong><br/>e-NCF: <strong t-esc="fiscal.encf"/><br/>Vencimiento de secuencia: <span t-field="fiscal.production_range_id.valid_until"/><br/>Codigo de seguridad: <span t-esc="fiscal.security_code"/><br/>Fecha de firma: <span t-esc="fiscal.signature_time"/></div>
-<div class="col-4 text-end"><img t-if="fiscal.qr_image" t-att-src="fiscal.qr_image" style="width:25mm;height:25mm" alt="Consulta del comprobante fiscal en DGII"/></div>
-</div></xpath></template>
+<record id="paperformat_approved" model="report.paperformat"><field name="name">UNO360X Comprobante aprobado</field><field name="format">A4</field><field name="orientation">Portrait</field><field name="margin_top">12</field><field name="margin_bottom">14</field><field name="margin_left">12</field><field name="margin_right">12</field><field name="header_line" eval="False"/><field name="header_spacing">0</field><field name="dpi">90</field></record>
+
+<record id="report_production" model="ir.actions.report"><field name="name">Factura fiscal electrónica</field><field name="model">outsolutech.ecf.document</field><field name="report_type">qweb-pdf</field><field name="report_name">outsolutech_ecf_production.template_report</field><field name="report_file">outsolutech_ecf_production.template_report</field><field name="paperformat_id" ref="paperformat_approved"/><field name="attachment_use" eval="False"/></record>
+
+<record id="report_approved_invoice" model="ir.actions.report"><field name="name">Comprobante fiscal electrónico UNO360X</field><field name="model">account.move</field><field name="report_type">qweb-pdf</field><field name="report_name">outsolutech_ecf_production.approved_invoice_report</field><field name="report_file">outsolutech_ecf_production.approved_invoice_report</field><field name="paperformat_id" ref="paperformat_approved"/><field name="attachment_use" eval="False"/></record>
+
+<template id="approved_invoice_body">
+
+<t t-set="s" t-value="fiscal._report_data()"/>
+
+<div class="article" t-att-data-oe-model="move._name" t-att-data-oe-id="move.id" t-att-data-oe-lang="move.env.context.get('lang')">
+
+<style>
+
+.uxf {font-family:Arial,sans-serif;color:#24312e;font-size:13px;line-height:1.4;}
+
+.uxf table {width:100%;border-collapse:collapse;} .uxf table,.uxf tr,.uxf td,.uxf th {border:0 !important;} .uxf td {vertical-align:top;}
+
+.uxf .muted {color:#68746f;}.uxf .green {color:#568875;}.uxf .right {text-align:right;}
+
+.uxf .items thead {display:table-header-group;}.uxf .items tr {page-break-inside:avoid;}
+
+.uxf .items th {background:#568875;color:white;padding:11px 7px;font-size:12px;}
+
+.uxf .items td {padding:16px 7px;border-bottom:1px solid #dde5e0 !important;}
+
+.uxf .keep {page-break-inside:avoid;}
+
+</style>
+
+<div class="page uxf">
+
+<table style="border-bottom:2px solid #568875;margin-bottom:21px;;border:0 !important;box-shadow:none !important;border-bottom:2px solid #568875 !important;" class="table-borderless o_ignore_layout_styling"><tr style=";border:0 !important;box-shadow:none !important;">
+
+<td style="width:35%;padding:0 12px 20px 0;;border:0 !important;box-shadow:none !important;"><img t-if="move.company_id.logo" t-att-src="image_data_uri(move.company_id.logo)" style="max-width:210px;max-height:100px;" alt="Logo de la empresa"/></td>
+
+<td style="padding:0 0 20px 12px;;border:0 !important;box-shadow:none !important;"><strong style="font-size:15px;" t-esc="s['seller']['name']"/><div style="margin:6px 0;">RNC: <span t-esc="s['seller']['rnc']"/></div><div class="muted" t-esc="s['seller']['address']"/><div class="muted" style="margin-top:6px;">ventas@outsolutech.com</div></td>
+
+</tr></table>
+
+<h2 class="green" style="font-size:22px;font-weight:bold;margin:0 0 10px;" t-if="fiscal.document_type == '31'">FACTURA DE CRÉDITO FISCAL ELECTRÓNICA</h2>
+
+<h2 class="green" style="font-size:22px;font-weight:bold;margin:0 0 10px;" t-else="">COMPROBANTE GUBERNAMENTAL ELECTRÓNICO</h2>
+
+<div style="font-size:27px;font-weight:bold;margin-bottom:8px;">e-NCF: <span t-esc="fiscal.encf"/></div>
+
+<div class="muted" style="margin-bottom:22px;">Vencimiento de secuencia: <span t-field="fiscal.production_range_id.valid_until" t-options="{'format':'dd/MM/yyyy'}"/></div>
+
+<table style="background:#f1f5f3;margin-bottom:22px;;border:0 !important;box-shadow:none !important;" class="table-borderless o_ignore_layout_styling"><tr style=";border:0 !important;box-shadow:none !important;">
+
+<td style="width:66%;padding:14px;;border:0 !important;box-shadow:none !important;"><div class="green" style="font-size:11px;font-weight:bold;margin-bottom:8px;">CLIENTE</div><strong style="font-size:15px;" t-esc="s['buyer']['name']"/><div style="margin-top:6px;">RNC: <span t-esc="s['buyer']['rnc']"/></div><div class="muted" style="margin-top:8px;"><span t-esc="', '.join(v for v in (move.partner_id.street,move.partner_id.street2,move.partner_id.city,move.partner_id.country_id.name) if v)"/></div></td>
+
+<td style="padding:14px;;border:0 !important;box-shadow:none !important;"><div class="green" style="font-size:11px;font-weight:bold;">FECHA DE EMISIÓN</div><div style="margin:5px 0 12px;" t-field="move.invoice_date" t-options="{'format':'dd/MM/yyyy'}"/><div class="green" style="font-size:11px;font-weight:bold;">FECHA DE VENCIMIENTO</div><div style="margin-top:5px;" t-field="move.invoice_date_due" t-options="{'format':'dd/MM/yyyy'}"/></td>
+
+</tr></table>
+
+<table class="items table-borderless o_ignore_layout_styling" style=";border:0 !important;box-shadow:none !important;"><thead><tr style=";border:0 !important;box-shadow:none !important;"><th style="text-align:left;width:54%;;border:0 !important;box-shadow:none !important;">Descripción</th><th class="right" style="width:10%;;border:0 !important;box-shadow:none !important;">Cant.</th><th class="right" style="width:17%;;border:0 !important;box-shadow:none !important;">Precio unit.</th><th class="right" style="width:19%;;border:0 !important;box-shadow:none !important;">Importe</th></tr></thead><tbody>
+
+<tr t-foreach="s['lines']" t-as="line" style=";border:0 !important;box-shadow:none !important;"><td style=";border:0 !important;box-shadow:none !important;border-bottom:1px solid #dde5e0 !important;"><t t-set="parts" t-value="line['name'].split('\n',1)"/><strong t-esc="parts[0]"/><div t-if="len(parts)&gt;1" class="muted" style="white-space:pre-line;margin-top:6px;" t-esc="parts[1]"/><div t-if="line.get('discount')" class="muted" style="font-size:10px;">Descuento: <span t-esc="'%.2f' % line['discount']"/>%</div><div t-if="line.get('tax_category')=='4'" class="muted" style="font-size:10px;">Exento</div></td><td class="right" t-esc="'{:,.2f}'.format(line['quantity'])" style=";border:0 !important;box-shadow:none !important;border-bottom:1px solid #dde5e0 !important;"/><td class="right" t-esc="'{:,.2f}'.format(line['price_unit'])" style=";border:0 !important;box-shadow:none !important;border-bottom:1px solid #dde5e0 !important;"/><td class="right" t-esc="'{:,.2f}'.format(line['subtotal'])" style=";border:0 !important;box-shadow:none !important;border-bottom:1px solid #dde5e0 !important;"/></tr>
+
+</tbody></table>
+
+<div class="keep" style="margin-top:16px;">
+
+<table style=";border:0 !important;box-shadow:none !important;" class="table-borderless o_ignore_layout_styling"><tr style=";border:0 !important;box-shadow:none !important;"><td style="width:59%;;border:0 !important;box-shadow:none !important;"/><td style=";border:0 !important;box-shadow:none !important;"><table style=";border:0 !important;box-shadow:none !important;" class="table-borderless o_ignore_layout_styling"><tr style=";border:0 !important;box-shadow:none !important;"><td style="padding:6px 10px;;border:0 !important;box-shadow:none !important;">Subtotal</td><td class="right" style="padding:6px 10px;white-space:nowrap;;border:0 !important;box-shadow:none !important;">RD$ <span t-esc="'{:,.2f}'.format(s['amount_untaxed'])"/></td></tr><tr style=";border:0 !important;box-shadow:none !important;"><td style="padding:6px 10px;;border:0 !important;box-shadow:none !important;">ITBIS</td><td class="right" style="padding:6px 10px;white-space:nowrap;;border:0 !important;box-shadow:none !important;">RD$ <span t-esc="'{:,.2f}'.format(s['amount_tax'])"/></td></tr><tr style="background:#f1f5f3;font-weight:bold;color:#568875;font-size:15px;;border:0 !important;box-shadow:none !important;"><td style="padding:12px 10px;;border:0 !important;box-shadow:none !important;">TOTAL</td><td class="right" style="padding:12px 10px;white-space:nowrap;;border:0 !important;box-shadow:none !important;">RD$ <span t-esc="'{:,.2f}'.format(s['amount_total'])"/></td></tr></table></td></tr></table>
+
+<div style="margin-top:26px;width:235px;text-align:center;" class="uxf-security-block">
+
+<img t-if="fiscal.qr_image" t-att-src="fiscal.qr_image" style="display:block;width:28mm;height:28mm;margin:0 auto 5px;" alt="Consulta del comprobante fiscal en DGII"/>
+
+<div style="font-size:12px;font-weight:bold;">Código de seguridad: <span t-esc="fiscal.security_code"/></div>
+
+<div class="muted" style="font-size:9px;margin-top:5px;">Fecha de firma: <span t-esc="fiscal.signature_time"/></div>
+
+<div class="muted" style="font-size:9px;margin-top:8px;">Escanea el QR para consultar en la DGII.</div>
+
+</div>
+
+<div class="muted" style="border-top:1px solid #dde5e0;margin-top:24px;padding-top:10px;font-size:9px;">Importes expresados en pesos dominicanos (DOP).</div>
+
+</div>
+
+</div></div>
+
+<div class="footer" style="font-family:Arial;font-size:9px;color:#68746f;text-align:right;">Página <span class="page"/> de <span class="topage"/></div>
+
+</template>
+
+<template id="approved_invoice_report"><t t-call="web.html_container"><t t-foreach="docs" t-as="move"><t t-set="fiscal" t-value="move._outs_ecf_production_report()"/><t t-if="fiscal" t-call="outsolutech_ecf_production.approved_invoice_body"/></t></t></template>
+
+<template id="template_report"><t t-call="web.html_container"><t t-foreach="docs" t-as="fiscal"><t t-set="move" t-value="fiscal.move_id"/><t t-call="outsolutech_ecf_production.approved_invoice_body"/></t></t></template>
+
+<template id="invoice_production_reference" inherit_id="account.report_invoice_document" priority="1000"><xpath expr="//t[@t-call='web.external_layout']" position="replace"><t t-set="fiscal" t-value="o._outs_ecf_production_report()"/><t t-if="fiscal"><t t-set="move" t-value="o"/><t t-call="outsolutech_ecf_production.approved_invoice_body"/></t><t t-else="">$0</t></xpath></template>
+
 </odoo>
