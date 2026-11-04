@@ -150,3 +150,9 @@ Validación:21 pruebas sin errores en base aislada (incluye conservación de rep
 ### Corrección de ubicación inferior — 18.2.1.0.10
 
 Tras revisar el PDF descargado FAC_2026_00001.pdf, se baja el bloque completo QR/código/fecha hacia el pie. En comprobantes cortos de hasta dos líneas y500 caracteres se reserva una altura en el bloque final y se posiciona el timbre al fondo, manteniendo el código centrado debajo. Facturas extensas conservan flujo natural para no superponer el detalle. Cambio exclusivamente de plantilla, sin reinicio ni alteración del XML aceptado. PDF real de1088 regenerado y revisado visualmente: una página, importes y e-NCF intactos; bloque inferior y menor blanco debajo. Release20261104T181406Z.
+
+### Número fiscal en lista — 18.2.1.0.11
+
+La columna principal Comprobante muestra el e-NCF de un expediente productivo aceptado o condicional. Si no existe, conserva la referencia previa o Borrador; nunca presenta un número preparado o rechazado como emitido. Referencia interna (account.move.name) queda opcional, oculta por defecto. Se incorpora búsqueda por Comprobante / e-NCF sin renumerar asientos, pagos o conciliaciones. El cálculo por lote consulta solo expedientes de los movimientos solicitados; la búsqueda fiscal limita a compañías habilitadas en la sesión y conserva las reglas de acceso del resultado account.move.
+
+21 pruebas Odoo sin errores, con comprobación de número aceptado y búsqueda. Verificación real con operador2:1088 muestra E310000000001, conserva FAC/2026/00001, vista de lista válida y expediente accepted/attempt_count1. Release /opt/uno360x-outsolutech-ecf/releases/20261104T184304Z; respaldo20261104T184048Z, reinicio controlado y HTTP200. Sin nuevas emisiones.
