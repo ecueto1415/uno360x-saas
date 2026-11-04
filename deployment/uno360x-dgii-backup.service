@@ -1,0 +1,15 @@
+[Unit]
+Description=Fiscal inbox backup and restore exercise
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/uno360x-dgii-production/source
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/odoo18/venv/bin/python3.12 -m fiscal.operations backup
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/backups/uno360x-dgii-production
+MemoryMax=192M
+CPUQuota=15%

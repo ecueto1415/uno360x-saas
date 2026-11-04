@@ -35,7 +35,7 @@ def parse(xml):
     root = etree.fromstring(xml, parser)
     if root.getroottree().docinfo.doctype:
         raise ValueError('No se permiten DTD.')
-    if root.tag not in ('ECF', 'SemillaModel', 'ARECF', 'ACECF'):
+    if root.tag not in ('ECF', 'SemillaModel', 'ARECF', 'ACECF', 'DeclaracionJurada'):
         raise ValueError('Tipo de documento XML no permitido.')
     return root
 

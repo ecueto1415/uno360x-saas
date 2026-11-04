@@ -1,0 +1,13 @@
+[Unit]
+Description=Fiscal production availability check
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/uno360x-dgii-production/source
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/odoo18/venv/bin/python3.12 -m fiscal.operations
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+MemoryMax=64M
+CPUQuota=10%

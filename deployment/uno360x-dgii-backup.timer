@@ -1,0 +1,8 @@
+[Unit]
+Description=Daily fiscal inbox backup
+[Timer]
+OnCalendar=*-*-* 03:40:00 America/Santo_Domingo
+RandomizedDelaySec=10min
+Persistent=true
+[Install]
+WantedBy=timers.target

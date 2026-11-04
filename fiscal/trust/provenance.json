@@ -1,0 +1,50 @@
+[
+  {
+    "file": "digifirma-root.pem",
+    "source": "https://digi.camarasantodomingo.do/assets/documents/certificado-raiz/digifirma-ca-raiz.crt",
+    "subject": "2.5.4.97=VATDO-40102368,CN=digifirma CA Ra\u00edz,OU=digifirma,O=C\u00e1mara de Comercio y Producci\u00f3n de Santo Domingo,L=Distrito Nacional,C=DO",
+    "issuer": "2.5.4.97=VATDO-40102368,CN=digifirma CA Ra\u00edz,OU=digifirma,O=C\u00e1mara de Comercio y Producci\u00f3n de Santo Domingo,L=Distrito Nacional,C=DO",
+    "sha256": "4f26113cb37ff08773a788dbfe409e361d80f46755b2ffd6fa61c6f4392d9bf6",
+    "expires": "2046-07-26 10:05:26+00:00"
+  },
+  {
+    "file": "digifirma-subca.pem",
+    "source": "https://digi.camarasantodomingo.do/assets/documents/certificado-raiz/digifirma-ca-subordinada-1.crt",
+    "subject": "C=DO,L=Distrito Nacional,O=C\u00e1mara de Comercio y Producci\u00f3n de Santo Domingo,OU=digifirma,CN=digifirma CA Subordinada 1,2.5.4.97=VATDO-40102368",
+    "issuer": "2.5.4.97=VATDO-40102368,CN=digifirma CA Ra\u00edz,OU=digifirma,O=C\u00e1mara de Comercio y Producci\u00f3n de Santo Domingo,L=Distrito Nacional,C=DO",
+    "sha256": "4b6c87d188e7809354f6ea965e87d7c4f8fe7fbcc0224705d569039b59086095",
+    "expires": "2034-07-23 10:38:38+00:00"
+  },
+  {
+    "file": "viafirma-root-003.pem",
+    "source": "https://cps.viafirma.do/CA003_AVANSICERTIFICACION.crt",
+    "subject": "CN=AVANSI CERTIFICACION,O=AVANSI S.R.L. - RNC 130222509,L=DISTRITO NACIONAL - REPUBLICA DOMINICANA,C=DO",
+    "issuer": "CN=AVANSI CERTIFICACION,O=AVANSI S.R.L. - RNC 130222509,L=DISTRITO NACIONAL - REPUBLICA DOMINICANA,C=DO",
+    "sha256": "6820b7514b2438c24ae3b5ddb697c08fbd570c205d47ea073d5ddfc617d324cb",
+    "expires": "2042-05-16 08:48:31+00:00"
+  },
+  {
+    "file": "viafirma-subca-007.pem",
+    "source": "https://cps.viafirma.do/CA007_VIAFIRMAQUALIFIEDCERTIFICATES.crt",
+    "subject": "CN=VIAFIRMA QUALIFIED CERTIFICATES,2.5.4.5=RNC 130222509,OU=VIAFIRMA DOMINICANA,O=AVANSI SRL,C=DO",
+    "issuer": "CN=AVANSI CERTIFICACION,O=AVANSI S.R.L. - RNC 130222509,L=DISTRITO NACIONAL - REPUBLICA DOMINICANA,C=DO",
+    "sha256": "d5a0f0d4e30084a214bc03740e03a90db9373597ebdc38bb26ab49ba78477e9d",
+    "expires": "2042-05-16 08:48:31+00:00"
+  },
+  {
+    "file": "viafirma-root-005.pem",
+    "source": "https://cps.viafirma.do/CA005_VIAFIRMAQTSPROOTCA.crt",
+    "subject": "CN=VIAFIRMA QTSP ROOT CA,2.5.4.5=VATES-B91052142,OU=VIAFIRMA QTSP,O=VIAFIRMA SOCIEDAD LIMITADA,C=ES",
+    "issuer": "CN=VIAFIRMA QTSP ROOT CA,2.5.4.5=VATES-B91052142,OU=VIAFIRMA QTSP,O=VIAFIRMA SOCIEDAD LIMITADA,C=ES",
+    "sha256": "00378d7583d928125416a986de8567ef358ae954d840e707e61790cf65deaf06",
+    "expires": "2044-09-27 08:50:25+00:00"
+  },
+  {
+    "file": "viafirma-subca-008.pem",
+    "source": "https://cps.viafirma.do/CA008_VIAFIRMAQUALIFIEDCERTIFICATES.crt",
+    "subject": "CN=VIAFIRMA QUALIFIED CERTIFICATES,2.5.4.5=VATDO-130222509,OU=VIAFIRMA DOMINICANA,O=VIAFIRMA,C=DO",
+    "issuer": "CN=VIAFIRMA QTSP ROOT CA,2.5.4.5=VATES-B91052142,OU=VIAFIRMA QTSP,O=VIAFIRMA SOCIEDAD LIMITADA,C=ES",
+    "sha256": "c7d04abe8f58d6b59caf14670e426e60b83aa63d152ed6cfcac3a423ae876021",
+    "expires": "2033-09-08 05:24:53+00:00"
+  }
+]

@@ -1,0 +1,43 @@
+[Unit]
+Description=UNO360X OUTSOLUTECH production fiscal receiver
+After=network.target uno360x-dgii-crl.service
+
+[Service]
+Type=simple
+DynamicUser=yes
+User=uno360x-dgii-production
+StateDirectory=uno360x-dgii-production
+StateDirectoryMode=0700
+WorkingDirectory=/opt/uno360x-dgii-production/source
+Environment=PYTHONDONTWRITEBYTECODE=1
+LoadCredential=identity.p12:/etc/odoo18/ecf-pruebas/identity.p12
+LoadCredential=password:/etc/odoo18/ecf-pruebas/password
+ExecStart=/opt/odoo18/venv/bin/python3.12 -m fiscal.receiver
+Restart=on-failure
+RestartSec=10
+MemoryMax=256M
+CPUQuota=30%
+CPUWeight=10
+TasksMax=24
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+IPAddressDeny=any
+IPAddressAllow=localhost
+InaccessiblePaths=/etc/odoo18.conf /etc/odoo18 /var/lib/uno360x-saas /var/lib/postgresql
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

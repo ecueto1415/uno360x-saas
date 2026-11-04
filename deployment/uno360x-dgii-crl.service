@@ -1,0 +1,17 @@
+[Unit]
+Description=Refresh signed fiscal production revocation lists
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/uno360x-dgii-production/source
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/odoo18/venv/bin/python3.12 -m fiscal.refresh_crls
+UMask=0022
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/etc/uno360x-dgii-production/trust
+MemoryMax=192M
+CPUQuota=20%
