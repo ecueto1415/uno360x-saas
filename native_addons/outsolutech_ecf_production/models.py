@@ -127,7 +127,11 @@ class Move(models.Model):
         if docs and docs.environment!='ecf':
             raise UserError('Esta factura tiene un expediente de prueba. No se convierte a produccion.')
         if not docs:
-            docs=self.env['outsolutech.ecf.document'].with_context(default_environment='ecf').create({'move_id':self.id})
+            # Invoice actions carry defaults for account.move (move_type,
+            # journal, currency, etc.). Do not apply them to a fiscal document.
+            context={key:value for key,value in self.env.context.items() if not key.startswith('default_')}
+            context['default_environment']='ecf'
+            docs=self.env['outsolutech.ecf.document'].with_context(context).create({'move_id':self.id})
         return {'type':'ir.actions.act_window','res_model':docs._name,'res_id':docs.id,'views':[(self.env.ref('outsolutech_ecf_production.document_form').id,'form')],'target':'current'}
 
 
@@ -140,7 +144,7 @@ class Document(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         permitted={'move_id','income_type','payment_type','document_type','environment'}
-        if any(key.startswith('default_') and key[8:] not in permitted for key in self.env.context):
+        if any(key.startswith('default_') and key[8:] in self._fields and key[8:] not in permitted for key in self.env.context):
             raise AccessError('No se permite establecer datos fiscales protegidos mediante valores predeterminados.')
         docs=super().create(vals_list)
         if any(d.environment=='ecf' and (d.state!='draft' or d.encf or d.signed_xml or d.track_id or d.production_range_id) for d in docs):

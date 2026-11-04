@@ -114,3 +114,9 @@ Backup de vistas y fuente anterior en
 /var/lib/uno360x-dgii-install/confirmation-20261104T160953Z.
 
 Criterio de correcciones: [Preguntas frecuentes DGII](https://dgii.gov.do/publicacionesOficiales/bibliotecaVirtual/contribuyentes/Otros/Documents/Preguntas-frecuentes-Nuevos-Contribuyentes.pdf), pregunta 22.
+
+### Corrección de contexto al facturar — 18.2.1.0.2
+
+La acción de factura transportaba valores predeterminados de account.move al expediente fiscal. Ahora elimina esos valores al cruzar de modelo y la protección de creación distingue campos fiscales reales de valores ajenos. Se conservan los bloqueos de estado, XML firmado y demás datos protegidos.
+
+Validación: 17 pruebas sin fallos en PostgreSQL aislado; respaldo previo 20261104T171846Z; versión publicada en /opt/uno360x-outsolutech-ecf/releases/20261104T172201Z, con reinicio controlado de odoo18 y HTTP 200. Comprobación transaccional revertida con usuario 2: factura confirmada 1078 abre expediente productivo vacío, sin reservar e-NCF ni enviar. La factura 1083 está en borrador y correctamente solicita confirmar antes de abrir expediente. No se confirmó ninguna factura como parte de estas verificaciones.

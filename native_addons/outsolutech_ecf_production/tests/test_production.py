@@ -121,6 +121,24 @@ class TestProduction(TransactionCase):
         doc=self.document();doc.action_prepare()
         with self.assertRaises(UserError):doc.action_print()
 
+    def test_invoice_action_defaults_do_not_leak_into_fiscal_document(self):
+        doc=self.document()
+        action=doc.move_id.with_context(default_move_type='out_invoice',default_journal_id=self.journal.id,default_currency_id=self.company.currency_id.id,default_state='posted').action_outs_ecf_production()
+        self.assertEqual(action['res_id'],doc.id)
+        # Exercise a fresh creation through the same browser invoice context.
+        move=doc.move_id
+        doc.unlink()
+        action=move.with_context(default_move_type='out_invoice',default_journal_id=self.journal.id,default_currency_id=self.company.currency_id.id,default_state='posted').action_outs_ecf_production()
+        fresh=self.env['outsolutech.ecf.document'].browse(action['res_id'])
+        self.assertEqual(fresh.state,'draft');self.assertFalse(fresh.signed_xml);self.assertFalse(fresh.encf)
+        self.assertEqual(fresh.environment,'ecf');self.assertEqual(fresh.move_id,move)
+
+    def test_unrelated_invoice_default_is_not_treated_as_a_protected_fiscal_field(self):
+        doc=self.document();move=doc.move_id;doc.unlink()
+        fresh=self.env['outsolutech.ecf.document'].with_context(default_move_type='out_invoice',default_environment='ecf').create({'move_id':move.id})
+        self.assertEqual(fresh.state,'draft')
+        with self.assertRaises(AccessError):self.env['outsolutech.ecf.document'].with_context(default_signed_xml='QA').create({'move_id':move.id})
+
     def test_government_document_has_independent_authorized_range(self):
         row=self.authorization.copy({'document_type':'45','first_number':'0000000200','last_number':'0000000202','next_number':'0000000200'})
         doc=self.document();doc.write({'document_type':'45'});doc.action_prepare()
