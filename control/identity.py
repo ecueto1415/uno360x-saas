@@ -201,12 +201,16 @@ class IdentityService:
     def login(self, email, password):
         email = email_key(email)
         session = None
+        # Scrypt is expensive: never hold SQLite's writer lock while hashing.
+        row = self.db.execute('SELECT * FROM accounts WHERE email=?',(email,)).fetchone()
+        encoded = row['password_hash'] if row and row['password_hash'] else self.dummy_hash
+        matches = password_matches(password,encoded)
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
             allowed = self._allow('login',email)
+            # A reset/disable may race with the hash check. Recheck atomically.
             row = self.db.execute('SELECT * FROM accounts WHERE email=?',(email,)).fetchone()
-            matches = password_matches(password,row['password_hash'] if row and row['password_hash'] else self.dummy_hash)
-            if allowed and matches and row and row['active'] and row['verified']:
+            if allowed and matches and row and row['active'] and row['verified'] and row['password_hash']==encoded:
                 session = secrets.token_urlsafe(32)
                 self.db.execute('INSERT INTO identity_sessions VALUES (?,?,?)',(digest(session),row['id'],self.clock()+SESSION_TTL))
                 self.db.execute('DELETE FROM identity_limits WHERE bucket=?',(digest('login:'+email),))

@@ -133,3 +133,20 @@ class IdentityHTTPTests(unittest.TestCase):
         self.assertIn('capacidad',body['error'])
         self.assertNotIn('verificando',body['error'])
         self.assertEqual(self.post('/preparation/status',{'tenant_id':co['id']})[1]['current_step'],'capacity')
+
+    def test_capacity_is_checked_before_allocating_a_new_company(self):
+        import time,sqlite3
+        self.login('capacity-gate@example.test')
+        gate=Path(self.tmp.name)/'admission.json';gate.write_text(json.dumps({'checked':time.time(),'can_prepare':False}))
+        self.server.admission_status_path=gate
+        status,body,_=self.post('/trial/create',{'name':'Should not be allocated','country':'DO','currency':'DOP','modules':[]})
+        self.assertEqual(status,503)
+        self.assertEqual(body['code'],'activation_capacity_unavailable')
+        self.assertEqual(self.post('/companies',{})[1]['companies'],[])
+        gate.write_text(json.dumps({'checked':time.time()-30,'can_prepare':True}))
+        self.assertEqual(self.post('/trial/create',{'name':'Stale capacity','country':'DO','currency':'DOP','modules':[]})[0],503)
+        gate.write_text(json.dumps({'checked':time.time(),'can_prepare':True}))
+        status,trial,_=self.post('/trial/create',{'name':'Capacity available','country':'DO','currency':'DOP','modules':[]})
+        self.assertEqual(status,200)
+        gate.write_text(json.dumps({'checked':time.time(),'can_prepare':False}))
+        self.assertEqual(self.post('/trial/create',{'name':'Capacity available','country':'DO','currency':'DOP','modules':[]})[1]['tenant_id'],trial['tenant_id'])

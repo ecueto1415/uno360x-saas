@@ -5,6 +5,7 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from deployment.shared_adapter import SharedHostAdapter,CapacityUnavailable
 from control.identity import IdentityService
 from control.onboarding import Onboarding
+from deployment.admission_status import publish as publish_admission
 STATE=Path('/var/lib/uno360x-saas/control')
 
 def pending_jobs(db,initial):
@@ -18,9 +19,13 @@ def pending_jobs(db,initial):
 def main():
  os.umask(0o077);adapter=SharedHostAdapter();STATE.mkdir(mode=0o700,exist_ok=True)
  service=IdentityService(STATE/'control.sqlite3',lambda notice:None);jobs=Onboarding(service)
- initial=True;next_expiration_sweep=0
+ initial=True;next_expiration_sweep=0;next_admission_check=0
  try:
   while True:
+   if time.monotonic()>=next_admission_check:
+    next_admission_check=time.monotonic()+5
+    try:publish_admission(adapter)
+    except Exception:print('admission_check_pending',flush=True)
    if time.monotonic()>=next_expiration_sweep and service.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trial_workspaces'").fetchone():
     next_expiration_sweep=time.monotonic()+60
     for expired in service.db.execute("SELECT p.snapshot FROM preparation_jobs p JOIN trial_workspaces t ON p.tenant_id=t.tenant_id WHERE t.expires IS NOT NULL AND t.expires<=?",(time.time(),)).fetchall():

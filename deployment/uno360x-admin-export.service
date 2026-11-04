@@ -16,3 +16,7 @@ PrivateTmp=yes
 ProtectHome=read-only
 ProtectSystem=strict
 ReadWritePaths=/var/lib/uno360x-admin-export /run/user/996 /var/lib/uno360x-saas/.local/share/containers/storage
+
+# WAL readers may update the SHM index; keep the principal DB read-only.
+ReadWritePaths=/var/lib/uno360x-saas/control
+ReadOnlyPaths=/var/lib/uno360x-saas/control/control.sqlite3

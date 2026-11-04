@@ -210,3 +210,36 @@ class IdentityTests(unittest.TestCase):
             finally:service.close()
         with ThreadPoolExecutor(max_workers=2) as pool:
             self.assertEqual([False,True],sorted(pool.map(verify,range(2))))
+
+    def test_login_hash_runs_outside_writer_transaction_and_rechecks_reset(self):
+        import sqlite3
+        from control.identity import password_hash
+        self.account('hash-race@example.test')
+        replacement=password_hash(NEW_PASSWORD)
+        def race(password,encoded):
+            self.assertFalse(self.service.db.in_transaction)
+            with sqlite3.connect(self.path) as other:
+                other.execute('UPDATE accounts SET password_hash=? WHERE email=?',(replacement,'hash-race@example.test'))
+            return True
+        before=self.service.db.execute('SELECT count(*) FROM identity_sessions').fetchone()[0]
+        with patch('control.identity.password_matches',side_effect=race):
+            with self.assertRaises(IdentityError):self.service.login('hash-race@example.test',PASSWORD)
+        self.assertEqual(self.service.db.execute('SELECT count(*) FROM identity_sessions').fetchone()[0],before)
+
+    def test_twenty_concurrent_account_registrations_do_not_lock_database(self):
+        import threading
+        barrier=threading.Barrier(20)
+        def one(i):
+            messages=[];service=IdentityService(self.path,messages.append,clock=lambda:self.now)
+            try:
+                barrier.wait(timeout=30)
+                email='parallel20-%02d@example.test'%i
+                service.register(email)
+                service.complete_registration(messages[-1]['token'],PASSWORD)
+                session=service.login(email,PASSWORD)['session']
+                service.logout(session)
+                return True
+            finally:service.close()
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            self.assertEqual(list(pool.map(one,range(20))),[True]*20)
+        self.assertEqual(self.service.db.execute('SELECT count(*) FROM accounts WHERE verified=1').fetchone()[0],20)

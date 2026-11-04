@@ -20,7 +20,9 @@ def validate_slug(value):
 
 class Registry:
     def __init__(self, path):
-        self.db = sqlite3.connect(path)
+        self.db = sqlite3.connect(path, timeout=15)
+        self.db.execute('PRAGMA busy_timeout=15000')
+        self.db.execute('PRAGMA journal_mode=WAL')
         self.db.row_factory = sqlite3.Row
         self.db.executescript('''
             CREATE TABLE IF NOT EXISTS tenants (

@@ -8,6 +8,7 @@ import hmac
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import json
+import time
 
 from .identity import IdentityService,IdentityError
 from .onboarding import Onboarding,PreparationError
@@ -148,6 +149,17 @@ class Handler(BaseHTTPRequestHandler):
                 except IdentityError:
                     self._reply(503,{'error':'El acceso a tu empresa no está disponible en este momento. Vuelve a intentarlo.'});return
                 self._reply(200,result);return
+            if self.path=='/trial/create' and getattr(self.server,'admission_status_path',None):
+                account=service._account(session)
+                existing=service.db.execute('SELECT 1 FROM memberships WHERE account_id=? AND active=1',(account['id'],)).fetchone()
+                if not existing:
+                    try:
+                        admission=json.loads(self.server.admission_status_path.read_text())
+                        available=admission.get('can_prepare') is True and 0<=time.time()-admission['checked']<=15
+                    except (OSError,ValueError,KeyError,TypeError):available=False
+                    if not available:
+                        self._reply(503,{'error':'Ahora no hay capacidad disponible para activar otra empresa. Tus datos del formulario se conservan; no hemos creado una empresa ni iniciado tus 15 días. Vuelve a intentarlo más tarde.','code':'activation_capacity_unavailable'})
+                        return
             private={
                 '/logout':lambda:service.logout(session),
                 '/companies':lambda:Trials(service).companies(session),
