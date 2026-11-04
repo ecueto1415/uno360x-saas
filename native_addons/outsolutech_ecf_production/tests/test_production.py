@@ -156,3 +156,13 @@ class TestProduction(TransactionCase):
         doc=self.document();doc.action_prepare()
         with self.assertRaises(UserError):doc.move_id.invoice_line_ids.write({'price_unit':200})
         with self.assertRaises(UserError):doc.move_id.write({'invoice_date':fields.Date.subtract(fields.Date.today(),days=1)})
+
+    def test_legacy_customer_journal_blocked_without_touching_existing_invoice(self):
+        doc=self.document()
+        legacy=self.journal.copy({'name':'QA LEGACY','code':'B01'})
+        draft=doc.move_id.copy({'journal_id':legacy.id,'invoice_date':fields.Date.today()})
+        with self.assertRaises(UserError):draft.action_post()
+        self.assertEqual(draft.state,'draft')
+        self.assertEqual(doc.move_id.state,'posted')
+        self.assertFalse(doc.encf)
+        self.assertEqual(self.authorization.next_number,'0000000100')

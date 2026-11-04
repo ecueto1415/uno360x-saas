@@ -120,3 +120,11 @@ Criterio de correcciones: [Preguntas frecuentes DGII](https://dgii.gov.do/public
 La acción de factura transportaba valores predeterminados de account.move al expediente fiscal. Ahora elimina esos valores al cruzar de modelo y la protección de creación distingue campos fiscales reales de valores ajenos. Se conservan los bloqueos de estado, XML firmado y demás datos protegidos.
 
 Validación: 17 pruebas sin fallos en PostgreSQL aislado; respaldo previo 20261104T171846Z; versión publicada en /opt/uno360x-outsolutech-ecf/releases/20261104T172201Z, con reinicio controlado de odoo18 y HTTP 200. Comprobación transaccional revertida con usuario 2: factura confirmada 1078 abre expediente productivo vacío, sin reservar e-NCF ni enviar. La factura 1083 está en borrador y correctamente solicita confirmar antes de abrir expediente. No se confirmó ninguna factura como parte de estas verificaciones.
+
+### Retirada de numeración B — 18.2.1.0.3
+
+Por instrucción del propietario, se bloquea _post de facturas y notas de cliente en diarios Bxx cuando la empresa tiene producción e-CF habilitada. No afecta facturas de proveedores ni empresas sin esa habilitación. El e-NCF sigue reservado exclusivamente por el expediente fiscal.
+
+OUTSOLUTECH: diario nuevo FAC (id36), nombre Facturas electrónicas UNO360X y prioridad1, con cuentas copiadas del diario9. Se movieron únicamente seis borradores sin número ni publicación previa (1088,1086,1085,1083,1082,1081), conservando importes. Diarios B02/B14/B15/B16 archivados y cinco secuencias ir.sequence B archivadas sin alterar contadores. B01 se conserva activo por la restricción estándar de Odoo ante dos borradores históricos previamente publicados (139,526); nombre Histórico B01 - emisión desactivada, prioridad99 y emisión bloqueada por código. No se forzó el archivado ni se renumeró el historial. Factura1087 conserva B0100000270.
+
+Respaldo previo: 20261104T173113Z. Validación: 18 pruebas sin errores en base aislada, bloqueo en producción comprobado sobre borrador histórico sin publicación, selección predeterminada FAC, rangos electrónicos intactos y 261 asientos publicados preservados. Release /opt/uno360x-outsolutech-ecf/releases/20261104T173347Z; reinicio controlado y HTTP200. No se enviaron comprobantes a DGII.

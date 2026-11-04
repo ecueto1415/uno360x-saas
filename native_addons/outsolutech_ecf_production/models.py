@@ -117,6 +117,14 @@ class Move(models.Model):
             raise AccessError('Seleccione la empresa de la factura.')
         return self.env['outsolutech.ecf.document'].sudo().search([('move_id','=',self.id),('environment','=','ecf'),('state','in',['accepted','conditional'])],limit=1)
 
+    def _post(self, soft=True):
+        for move in self:
+            if (move.company_id.outs_ecf_production_enabled
+                    and move.move_type in ('out_invoice', 'out_refund')
+                    and re.fullmatch(r'B\d{2}', move.journal_id.code or '')):
+                raise UserError('Los comprobantes B anteriores estan desactivados. Use el diario Facturas electronicas UNO360X; el e-NCF se asigna al preparar la factura fiscal electronica.')
+        return super()._post(soft=soft)
+
     def action_outs_ecf_production(self):
         self.ensure_one();self.check_access('read')
         if not self.company_id.outs_ecf_production_enabled:
