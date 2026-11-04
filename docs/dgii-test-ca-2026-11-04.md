@@ -7,3 +7,5 @@ Se instala únicamente la CA confirmada de 2024 dentro del receptor aislado de c
 Referencia técnica: https://docs.openssl.org/3.0/man3/X509_VERIFY_PARAM_set_flags/ (X509_V_FLAG_PARTIAL_CHAIN). Fuentes y huellas públicas en certification/trust/provenance.json.
 
 Despliegue independiente: `/opt/uno360x-dgii-certification/releases/20261104T135451Z`. Catorce pruebas automatizadas aprobadas. Reprocesamiento del XML real E310000000006: HTTP 200, ARECF firmado válido, Estado=0. Se reinició únicamente el receptor fiscal; el PID del Odoo operativo permaneció sin cambios. La aceptación final depende del resultado del portal DGII.
+
+Resultado del portal, 2026-11-04: pruebas de recepcion e-CF (paso 9) y aprobaciones comerciales (paso 11) superadas; avance automatico al paso 12, URL Servicios Produccion. Los campos productivos quedaron sin modificar: el receptor instalado es exclusivo de certificacion y no debe publicarse como receptor productivo.
