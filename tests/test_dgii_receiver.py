@@ -21,14 +21,15 @@ class ReceiverTests(unittest.TestCase):
         cls.root=pathlib.Path(__file__).resolve().parents[1]
         spec=importlib.util.spec_from_file_location('offline_invoice_builder',cls.root/'addons/uno360x_ecf_core/builder.py')
         cls.builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(cls.builder)
-        def identity(name,ca=None,authority=False):
+        def identity(name,ca=None,authority=False,expired=False):
             key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
             subject=x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,name)])
             now=datetime.now(timezone.utc)
             issuer=ca[1].subject if ca else subject
-            cert=x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(key.public_key()).serial_number(x509.random_serial_number()).not_valid_before(now-timedelta(days=1)).not_valid_after(now+timedelta(days=1)).add_extension(x509.BasicConstraints(ca=authority,path_length=None),critical=True).add_extension(x509.KeyUsage(True,False,False,False,False,authority,authority,False,False),critical=True).sign(ca[0] if ca else key,hashes.SHA256())
+            cert=x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(key.public_key()).serial_number(x509.random_serial_number()).not_valid_before(now-timedelta(days=3) if expired else now-timedelta(days=1)).not_valid_after(now-timedelta(days=2) if expired else now+timedelta(days=1)).add_extension(x509.BasicConstraints(ca=authority,path_length=None),critical=True).add_extension(x509.KeyUsage(True,False,False,False,False,authority,authority,False,False),critical=True).sign(ca[0] if ca else key,hashes.SHA256())
             p12=pkcs12.serialize_key_and_certificates(b'qa-only',key,cert,None,serialization.BestAvailableEncryption(b'qa-only'))
             return key,cert,p12
+        cls.identity=staticmethod(identity)
         cls.ca=identity('FICTICIA RAIZ SOLO PRUEBA',authority=True)
         cls.sender=identity('FICTICIO EMISOR',cls.ca)
         cls.receiver=identity('FICTICIO RECEPTOR',cls.ca)
@@ -110,6 +111,34 @@ class ReceiverTests(unittest.TestCase):
         with self.assertRaises(ValueError):parse(b'<!DOCTYPE x [<!ENTITY y SYSTEM "file:///etc/passwd">]><ECF>&y;</ECF>')
         with self.assertRaises(ValueError):upload('multipart/form-data; boundary=x',b'--x\r\nContent-Disposition: form-data; name="wrong"; filename="../../file"\r\n\r\n<ECF/>\r\n--x--\r\n')
         self.assertEqual(upload('text/xml',b'<ECF/>'),b'<ECF/>')
+
+
+    def test_confirmed_intermediate_can_be_an_explicit_scoped_anchor(self):
+        intermediate=self.identity('CA INTERMEDIA FICTICIA',self.ca,authority=True)
+        self.sender=self.identity('EMISOR FICTICIO INTERMEDIO',intermediate)
+        (self.trust/'root.pem').write_bytes(intermediate[1].public_bytes(serialization.Encoding.PEM))
+        _,ack=self.inbox.receive(RECEPTION,self.invoice())
+        self.assertEqual(parse(ack).findtext('DetalleAcusedeRecibo/Estado'),'0')
+
+    def test_same_named_unknown_intermediate_is_not_trusted(self):
+        trusted=self.identity('MISMO NOMBRE CA FICTICIA',self.ca,authority=True)
+        impostor=self.identity('MISMO NOMBRE CA FICTICIA',self.ca,authority=True)
+        self.sender=self.identity('EMISOR FICTICIO NO CONFIABLE',impostor)
+        (self.trust/'root.pem').write_bytes(trusted[1].public_bytes(serialization.Encoding.PEM))
+        _,ack=self.inbox.receive(RECEPTION,self.invoice())
+        self.assertEqual(parse(ack).findtext('DetalleAcusedeRecibo/CodigoMotivoNoRecibido'),'2')
+
+    def test_leaf_certificate_cannot_be_installed_as_a_ca_anchor(self):
+        (self.trust/'root.pem').write_bytes(self.sender[1].public_bytes(serialization.Encoding.PEM))
+        _,ack=self.inbox.receive(RECEPTION,self.invoice())
+        self.assertEqual(parse(ack).findtext('DetalleAcusedeRecibo/CodigoMotivoNoRecibido'),'2')
+
+    def test_expired_intermediate_anchor_is_rejected(self):
+        intermediate=self.identity('CA VENCIDA FICTICIA',self.ca,authority=True,expired=True)
+        self.sender=self.identity('EMISOR FICTICIO CA VENCIDA',intermediate)
+        (self.trust/'root.pem').write_bytes(intermediate[1].public_bytes(serialization.Encoding.PEM))
+        _,ack=self.inbox.receive(RECEPTION,self.invoice())
+        self.assertEqual(parse(ack).findtext('DetalleAcusedeRecibo/CodigoMotivoNoRecibido'),'2')
 
 
 if __name__=='__main__':unittest.main()

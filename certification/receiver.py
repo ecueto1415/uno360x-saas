@@ -78,12 +78,24 @@ def trusted_sender(xml, trust_directory):
     if not anchors:
         raise ValueError('Raíz de confianza DGII pendiente de instalación.')
     store = crypto.X509Store()
+    # Explicitly installed CA anchors may be intermediates confirmed by the CA.
+    # Scope: this isolated certification store, never the system trust store.
+    store.set_flags(crypto.X509StoreFlags.PARTIAL_CHAIN)
     for anchor in anchors:
         data = anchor.read_bytes()
         blocks = re.findall(b'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----', data, re.S)
         for block in blocks or [data]:
             kind = crypto.FILETYPE_PEM if blocks else crypto.FILETYPE_ASN1
-            store.add_cert(crypto.load_certificate(kind, block))
+            trusted = crypto.load_certificate(kind, block)
+            anchor_cert = trusted.to_cryptography()
+            try:
+                is_ca = anchor_cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
+                can_sign = anchor_cert.extensions.get_extension_for_class(x509.KeyUsage).value.key_cert_sign
+            except x509.ExtensionNotFound:
+                raise ValueError('El ancla debe declarar CA y firma de certificados.') from None
+            if not is_ca or not can_sign:
+                raise ValueError('Solo se admiten CA verificadas como anclas de confianza.')
+            store.add_cert(trusted)
     crypto.X509StoreContext(store, crypto.X509.from_cryptography(certs[0]),
                             [crypto.X509.from_cryptography(c) for c in certs[1:]]).verify_certificate()
     try:

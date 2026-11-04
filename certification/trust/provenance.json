@@ -1,0 +1,23 @@
+{
+  "scope": "DGII test certification receiver only",
+  "supplied_zip_sha256": "79d99e606880ecb6a05d32897ac67e767df8d22511537c33b2088e3f2ab92277",
+  "support_case": "Viafirma #51937, reply 2026-11-04 09:25:54Z",
+  "official_legacy_sources": [
+    "https://cps.viafirma.do/rootcatest.crt",
+    "https://cps.viafirma.do/subcatest.crt"
+  ],
+  "anchors": [
+    {
+      "file": "viafirma-qualified-test-2024.pem",
+      "sha256_der": "61ab86dbc7c7d25baddfaf40804a2e55cb90a43f3575f03bd41184e281111453"
+    },
+    {
+      "file": "avansi-test-root.pem",
+      "sha256_der": "5eab691fa15d9aebf3326f6246bd7aab188315de4da9cb2275caeaa5bd9d7e68"
+    },
+    {
+      "file": "viafirma-qualified-test-legacy.pem",
+      "sha256_der": "43c33984303b4991c9c1cd058a199ff6078155020ccb1135c83c9421fd066eff"
+    }
+  ]
+}
