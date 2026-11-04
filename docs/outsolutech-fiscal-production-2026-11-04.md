@@ -97,15 +97,14 @@ restaurar configuraciones Nginx guardadas en
 `nginx -t` y recargar. La Page Rule fiscal puede desactivarse despues de retirar
 las rutas si es necesario. Nunca volver a introducir CA de pruebas en produccion.
 
-## Alcance pendiente de emision
+## Emision desde Odoo
 
-La finalizacion del portal no cambia las secuencias ni convierte el modulo
-Odoo de precertificacion en emisor productivo. Los modelos nativos existentes
-siguen limitados a `testecf`; no se enviaron e-CF reales ni se cambiaron facturas.
-Antes de emitir desde Odoo corresponde verificar en OFV las secuencias e-NCF
-autorizadas y habilitar un flujo de emision productiva separado con su control
-de duplicados, conciliacion y representacion impresa productiva. No anunciar
-la emision comercial como activada solo por completar la certificacion.
+Actualizacion posterior del mismo dia: se instalo y configuro el modulo nativo
+independiente para E31/E45, con seis autorizaciones aportadas por el usuario,
+conexion productiva verificada y cero numeros consumidos. Detalles, pruebas y
+limites en [Emision Odoo](outsolutech-odoo-emission-2026-11-04.md).
+E33/E34/E43/E44 quedan registrados pero su emision no esta implementada.
+No se han emitido facturas reales automaticamente para validar la instalacion.
 
 ## Referencias oficiales
 

@@ -1,0 +1,18 @@
+<odoo>
+<record id="report_production" model="ir.actions.report"><field name="name">Factura fiscal electronica</field><field name="model">outsolutech.ecf.document</field><field name="report_type">qweb-pdf</field><field name="report_name">outsolutech_ecf_production.template_report</field><field name="report_file">outsolutech_ecf_production.template_report</field><field name="attachment_use" eval="False"/></record>
+<template id="template_report"><t t-call="web.html_container"><t t-foreach="docs" t-as="o"><t t-set="s" t-value="o._report_data()"/><t t-call="web.external_layout"><div class="page">
+<div style="border:2px solid #b64e0b;padding:10px;color:#963800;text-align:center;font-weight:bold;">FACTURA FISCAL ELECTRONICA - PRODUCCION</div>
+<h2 t-if="o.document_type == '31'">Factura de Crédito Fiscal Electrónica · E31</h2><h2 t-else="">Comprobante Gubernamental Electrónico · E45</h2><p>Vencimiento secuencia: <span t-field="o.production_range_id.valid_until"/></p><p><strong t-esc="o.encf"/> · Estado: <span t-esc="o.state"/></p>
+<table style="width:100%;margin-bottom:20px;"><tr><td style="width:50%;vertical-align:top"><strong t-esc="s['seller']['name']"/><br/>RNC: <span t-esc="s['seller']['rnc']"/><br/><span t-esc="s['seller']['address']"/></td><td style="vertical-align:top">Cliente: <strong t-esc="s['buyer']['name']"/><br/>RNC/Cédula: <span t-esc="s['buyer']['rnc']"/><br/>Fecha: <span t-esc="s['invoice_date']"/><br/>Referencia Odoo: <span t-field="o.move_id.name"/></td></tr></table>
+<table class="table table-sm"><thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio RD$</th><th>Descuento %</th><th>ITBIS %</th><th>Importe RD$</th></tr></thead><tbody><tr t-foreach="s['lines']" t-as="line"><td t-esc="line['name']"/><td t-esc="line['quantity']"/><td t-esc="'%.2f' % line['price_unit']"/><td t-esc="'%.2f' % line.get('discount',0)"/><td t-esc="'Exento' if line.get('tax_category') == '4' else '%.2f' % line['tax_rate']"/><td t-esc="'%.2f' % line['subtotal']"/></tr></tbody></table>
+<div style="text-align:right"><p>Subtotal RD$ <span t-esc="'%.2f' % s['amount_untaxed']"/></p><p>ITBIS RD$ <span t-esc="'%.2f' % s['amount_tax']"/></p><h3>Total RD$ <span t-esc="'%.2f' % s['amount_total']"/></h3></div>
+<div style="margin:20px 0 0 0;padding:12px 0 0 0;page-break-inside:avoid"><t t-if="o.qr_image"><img t-att-src="o.qr_image" style="width:25mm;height:25mm;margin:3mm;"/><p>Código de seguridad: <strong t-esc="o.security_code"/></p></t><t t-else=""><p>Pendiente de aceptacion de DGII.</p></t><p>Fecha de firma: <span t-esc="o.signature_time"/></p><p>TrackId: <span t-esc="o.track_id or 'Pendiente'"/></p></div>
+<p style="font-size:10px">Representacion impresa del comprobante fiscal electronico. Conserve el XML firmado y su respuesta DGII.</p>
+</div></t></t></t></template>
+
+<template id="invoice_production_reference" inherit_id="account.report_invoice_document" priority="40">
+<xpath expr="//div[@id='informations']" position="after"><t t-set="fiscal" t-value="o._outs_ecf_production_report()"/><div t-if="fiscal" class="row mb-4" style="page-break-inside:avoid">
+<div class="col-8"><strong>Comprobante fiscal electronico</strong><br/>e-NCF: <strong t-esc="fiscal.encf"/><br/>Vencimiento de secuencia: <span t-field="fiscal.production_range_id.valid_until"/><br/>Codigo de seguridad: <span t-esc="fiscal.security_code"/><br/>Fecha de firma: <span t-esc="fiscal.signature_time"/></div>
+<div class="col-4 text-end"><img t-if="fiscal.qr_image" t-att-src="fiscal.qr_image" style="width:25mm;height:25mm" alt="Consulta del comprobante fiscal en DGII"/></div>
+</div></xpath></template>
+</odoo>

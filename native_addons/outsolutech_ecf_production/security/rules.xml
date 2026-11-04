@@ -1,0 +1,1 @@
+<odoo><record id="range_company_rule" model="ir.rule"><field name="name">Autorizaciones fiscales por empresa</field><field name="model_id" ref="model_outsolutech_ecf_range"/><field name="domain_force">[('company_id','in',company_ids)]</field></record></odoo>
