@@ -11,6 +11,7 @@ import re
 import secrets
 import uuid
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.x509.oid import NameOID,ObjectIdentifier
@@ -18,6 +19,25 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from .identity import IdentityError
+
+
+@dataclass(frozen=True)
+class VerifiedDelegation:
+    """Evidence returned by a trusted DGII adapter, never a browser form."""
+    tenant_id: str
+    company_id: int
+    tax_id: str
+    certificate_sha256: str
+    holder_identifier: str
+    valid_until: float
+    reference: str
+
+
+def certificate_identifiers(cert):
+    # Keep official identifier prefixes: do not turn a representative's cedula
+    # into a company RNC or infer authority from the certificate's common name.
+    return tuple(a.value for oid in (NameOID.SERIAL_NUMBER,ObjectIdentifier('2.5.4.97'))
+                 for a in cert.subject.get_attributes_for_oid(oid))
 
 def load_identity(p12,password):
     # Certificate checks do not depend on XML/lxml or import an Odoo addon.
@@ -60,13 +80,29 @@ class DirectoryKeys:
 
 
 class FiscalVault:
-    def __init__(self,identity,keys,resolve_company):
+    def __init__(self,identity,keys,resolve_company,resolve_delegation=None):
         self.identity=identity;self.db=identity.db;self.keys=keys;self.resolve_company=resolve_company
+        self.resolve_delegation=resolve_delegation
         self.db.executescript('''CREATE TABLE IF NOT EXISTS fiscal_certificates (
           id TEXT PRIMARY KEY,tenant_id TEXT NOT NULL REFERENCES tenants(id),company_id INTEGER NOT NULL,
           cipher BLOB NOT NULL,nonce BLOB NOT NULL,expires REAL NOT NULL,thumbprint TEXT NOT NULL,
           created REAL NOT NULL,state TEXT NOT NULL CHECK(state='pending_validation')
         );''')
+        self.db.executescript('''CREATE TABLE IF NOT EXISTS fiscal_delegations (
+          certificate_id TEXT PRIMARY KEY REFERENCES fiscal_certificates(id),
+          tax_id TEXT NOT NULL,holder_identifier TEXT NOT NULL,valid_until REAL NOT NULL,
+          reference TEXT NOT NULL
+        );''')
+
+    def _delegation(self,tenant_id,company_id,tax_id,thumb,identifiers):
+        if not callable(self.resolve_delegation):raise IdentityError('Delegacion del representante pendiente de verificar.')
+        evidence=self.resolve_delegation(tenant_id,company_id,tax_id,thumb,identifiers)
+        if (not isinstance(evidence,VerifiedDelegation) or evidence.tenant_id!=tenant_id
+            or evidence.company_id!=company_id or evidence.tax_id!=tax_id
+            or evidence.certificate_sha256!=thumb or evidence.holder_identifier not in identifiers
+            or evidence.valid_until<=self.identity.clock() or not evidence.reference):
+            raise IdentityError('Delegacion no vigente o no correspondiente a esta empresa y certificado.')
+        return evidence
 
     def _authorize(self,session,tenant_id,company_id):
         account=self.identity._account(session)
@@ -84,15 +120,15 @@ class FiscalVault:
             raise IdentityError('Material fiscal inválido.')
         try:
             key,cert=load_identity(p12,password.encode())
-            identifiers=[]
-            for oid in (NameOID.SERIAL_NUMBER,ObjectIdentifier('2.5.4.97')):
-                identifiers += [a.value for a in cert.subject.get_attributes_for_oid(oid)]
+            identifiers=certificate_identifiers(cert)
             # Conservative exact identity match. Do not infer a tax ID from CN
             # or accept an arbitrary certificate merely because its key opens.
-            if company['tax_id'] not in identifiers:raise ValueError()
             expires=(cert.not_valid_after_utc if hasattr(cert,'not_valid_after_utc') else cert.not_valid_after.replace(tzinfo=timezone.utc)).timestamp()
             from cryptography.hazmat.primitives import hashes
             thumb=cert.fingerprint(hashes.SHA256()).hex()
+            delegation=None
+            if company['tax_id'] not in identifiers:
+                delegation=self._delegation(tenant_id,company_id,company['tax_id'],thumb,identifiers)
         except Exception:raise IdentityError('No se pudo validar certificado, contraseña e identidad fiscal de la empresa.') from None
         version=uuid.uuid4().hex;scope=tenant_id+':'+str(company_id)+':'+version
         encryption_key=self.keys.create(scope);nonce=secrets.token_bytes(12)
@@ -101,9 +137,16 @@ class FiscalVault:
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
             # Recheck membership after parsing/encryption, before committing.
-            self._authorize(session,tenant_id,company_id)
+            _,current_company=self._authorize(session,tenant_id,company_id)
+            if current_company['tax_id']!=company['tax_id']:
+                raise IdentityError('La identificacion fiscal cambio durante la validacion.')
+            if delegation:
+                delegation=self._delegation(tenant_id,company_id,company['tax_id'],thumb,identifiers)
             self.db.execute("INSERT INTO fiscal_certificates VALUES (?,?,?,?,?,?,?,?, 'pending_validation')",
               (version,tenant_id,company_id,cipher,nonce,expires,thumb,self.identity.clock()))
+            if delegation:
+                self.db.execute('INSERT INTO fiscal_delegations VALUES (?,?,?,?,?)',
+                    (version,company['tax_id'],delegation.holder_identifier,delegation.valid_until,delegation.reference))
             self.identity._audit('fiscal_certificate_stored',account['id'],tenant_id)
         return {'certificate_id':version,'state':'pending_validation','emission_enabled':False}
 
@@ -122,5 +165,17 @@ class FiscalVault:
         try:
             payload=AESGCM(self.keys.get(scope)).decrypt(row['nonce'],row['cipher'],scope.encode())
             data=json.loads(payload)
+            _,cert=load_identity(base64.b64decode(data['p12'],validate=True),data['password'].encode())
+            from cryptography.hazmat.primitives import hashes
+            if cert.fingerprint(hashes.SHA256()).hex()!=row['thumbprint']:raise ValueError()
+            company=self.resolve_company(tenant_id,company_id)
+            if not company:raise ValueError()
+            identifiers=certificate_identifiers(cert)
+            delegation=self.db.execute('SELECT * FROM fiscal_delegations WHERE certificate_id=?',(version,)).fetchone()
+            if delegation:
+                if delegation['tax_id']!=company.get('tax_id') or delegation['valid_until']<=self.identity.clock():raise ValueError()
+                current=self._delegation(tenant_id,company_id,company['tax_id'],row['thumbprint'],identifiers)
+                if current.holder_identifier!=delegation['holder_identifier']:raise ValueError()
+            elif company.get('tax_id') not in identifiers:raise ValueError()
             return base64.b64decode(data['p12'],validate=True),data['password']
         except Exception:raise IdentityError('No se pudo autenticar el material fiscal.') from None
