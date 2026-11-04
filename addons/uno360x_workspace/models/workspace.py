@@ -7,7 +7,7 @@ from odoo.tools.misc import format_amount
 MENU_GROUPS=[
  ('Comercial','sales',[('contacts.menu_contacts','Contactos'),('crm.crm_menu_root','CRM'),('sale.sale_menu_root','Ventas'),('point_of_sale.menu_point_root','Punto de venta')]),
  ('Finanzas','finance',[('account.menu_finance','Facturación / Contabilidad'),('hr_expense.menu_hr_expense_root','Gastos')]),
- ('Operaciones','operations',[('project.menu_main_pm','Proyecto'),('purchase.menu_purchase_root','Compra'),('stock.menu_stock_root','Inventario')]),
+ ('Operaciones','operations',[('project.menu_main_pm','Proyecto'),('purchase.menu_purchase_root','Compra'),('stock.menu_stock_root','Inventario'),('maintenance.menu_maintenance_title','Mantenimiento')]),
  ('Equipo','team',[('hr.menu_hr_root','Empleados'),('hr_attendance.menu_hr_attendance_root','Asistencias'),('hr_holidays.menu_hr_holidays_root','Ausencias')]),
  ('Jenifer IA','ai',[]),
  ('Reportes','reports',[('spreadsheet_dashboard.spreadsheet_dashboard_menu_root','Dashboards')])]

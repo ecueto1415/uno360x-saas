@@ -62,7 +62,7 @@ class WorkspaceController(http.Controller):
  @http.route('/uno360x-buscar',type='http',auth='user',methods=['GET'])
  def search(self,q='',**kw):
   service=self._service();ctx=service._workspace_context();q=str(q).strip()[:100];results=[]
-  specs=[('res.partner','display_name','contacts.menu_contacts','Contactos'),('account.move','name','account.menu_finance','Facturas')]
+  specs=[('res.partner','display_name','contacts.menu_contacts','Contactos'),('account.move','name','account.menu_finance','Facturas'),('sale.order','name','sale.sale_menu_root','Ventas'),('purchase.order','name','purchase.menu_purchase_root','Compras'),('product.product','display_name','stock.menu_stock_root','Productos'),('maintenance.request','name','maintenance.menu_maintenance_title','Mantenimiento')]
   if 'projects_services' in ctx['options']:specs.append(('project.project','name','project.menu_main_pm','Proyectos'))
   if q:
    for model,field,xmlid,label in specs:
@@ -71,7 +71,7 @@ class WorkspaceController(http.Controller):
     domain=[(field,'ilike',q)]
     if model!='res.partner':domain+=[('company_id','=',request.env.company.id)]
     for record in request.env[model].search(domain,limit=20):
-     results.append({'name':record.display_name,'kind':label,'href':'/uno360x/open/%s'%menu.id})
+     results.append({'name':record.display_name,'kind':label,'href':'/odoo/action-%s/%s'%(menu.action.id,record.id)})
   ctx.update(query=q,results=results)
   return self._render('uno360x_workspace.search',ctx)
  @http.route('/uno360x-jenifer',type='http',auth='user',methods=['GET','POST'],csrf=True)

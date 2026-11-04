@@ -48,7 +48,7 @@ class TestWorkspace(TransactionCase):
   self.assertIn('/uno360x/pos/create',html);self.assertIn('Crear mi primera caja',html);self.assertIn('Volver a UNO360X',html)
   self.assertEqual(self.env['pos.session'].search_count([]),before)
   commercial=next(g for g in values['groups'] if g['name']=='Comercial')
-  self.assertTrue(any(node['href']=='/uno360x-pos' for node in commercial['nodes']))
+  self.assertTrue(any(node['href']=='/uno360x/area/pos' for node in commercial['nodes']))
 
  def test_pos_dashboard_menu_also_uses_the_safe_entry(self):
   action=self.env.ref('point_of_sale.action_pos_config_kanban')
@@ -88,3 +88,49 @@ class TestWorkspace(TransactionCase):
     active_request.env=env;active_request.params=params;active_request.httprequest.args=params
     html=str(self.env['ir.ui.view']._render_template('uno360x_workspace.'+name,values))
    self.assertIn('UNO',html);self.assertNotIn('/odoo/action-303',html);self.assertNotIn('/odoo/action-379',html)
+
+ def test_fourteen_areas_render_actual_user_scoped_data(self):
+  from ..models.areas import AREAS
+  self.assertEqual(len(AREAS),14)
+  ctx=self.service._workspace_context()
+  for key in AREAS:
+   if key=='jenifer' or not self.service._area_available(key,ctx):continue
+   values=self.service._area_values(key,q='no match QA',page='bad')
+   values.update(csrf='test-csrf',area_back='/uno360x/area/'+key)
+   html=str(self.env['ir.ui.view']._render_template('uno360x_workspace.area',values))
+   self.assertIn('ua-area',html,key)
+   self.assertNotIn('Empresa Alfa',html,key)
+   self.assertNotIn('128',str(values['area_metrics']),key)
+   self.assertFalse(self.user.has_group('base.group_system'))
+ def test_area_records_and_totals_respect_company_and_search(self):
+  partner=self.env['res.partner'].create({'name':'Area Unique QA','company_id':self.env.company.id})
+  values=self.service._area_values('contacts',q='Area Unique QA')
+  self.assertEqual(values['area_total'],1)
+  self.assertEqual(values['area_rows'][0]['id'],partner.id)
+  values=self.service._area_values('contacts',q='No Match Unique QA')
+  self.assertEqual(values['area_total'],0)
+  self.assertEqual(values['area_rows'],[])
+ def test_area_options_are_enforced_before_queries(self):
+  with patch.object(type(self.service),'_enabled_options',return_value=set()):
+   for key in ('projects','leave','attendance','expenses','jenifer'):
+    with self.assertRaises(AccessError):self.service._area_values(key)
+  with self.assertRaises(AccessError):self.service._area_values('unknown')
+ def test_area_tools_only_point_to_allowed_menu_actions(self):
+  ctx=self.service._workspace_context()
+  allowed={m.action.id for m in self.env['ir.ui.menu'].browse(list(ctx['allowed_menus'])) if m.action}
+  for key in ('contacts','sales','billing','purchases','inventory'):
+   values=self.service._area_values(key)
+   for tool in values['area_tools']:
+    self.assertIn(int(tool['href'].split('action-')[1].split('?')[0]),allowed)
+
+ def test_project_card_does_not_require_optional_stage_field_permission(self):
+  if 'project.project' not in self.env.registry:return
+  project=self.env['project.project'].create({'name':'Restricted Stage Card QA','company_id':self.env.company.id,'user_id':self.user.id})
+  values=self.service._area_values('projects',q='Restricted Stage Card QA')
+  self.assertEqual(values['area_total'],1)
+  self.assertEqual(values['area_rows'][0]['id'],project.id)
+  self.assertIsNone(values['area_rows'][0]['stage_id'])
+  values.update(csrf='qa-token',area_back='/uno360x/area/projects')
+  html=str(self.env['ir.ui.view']._render_template('uno360x_workspace.area',values))
+  self.assertIn('Restricted Stage Card QA',html)
+  self.assertIn('ua-progress',html)
