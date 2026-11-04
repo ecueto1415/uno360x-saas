@@ -117,3 +117,19 @@ class IdentityHTTPTests(unittest.TestCase):
         self.assertEqual(self.post('/trial/create',data)[1]['tenant_id'],trial['tenant_id'])
         self.assertEqual(self.post('/trial/status',{'tenant_id':trial['tenant_id']})[0],200)
         self.assertEqual(self.post('/trial/create',data,headers={'X-CSRF-Token':'wrong'})[0],403)
+
+    def test_capacity_queue_is_not_reported_as_verification_and_never_launches(self):
+        import sqlite3
+        self.login()
+        _,co,_=self.post('/companies/create',{'slug':'capacity-example','modules':[],'request_id':'capacity-1'})
+        self.post('/preparation/request',{'tenant_id':co['id']})
+        with sqlite3.connect(self.server.database) as db:
+            db.execute("UPDATE preparation_jobs SET current_step='capacity' WHERE tenant_id=?",(co['id'],))
+        def launch(*args):raise AssertionError('Queued company must not open a backend')
+        self.server.launch=launch
+        status,body,_=self.post('/spaces/open',{'tenant_id':co['id']})
+        self.assertEqual(status,409)
+        self.assertEqual(body['code'],'workspace_capacity')
+        self.assertIn('capacidad',body['error'])
+        self.assertNotIn('verificando',body['error'])
+        self.assertEqual(self.post('/preparation/status',{'tenant_id':co['id']})[1]['current_step'],'capacity')

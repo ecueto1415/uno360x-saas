@@ -12,7 +12,7 @@ const context=vm.createContext({
  location:{pathname:'/prueba/inicio',search:''},history:{state:null,pushState(a,b,path){this.state=a;const u=new URL(path,'https://cuenta.uno360x.com');context.location.pathname=u.pathname;context.location.search=u.search;},replaceState(a,b,path){this.state=a;const u=new URL(path,'https://cuenta.uno360x.com');context.location.pathname=u.pathname;context.location.search=u.search;}},window:{location:{replace(path){redirects.push(path);}},addEventListener(name,handler){listeners[name]=handler;},scrollTo(){}},
  sessionStorage:{getItem:()=>JSON.stringify({name:'Old name',email:'old@example.test',modules:['payroll_hr','jenifer_ai','projects_services']}),setItem(){}},
  setTimeout,clearTimeout,URLSearchParams,URL,
- fetch:async(path)=>{calls.push(path);if(path==='/logout')authenticated=false;return {ok:(path!='/session'||authenticated)&&!(path==='/spaces/open'&&launchFailure)&&!(path==='/login'&&loginStatus!==200),status:path==='/login'?loginStatus:200,json:async()=>path==='/session'?{email:'existing@example.test',csrf_token:'fictional-csrf'}:path==='/companies'?{companies:companiesState}:path==='/trial/draft'?{name:'Saved signup name',modules:['projects_services']}:path==='/trial/status'?readyState:path==='/spaces/open'?(launchFailure?{error:'Acceso temporalmente no disponible'}:{launch_url:nativeLaunch?nativeLaunchUrl:'http://127.0.0.1:18001/__launch',grant:'fictional-grant',operational_access:nativeLaunch}):{logged_out:true}};},
+ fetch:async(path)=>{calls.push(path);if(path==='/logout')authenticated=false;return {ok:(path!='/session'||authenticated)&&!(path==='/spaces/open'&&launchFailure)&&!(path==='/login'&&loginStatus!==200),status:path==='/session'&&!authenticated?401:path==='/login'?loginStatus:200,json:async()=>path==='/session'?{email:'existing@example.test',csrf_token:'fictional-csrf'}:path==='/companies'?{companies:companiesState}:path==='/trial/draft'?{name:'Saved signup name',modules:['projects_services']}:path==='/trial/status'?readyState:path==='/spaces/open'?(launchFailure?{error:'Acceso temporalmente no disponible'}:{launch_url:nativeLaunch?nativeLaunchUrl:'http://127.0.0.1:18001/__launch',grant:'fictional-grant',operational_access:nativeLaunch}):{logged_out:true}};},
 });
 vm.runInContext(source,context);
 await vm.runInContext('render()',context);
@@ -156,3 +156,19 @@ const failedMarkup=vm.runInContext("preparationMarkup({name:'Empresa',status:'fa
 assert(!failedMarkup.includes('is-running'),'Failure must stop the waiting animation');
 assert(failedMarkup.includes('Pendiente de revisión'));
 console.log('Creation stages follow server progress, escape company names and stop animation for queues or failures.');
+
+// A temporary status outage must keep the account and schedule another poll.
+const originalFetch=context.fetch;const originalTimer=context.setTimeout;let scheduled=[];
+context.setTimeout=(fn,delay)=>{scheduled.push(delay);return 999;};
+await vm.runInContext("account={email:'keep@example.test'};csrf='keep-csrf';tenantId='existing-company';",context);
+context.fetch=async()=>{throw new Error('temporary network outage');};
+await vm.runInContext('recoverPreparation()',context);
+assert.equal(vm.runInContext('account.email',context),'keep@example.test');
+assert(scheduled.includes(8000),'Preparation must recover after a transient request failure');
+assert(element('#notice').textContent.includes('automáticamente'));
+context.fetch=originalFetch;context.setTimeout=originalTimer;
+const markup=vm.runInContext("preparationMarkup({name:'Queued',status:'queued',current_step:'capacity',completed_steps:[]})",context);
+assert(markup.includes('Tu correo y tu solicitud están confirmados'));
+assert(!markup.includes('is-running'),'Waiting capacity must not pretend work is running');
+vm.runInContext('clearTimeout(timer)',context);
+console.log('Transient preparation recovery retains account; capacity wait is explicit and does not animate false progress.');

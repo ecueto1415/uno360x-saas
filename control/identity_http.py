@@ -136,6 +136,12 @@ class Handler(BaseHTTPRequestHandler):
             if self.path=='/spaces/open':
                 if self.server.launch is None:
                     self._reply(503,{'error':'El acceso a tu empresa no está disponible en este momento.'});return
+                state=onboarding.status(session,data['tenant_id'])
+                if not state['local_ready']:
+                    capacity=state['status']=='queued' and state['current_step']=='capacity'
+                    maintenance=state.get('maintenance') or state.get('requires_migration')
+                    self._reply(409,{'error':('Tu solicitud está confirmada y espera capacidad. No crees otra empresa.' if capacity else 'Tu empresa se está actualizando.' if maintenance else 'Tu empresa todavía se está preparando.'),'code':'workspace_capacity' if capacity else 'workspace_maintenance' if maintenance else 'workspace_preparing'})
+                    return
                 ticket=onboarding.issue_handoff(session,data['tenant_id'])['ticket']
                 try:
                     result=self.server.launch(session,ticket)
@@ -169,7 +175,7 @@ class Handler(BaseHTTPRequestHandler):
         except TrialCompanyExists as error:
             self._reply(409,{'error':str(error),'code':'company_exists'})
         except PreparationError:
-            self._reply(503,{'error':'Estamos verificando tu espacio. Espera unos segundos y vuelve a entrar a tu empresa.'})
+            self._reply(503,{'error':'Tu espacio todavía no está disponible. Consulta el progreso sin crear otra empresa.','code':'workspace_preparing'})
         except IdentityError as error:
             # Same error for wrong login, unknown identity or inaccessible company.
             self._reply(400,{'error':(str(error) if str(error).startswith('La contraseña') else 'El enlace venció, fue reemplazado o ya se utilizó. Solicita otro y abre el correo más reciente.') if self.path in ('/verify','/reset/complete') else 'No se pudo completar la operación.'})

@@ -99,7 +99,7 @@ class HTTPSPilotTests(unittest.TestCase):
    company=Trials(identity).create(session,'Waiting company','DO','DOP',[])
    c=http.client.HTTPConnection('127.0.0.1',self.server.server_port)
    c.request('POST','/spaces/open',json.dumps({'tenant_id':company['tenant_id']}),{'Host':'cuenta.uno360x.com','Origin':'https://cuenta.uno360x.com','Content-Type':'application/json','Cookie':'__Host-uno360x_session='+session,'X-CSRF-Token':csrf_for(session)})
-   response=c.getresponse();self.assertEqual(response.status,503);self.assertIn('verificando tu espacio',response.read().decode());c.close()
+   response=c.getresponse();self.assertEqual(response.status,409);body=json.loads(response.read());self.assertEqual(body['code'],'workspace_preparing');self.assertNotIn('verificando',body['error']);c.close()
   finally:identity.close()
 
  def public_request(self,path,method='GET',data=None,session='',origin='https://uno360x.com',extra=None):
