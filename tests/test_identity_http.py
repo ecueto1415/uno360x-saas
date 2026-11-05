@@ -150,3 +150,12 @@ class IdentityHTTPTests(unittest.TestCase):
         self.assertEqual(status,200)
         gate.write_text(json.dumps({'checked':time.time(),'can_prepare':False}))
         self.assertEqual(self.post('/trial/create',{'name':'Capacity available','country':'DO','currency':'DOP','modules':[]})[1]['tenant_id'],trial['tenant_id'])
+
+    def test_authenticated_transport_budget_is_not_shared_with_other_visitors(self):
+        import sqlite3,time
+        from control.identity import digest
+        self.login('rate-isolation@example.test')
+        with sqlite3.connect(self.server.database) as db:
+            db.execute('INSERT OR REPLACE INTO identity_limits VALUES (?,?,?)',(digest('transport:127.0.0.1'),time.time(),60))
+        self.assertEqual(self.post('/companies',{})[0],200)
+        self.assertEqual(self.post('/register',{'email':'anonymous-limited@example.test'},headers={'Cookie':''})[0],429)

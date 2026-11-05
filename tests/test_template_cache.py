@@ -64,4 +64,12 @@ class AdmissionAndReadinessTests(unittest.TestCase):
    with patch('time.sleep'):a.database(s)
    self.assertEqual(len(probes),2);self.assertIn('/proc/1/comm',probes[0][-1])
 
+
+ def test_explicit_open_admission_skips_queue_guard_but_keeps_tenant_lock(self):
+  from deployment.shared_adapter import SharedHostAdapter
+  with tempfile.TemporaryDirectory() as tmp:
+   a=SharedHostAdapter.__new__(SharedHostAdapter);a.state=pathlib.Path(tmp);a.max_active=None;a.enforce_admission=False;a.has_headroom=Mock(return_value=False);a.run=Mock()
+   with a.lock('b'*32):self.assertTrue((a.state/('b'*32)).is_dir())
+   a.has_headroom.assert_not_called();a.run.assert_not_called()
+
 if __name__=='__main__':unittest.main()

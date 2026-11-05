@@ -106,9 +106,12 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(400,{'error':'Solicitud inválida.'});return
         service=IdentityService(self.server.database,self.server.deliver)
         try:
+            transport_key=self.client_address[0]
+            try:transport_key='account:'+service._account(self._session())['id']
+            except IdentityError:pass
             with service.db:
                 service.db.execute('BEGIN IMMEDIATE')
-                permitted=service._allow('transport',self.client_address[0],maximum=60,window=60)
+                permitted=service._allow('transport',transport_key,maximum=60,window=60)
             if not permitted:
                 self._reply(429,{'error':'Espera antes de volver a intentarlo.'});return
             public={

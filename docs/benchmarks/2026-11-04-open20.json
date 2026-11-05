@@ -1,0 +1,162 @@
+{
+  "date_local": "2026-11-04",
+  "test": "20 simultaneous company creation requests, public HTTPS, normal serial provisioning worker, no admission exception",
+  "round": 3,
+  "accepted": 20,
+  "prepared": 20,
+  "usable": 20,
+  "final_simultaneous_access_ok": 20,
+  "passed": true,
+  "first_usable_seconds": 57.485,
+  "last_usable_seconds": 562.993,
+  "mean_usable_seconds": 288.04,
+  "median_usable_seconds": 274.031,
+  "active_preparation_mean_seconds": 26.323,
+  "active_preparation_min_seconds": 17.878,
+  "active_preparation_max_seconds": 38.953,
+  "total_to_final_verification_seconds": 571.439,
+  "metrics": {
+    "sample_count": 279,
+    "start": 1793839169.1628282,
+    "end": 1793839740.0094025,
+    "native_http_errors": 0,
+    "native_max_seconds": 0.039,
+    "native_mean_seconds": 0.019433691756272402,
+    "identity_http_errors": 0,
+    "saas_peak_current_bytes": 3221450752,
+    "saas_peak_working_bytes": 3188629504,
+    "host_min_available_bytes": 3185328128,
+    "oom_kill_delta": 0,
+    "pids_peak": 702,
+    "pids_denied_delta": 0,
+    "swap_peak_bytes": 2948861952,
+    "cpu_average_cores": 1.2038588631890985
+  },
+  "scope_excludes": [
+    "email verification wait",
+    "quotations/invoicing business workload",
+    "DGII submissions"
+  ],
+  "companies": [
+    {
+      "index": 1,
+      "prepared_seconds": 252.156,
+      "usable_seconds": 261.469,
+      "final_access_ok": true
+    },
+    {
+      "index": 2,
+      "prepared_seconds": 390.141,
+      "usable_seconds": 398.844,
+      "final_access_ok": true
+    },
+    {
+      "index": 3,
+      "prepared_seconds": 94.078,
+      "usable_seconds": 104.391,
+      "final_access_ok": true
+    },
+    {
+      "index": 4,
+      "prepared_seconds": 131.5,
+      "usable_seconds": 141.625,
+      "final_access_ok": true
+    },
+    {
+      "index": 5,
+      "prepared_seconds": 454.735,
+      "usable_seconds": 463.828,
+      "final_access_ok": true
+    },
+    {
+      "index": 6,
+      "prepared_seconds": 44.078,
+      "usable_seconds": 57.485,
+      "final_access_ok": true
+    },
+    {
+      "index": 7,
+      "prepared_seconds": 325.203,
+      "usable_seconds": 334.141,
+      "final_access_ok": true
+    },
+    {
+      "index": 8,
+      "prepared_seconds": 277.391,
+      "usable_seconds": 286.594,
+      "final_access_ok": true
+    },
+    {
+      "index": 9,
+      "prepared_seconds": 483.719,
+      "usable_seconds": 493.391,
+      "final_access_ok": true
+    },
+    {
+      "index": 10,
+      "prepared_seconds": 520.297,
+      "usable_seconds": 531.688,
+      "final_access_ok": true
+    },
+    {
+      "index": 11,
+      "prepared_seconds": 180.516,
+      "usable_seconds": 189.156,
+      "final_access_ok": true
+    },
+    {
+      "index": 12,
+      "prepared_seconds": 300.906,
+      "usable_seconds": 310.0,
+      "final_access_ok": true
+    },
+    {
+      "index": 13,
+      "prepared_seconds": 75.391,
+      "usable_seconds": 85.531,
+      "final_access_ok": true
+    },
+    {
+      "index": 14,
+      "prepared_seconds": 113.531,
+      "usable_seconds": 123.25,
+      "final_access_ok": true
+    },
+    {
+      "index": 15,
+      "prepared_seconds": 423.688,
+      "usable_seconds": 432.531,
+      "final_access_ok": true
+    },
+    {
+      "index": 16,
+      "prepared_seconds": 157.578,
+      "usable_seconds": 166.36,
+      "final_access_ok": true
+    },
+    {
+      "index": 17,
+      "prepared_seconds": 554.094,
+      "usable_seconds": 562.985,
+      "final_access_ok": true
+    },
+    {
+      "index": 18,
+      "prepared_seconds": 365.641,
+      "usable_seconds": 374.235,
+      "final_access_ok": true
+    },
+    {
+      "index": 19,
+      "prepared_seconds": 202.625,
+      "usable_seconds": 212.375,
+      "final_access_ok": true
+    },
+    {
+      "index": 20,
+      "prepared_seconds": 221.875,
+      "usable_seconds": 230.922,
+      "final_access_ok": true
+    }
+  ]
+}

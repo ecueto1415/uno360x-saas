@@ -19,6 +19,8 @@ class SharedHostAdapter(SharedDatabaseMixin,TemplateInstallMixin,ContainerAdapte
   self.shared_pg_enabled=shared.exists() and json.loads(shared.read_text()).get('enabled') is True
   policy=Path('/etc/uno360x-saas/resource-policy.json')
   settings=json.loads(policy.read_text()) if policy.exists() else {'max_active_tenants':1}
+  self.enforce_admission=settings.get('enforce_admission',True)
+  if type(self.enforce_admission) is not bool:raise RuntimeError('Invalid admission enforcement setting')
   cap=settings.get('max_active_tenants',1);self.max_active=None if cap is None else int(cap)
   if self.max_active is not None and self.max_active not in (1,2,3):raise RuntimeError('Invalid explicit pilot admission policy')
   self.startup_database_cpus='0.75';self.restore_database_cpus='1'
@@ -69,7 +71,7 @@ class SharedHostAdapter(SharedDatabaseMixin,TemplateInstallMixin,ContainerAdapte
    fcntl.flock(capacity,fcntl.LOCK_EX)
    directory=self.state/tid
    if directory.is_symlink():raise RuntimeError('Unexpected tenant path')
-   if not directory.exists():
+   if not directory.exists() and getattr(self,'enforce_admission',True):
     cap=getattr(self,'max_active',1)
     if cap is None:
      if not self.has_headroom(tid):raise CapacityUnavailable('Protected resource headroom is queued')

@@ -4,7 +4,23 @@ No HTTP bootstrap endpoint. The trusted worker mounts one private script and
 the normal per-instance configuration. An existing completed bootstrap is never
 reapplied when the application restarts.
 """
-import json,pathlib
+import json,pathlib,re
+
+def isolate_bus_database(sql_db,database):
+ """Keep Odoo notification connections inside the single tenant database.
+
+ Odoo bus uses a hard-coded postgres connection for LISTEN/NOTIFY. Shared
+ tenant roles deliberately cannot connect to that maintenance database.
+ This process serves exactly one validated database; redirect only that
+ literal maintenance target, preserving the tenant role and other calls.
+ """
+ if not isinstance(database,str) or not re.fullmatch(r"tenant_[a-f0-9]{32}",database):
+  raise ValueError("Expected a single private tenant database")
+ original=sql_db.db_connect
+ def connect(name,*args,**kwargs):
+  return original(database if name=="postgres" else name,*args,**kwargs)
+ sql_db.db_connect=connect
+
 
 def main():
  import odoo
@@ -17,6 +33,7 @@ def main():
  names=config['db_name']
  if isinstance(names,str):names=[n.strip() for n in names.split(',') if n.strip()]
  assert len(names)==1 and names[0]==payload.get('database_name','tenant_'+payload['tenant_id'])
+ isolate_bus_database(odoo.sql_db,names[0])
  server.load_server_wide_modules()
  registry=Registry(names[0])
  with registry.cursor() as cr:

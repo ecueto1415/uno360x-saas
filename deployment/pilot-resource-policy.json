@@ -5,9 +5,10 @@
   "per_app_memory_mib": 640,
   "per_database_memory_mib": 192,
   "native_odoo_modified": false,
-  "admission": "resource_headroom",
+  "admission": "open_with_os_isolation",
   "minimum_new_tenant_headroom_mib": 928,
   "shared_postgres": true,
   "reserve_target": 15,
-  "reserve_low_water": 5
+  "reserve_low_water": 5,
+  "enforce_admission": false
 }
