@@ -1,0 +1,245 @@
+{
+  "date_local": "2026-11-05",
+  "release": "2026-11-05-pool50-parallel10-r3",
+  "configuration": {
+    "reserve_target": 50,
+    "reserve_low_water": 40,
+    "refill_batch": 5,
+    "max_preparations": 10,
+    "base_reserves": 20,
+    "saas_group_cpu_cores": 1.5,
+    "saas_group_memory_max_gib": 3.5,
+    "saas_group_memory_high_gib": 3,
+    "saas_group_tasks_max": 1024,
+    "worker_memory_max_mib": 384,
+    "worker_tasks_max": 256,
+    "identity_http_concurrent_requests": 32,
+    "identity_service_tasks_max": 256
+  },
+  "passed": true,
+  "accepted": 20,
+  "prepared": 20,
+  "initial_access_ok": 20,
+  "final_simultaneous_access_ok": 20,
+  "first_usable_seconds": 73.797,
+  "last_usable_seconds": 269.22,
+  "mean_usable_seconds": 172.184,
+  "mean_active_preparation_seconds": 101.795,
+  "baseline_last_usable_seconds": 523.456,
+  "batch_time_improvement_percent": 48.57,
+  "metrics": {
+    "sample_count": 136,
+    "start": 1793875777.3327827,
+    "end": 1793876053.785912,
+    "native_http_errors": 0,
+    "native_max_seconds": 0.049,
+    "native_mean_seconds": 0.021845588235294117,
+    "identity_http_errors": 0,
+    "saas_peak_current_bytes": 3221172224,
+    "saas_peak_working_bytes": 3155124224,
+    "host_min_available_bytes": 3111448576,
+    "oom_kill_delta": 0,
+    "max_test_running": 10,
+    "reserve_ready_min": 31,
+    "reserve_ready_last": 35,
+    "pids_peak": 741,
+    "pids_denied_delta": 0,
+    "swap_peak_bytes": 2892427264,
+    "cpu_average_cores": 1.4904187666672843
+  },
+  "automatic_refill_passes": [
+    {
+      "prepared": 5,
+      "first": 1793875984.712401,
+      "final_ready": 35,
+      "batch_limit": 5,
+      "target": 50,
+      "low_water": 40,
+      "ended": 1793876045.412436
+    },
+    {
+      "prepared": 5,
+      "first": 1793876133.764811,
+      "final_ready": 40,
+      "batch_limit": 5,
+      "target": 50,
+      "low_water": 40,
+      "ended": 1793876150.410132
+    },
+    {
+      "prepared": 5,
+      "first": 1793876232.638701,
+      "final_ready": 45,
+      "batch_limit": 5,
+      "target": 50,
+      "low_water": 40,
+      "ended": 1793876249.608929
+    },
+    {
+      "prepared": 5,
+      "first": 1793876461.339711,
+      "final_ready": 50,
+      "batch_limit": 5,
+      "target": 50,
+      "low_water": 40,
+      "ended": 1793876479.822384
+    },
+    {
+      "prepared": 0,
+      "first": 1793876562.51067,
+      "final_ready": 50,
+      "batch_limit": 5,
+      "target": 50,
+      "low_water": 40,
+      "ended": 1793876562.51067
+    }
+  ],
+  "final_free_reserves": 50,
+  "native_service_and_config_unchanged": true,
+  "synthetic_companies_deleted": 20,
+  "automated_tests_passed": 215,
+  "diagnostic_rounds": [
+    {
+      "prepared": 19,
+      "access_ok": 17,
+      "issues": [
+        "Concurrent shared PostgreSQL catalog update",
+        "Identity HTTP limit of eight concurrent requests"
+      ]
+    },
+    {
+      "prepared": 18,
+      "access_ok": 18,
+      "issues": [
+        "Transient internal PostgreSQL DNS resolution during network creation"
+      ]
+    }
+  ],
+  "companies": [
+    {
+      "index": 1,
+      "prepared_seconds": 51.297,
+      "usable_seconds": 79.594,
+      "final_access_ok": true
+    },
+    {
+      "index": 2,
+      "prepared_seconds": 97.656,
+      "usable_seconds": 118.765,
+      "final_access_ok": true
+    },
+    {
+      "index": 3,
+      "prepared_seconds": 206.969,
+      "usable_seconds": 223.375,
+      "final_access_ok": true
+    },
+    {
+      "index": 4,
+      "prepared_seconds": 166.344,
+      "usable_seconds": 181.953,
+      "final_access_ok": true
+    },
+    {
+      "index": 5,
+      "prepared_seconds": 59.094,
+      "usable_seconds": 87.0,
+      "final_access_ok": true
+    },
+    {
+      "index": 6,
+      "prepared_seconds": 261.812,
+      "usable_seconds": 269.219,
+      "final_access_ok": true
+    },
+    {
+      "index": 7,
+      "prepared_seconds": 256.344,
+      "usable_seconds": 261.984,
+      "final_access_ok": true
+    },
+    {
+      "index": 8,
+      "prepared_seconds": 50.187,
+      "usable_seconds": 73.797,
+      "final_access_ok": true
+    },
+    {
+      "index": 9,
+      "prepared_seconds": 132.359,
+      "usable_seconds": 147.234,
+      "final_access_ok": true
+    },
+    {
+      "index": 10,
+      "prepared_seconds": 260.031,
+      "usable_seconds": 268.109,
+      "final_access_ok": true
+    },
+    {
+      "index": 11,
+      "prepared_seconds": 69.984,
+      "usable_seconds": 91.594,
+      "final_access_ok": true
+    },
+    {
+      "index": 12,
+      "prepared_seconds": 224.703,
+      "usable_seconds": 238.078,
+      "final_access_ok": true
+    },
+    {
+      "index": 13,
+      "prepared_seconds": 196.015,
+      "usable_seconds": 210.953,
+      "final_access_ok": true
+    },
+    {
+      "index": 14,
+      "prepared_seconds": 119.515,
+      "usable_seconds": 133.453,
+      "final_access_ok": true
+    },
+    {
+      "index": 15,
+      "prepared_seconds": 81.89,
+      "usable_seconds": 100.469,
+      "final_access_ok": true
+    },
+    {
+      "index": 16,
+      "prepared_seconds": 217.859,
+      "usable_seconds": 233.375,
+      "final_access_ok": true
+    },
+    {
+      "index": 17,
+      "prepared_seconds": 179.015,
+      "usable_seconds": 193.14,
+      "final_access_ok": true
+    },
+    {
+      "index": 18,
+      "prepared_seconds": 105.656,
+      "usable_seconds": 123.781,
+      "final_access_ok": true
+    },
+    {
+      "index": 19,
+      "prepared_seconds": 237.531,
+      "usable_seconds": 248.969,
+      "final_access_ok": true
+    },
+    {
+      "index": 20,
+      "prepared_seconds": 141.625,
+      "usable_seconds": 158.844,
+      "final_access_ok": true
+    }
+  ],
+  "scope_excludes": [
+    "email verification wait",
+    "business workload",
+    "DGII submissions"
+  ]
+}

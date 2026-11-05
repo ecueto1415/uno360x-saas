@@ -8,7 +8,9 @@
   "admission": "open_with_os_isolation",
   "minimum_new_tenant_headroom_mib": 928,
   "shared_postgres": true,
-  "reserve_target": 15,
-  "reserve_low_water": 5,
-  "enforce_admission": false
+  "reserve_target": 50,
+  "reserve_low_water": 40,
+  "enforce_admission": false,
+  "reserve_refill_batch": 5,
+  "concurrent_preparations": 10
 }

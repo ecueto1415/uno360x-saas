@@ -1,5 +1,5 @@
 [Unit]
-Description=UNO360X prepared spaces replenisher (5 to 15)
+Description=UNO360X prepared spaces replenisher (40 to 50, batches of 5)
 After=network-online.target user@996.service uno360x-shared-postgres.service
 Requires=user@996.service uno360x-shared-postgres.service
 [Service]

@@ -1,4 +1,4 @@
-"""Replenish prepared databases: start at <=5 ready; stop at 15 ready."""
+"""Replenish at <=40 ready, in batches of at most five, until 50 ready."""
 import pathlib,sys,json
 ROOT=pathlib.Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from deployment.shared_adapter import SharedHostAdapter

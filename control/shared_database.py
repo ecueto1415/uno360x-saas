@@ -1,5 +1,11 @@
 """Optional shared PostgreSQL path; legacy per-company servers remain valid."""
-import json,pathlib,re,secrets,sqlite3,uuid
+import json,pathlib,re,secrets,sqlite3,uuid,ipaddress
+
+def shared_database_host(info,network):
+ try:address=ipaddress.IPv4Address(info['NetworkSettings']['Networks'][network]['IPAddress'])
+ except (KeyError,ValueError,TypeError):raise RuntimeError('Missing private PostgreSQL endpoint') from None
+ if not address.is_private or address.is_loopback or address.is_unspecified:raise RuntimeError('PostgreSQL endpoint must stay on the tenant private network')
+ return str(address)
 
 class SharedDatabaseMixin:
  def shared_binding(self,s):
@@ -42,13 +48,17 @@ class SharedDatabaseMixin:
      pool.ensure();binding=pool.claim(s)
    if binding:
     with Pool(self) as pool:
-     pool.attach(legacy['network'])
+     server_info=pool.attach(legacy['network'])
+     private_host=shared_database_host(server_info,legacy['network'])
      if binding['slot_id']:
       password=(BASE/'slots'/binding['slot_id']/'database-password').read_text()
       self.protected(legacy['directory']/'database-password',password)
     result=super().database(s)
     config=legacy['directory']/'odoo.conf';text=config.read_text()
-    if 'db_maxconn = 12' in text:config.write_text(text.replace('db_maxconn = 12','db_maxconn = 8'))
+    text=text.replace('db_maxconn = 12','db_maxconn = 8')
+    text,count=re.subn(r'(?m)^db_host\s*=.*$', 'db_host = '+private_host,text)
+    if count!=1:raise RuntimeError('Expected one private database endpoint')
+    config.write_text(text)
     return result
   return super().database(s)
  def installation(self,s):

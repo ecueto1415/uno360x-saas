@@ -3,6 +3,7 @@ Description=UNO360X private tenant preparation worker
 After=network-online.target user@996.service
 Requires=user@996.service
 [Service]
+Slice=user-996.slice
 Type=simple
 User=uno360x-saas
 Group=uno360x-saas
@@ -13,8 +14,8 @@ ExecStart=/usr/bin/python3 /srv/uno360x-saas/worker-current/deployment/run_share
 Restart=on-failure
 RestartSec=10
 UMask=0077
-MemoryMax=192M
-CPUQuota=20%
-TasksMax=64
+MemoryMax=384M
+CPUQuota=100%
+TasksMax=256
 [Install]
 WantedBy=multi-user.target

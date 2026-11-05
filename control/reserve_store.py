@@ -1,7 +1,8 @@
 """Atomic, single-use prepared-space inventory. Contains no customer data."""
 import json,pathlib,re,sqlite3,time,uuid
-TARGET=15
-LOW_WATER=5
+TARGET=50
+LOW_WATER=40
+REFILL_BATCH=5
 
 def identifier(value):
  if not isinstance(value,str) or not re.fullmatch('[a-f0-9]{32}',value):raise ValueError('Invalid reserve identity')

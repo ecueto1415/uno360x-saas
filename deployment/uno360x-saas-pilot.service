@@ -14,6 +14,6 @@ RestartSec=5
 UMask=0077
 MemoryMax=384M
 CPUQuota=25%
-TasksMax=96
+TasksMax=256
 [Install]
 WantedBy=multi-user.target

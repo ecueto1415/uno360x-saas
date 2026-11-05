@@ -1,6 +1,6 @@
 """Private shared PostgreSQL and unclaimed, independently owned databases."""
 import contextlib,fcntl,itertools,json,os,pathlib,re,secrets,shutil,subprocess,time,uuid
-from control.reserve_store import ReserveStore,identifier,TARGET
+from control.reserve_store import ReserveStore,identifier,TARGET,LOW_WATER,REFILL_BATCH
 from control.catalog import installation_profile
 from control.template_cache import verified_cache,custom_addons
 BASE=pathlib.Path('/var/lib/uno360x-saas/shared-postgres')
@@ -16,9 +16,21 @@ def profiles():
  out=[]
  for n in range(4):
   for modules in itertools.combinations(OPTIONS,n):
-   weight=4 if not modules or len(modules)==3 else 2 if modules==('payroll_hr',) else 1
+   weight=20 if not modules else 10 if len(modules)==3 else 5 if modules==('payroll_hr',) else 3
    out.append((list(modules),installation_profile(modules),weight))
  return out
+
+def host_memory_available():
+ return int(next(l.split()[1] for l in pathlib.Path('/proc/meminfo').read_text().splitlines() if l.startswith('MemAvailable:')))*1024
+
+def validate_shared_networks(names,networks):
+ indexed={net['name']:net for net in networks}
+ if len(indexed)!=len(networks) or set(indexed)!=set(names):raise RuntimeError('Unexpected shared network inspection')
+ for name,net in indexed.items():
+  if not net['internal']:raise RuntimeError('Shared PostgreSQL network is not private')
+  if name==NETWORK:
+   if not all((net.get('labels') or {}).get(k)==v for k,v in LABELS.items()):raise RuntimeError('Foreign management network')
+  elif not re.fullmatch(r'uno360x-pilot-[a-f0-9]{32}-net',name) or (net.get('labels') or {}).get('uno360x.environment')!='private-pilot':raise RuntimeError('Foreign tenant network')
 
 class Pool:
  def __init__(self,adapter):
@@ -48,12 +60,9 @@ class Pool:
   if mounts.get('/var/lib/postgresql/data',{}).get('Name')!=PGVOLUME:raise RuntimeError('Unexpected PostgreSQL data mount')
   if mounts.get('/run/uno360x-pg-hba.conf',{}).get('Source')!=str(BASE/'pg_hba.conf') or mounts['/run/uno360x-pg-hba.conf']['RW']:raise RuntimeError('Unexpected PostgreSQL authentication mount')
   if info['HostConfig']['Memory']!=512*1024**2:raise RuntimeError('Unexpected shared PostgreSQL memory budget')
-  for name in info['NetworkSettings']['Networks']:
-   net=json.loads(self.a.run('network','inspect',name).stdout)[0]
-   if not net['internal']:raise RuntimeError('Shared PostgreSQL network is not private')
-   if name==NETWORK:
-    if not all((net.get('labels') or {}).get(k)==v for k,v in LABELS.items()):raise RuntimeError('Foreign management network')
-   elif not re.fullmatch(r'uno360x-pilot-[a-f0-9]{32}-net',name) or (net.get('labels') or {}).get('uno360x.environment')!='private-pilot':raise RuntimeError('Foreign tenant network')
+  names=list(info['NetworkSettings']['Networks'])
+  networks=json.loads(self.a.run('network','inspect',*names).stdout)
+  validate_shared_networks(names,networks)
   self.verify_volume(PGVOLUME);return info
  def sql(self,sql,database='postgres',check=True):
   ident(database)
@@ -61,7 +70,16 @@ class Pool:
   if check and result.returncode:
    p=BASE/'last-error.log';p.write_text(result.stderr);p.chmod(0o600);raise RuntimeError('Shared PostgreSQL operation failed; inspect private log')
   return result.stdout.strip() if check else result
+ @contextlib.contextmanager
+ def lifecycle_lock(self):
+  with (BASE/'lifecycle.lock').open('a') as f:
+   fcntl.flock(f,fcntl.LOCK_EX)
+   try:yield
+   finally:fcntl.flock(f,fcntl.LOCK_UN)
  def ensure(self):
+  # Only shared server/catalog reconciliation is serialized, not tenant setup.
+  with self.lifecycle_lock():return self._ensure_locked()
+ def _ensure_locked(self):
   if not self.a.exists('network',NETWORK):self.a.run('network','create','--internal',*self.labels(),NETWORK)
   if not self.a.exists('volume',PGVOLUME):self.a.run('volume','create',*self.labels(),PGVOLUME)
   self.verify_volume(PGVOLUME)
@@ -151,16 +169,17 @@ for p in [pathlib.Path('/var/lib/odoo'),root.parent,root,*root.rglob('*')]:os.ch
  def attach(self,network):
   info=self.verify_server()
   if network not in info['NetworkSettings']['Networks']:self.a.run('network','connect','--alias',SERVER,network,SERVER)
-  self.verify_server()
+  return self.verify_server()
  def replenish(self):
   with self.builder_lock():
    self.ensure();all_profiles=profiles();self.store.retire_old_ready({p['fingerprint'] for _,p,_ in all_profiles})
-   while self.store.refill_needed():
-    if int(next(l.split()[1] for l in pathlib.Path('/proc/meminfo').read_text().splitlines() if l.startswith('MemAvailable:')))*1024<2*1024**3:raise RuntimeError('Replenishment waits for host memory headroom')
+   for _ in range(REFILL_BATCH):
+    if not self.store.refill_needed():break
+    if host_memory_available()<2*1024**3:raise RuntimeError('Replenishment waits for host memory headroom')
     counts={r['fingerprint']:r['n'] for r in self.store.db.execute("SELECT fingerprint,count(*) n FROM reserve_slots WHERE state='ready' GROUP BY fingerprint")}
     modules,profile,weight=max(all_profiles,key=lambda item:item[2]-counts.get(item[1]['fingerprint'],0))
     slot=self.create_slot(modules,profile);print(json.dumps({'reserve_prepared':slot,'ready':self.store.counts().get('ready',0),'target':TARGET}),flush=True)
-   print(json.dumps({'reserve_ready':self.store.counts().get('ready',0),'target':TARGET,'low_water':5}),flush=True)
+   print(json.dumps({'reserve_ready':self.store.counts().get('ready',0),'target':TARGET,'low_water':LOW_WATER,'batch_limit':REFILL_BATCH}),flush=True)
    self.prune_retired()
  def prune_retired(self):
   for row in self.store.db.execute("SELECT * FROM reserve_slots WHERE state='retired' AND tenant_id IS NULL").fetchall():

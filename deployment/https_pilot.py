@@ -40,7 +40,7 @@ class BoundedHTTPServer(ThreadingHTTPServer):
 
 class HTTPSIdentityServer(BoundedHTTPServer):
  daemon_threads=True
- max_concurrent_requests=8
+ max_concurrent_requests=32
  def __init__(self,port,database,deliver,launch,origin,allowed_emails,tenant_origin,public_signup=False,operational_login=False,operational_directory=None):
   self.authority=checked_origin(origin);self.origin=origin
   self.tenant_origin=tenant_origin;checked_origin(tenant_origin)
