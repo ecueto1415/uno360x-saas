@@ -1,0 +1,10 @@
+{
+  "id": "restaurant_pos",
+  "name": "UNO360X POS para restaurantes y bares",
+  "status": "development",
+  "subscription": "standalone_addon",
+  "included_in_base": false,
+  "identity": "uno360x_business_account",
+  "launch": "node pos-pilot/server.mjs",
+  "demo_location": "Sucursal Centro"
+}

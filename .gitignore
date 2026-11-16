@@ -9,3 +9,5 @@ secrets/
 *.pem
 *.key
 saas-mail.json
+
+pos-pilot/var/
