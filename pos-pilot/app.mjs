@@ -2,6 +2,7 @@ import {money,totals,margin} from './domain.mjs';
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const modes={Mesas:'Mesas',Caja:'Caja',Cocina:'Cocina',Barra:'Barra',Inventario:'Inventario y mermas',Reportes:'Reportes y cierre de caja',Menú:'Menú y recetas'};
+let inventoryConnected=false;
 let mode='Caja',state,summary,selected,locked=false,formData,category='',query='',stationPoll;
 const cash=v=>Math.round(Number(v)*100);
 const picked=()=>state.orders.find(o=>o.id===selected);
@@ -23,7 +24,7 @@ function modal(title,html,data={}){
 async function refresh(renderNow=true){
  const res=await fetch('/api/state');
  const data=await res.json();if(!res.ok)throw new Error(data.error);
- ({state,summary}=data);
+ ({state,summary,inventoryConnected}=data);
  if(data.connected){
   $('.rail-foot').hidden=true;
   $('#role').value=data.connected.role;
@@ -75,7 +76,8 @@ function inventory(){
  for(const e of state.events.filter(e=>e.type!=='sale').slice(-6).reverse())rows+=line(esc(state.ingredients[e.ingredient].name)+' · '+(e.type==='count'?'Conteo':'Merma'),esc(e.type==='count'?'Diferencia: '+e.difference:'−'+e.quantity+' · '+e.reason));
  const choices=Object.entries(state.ingredients).map(([k,v])=>[k,v.name]);
  const fields=select('ingredient','Ingrediente',choices)+input('quantity','Cantidad','number','min="0" step="1" required');
- return '<div class="layout">'+panel('Existencia esperada',rows)+'<div class="stack">'+panel('Registrar merma',form('waste',fields+input('reason','Motivo','text','required')))+panel('Conteo real',form('count',fields))+'</div></div>';
+ const central=inventoryConnected?action('syncInventory','Sincronizar inventario de pruebas','','primary'):'';
+ return '<div class="layout">'+panel('Existencia esperada',rows+central)+'<div class="stack">'+panel('Registrar merma',form('waste',fields+input('reason','Motivo','text','required')))+panel('Conteo real',form('count',fields))+'</div></div>';
 }
 function reports(){
  if(!state.shift)return panel('Sin turno','<p>Abre caja para ver los movimientos.</p>');
@@ -101,7 +103,8 @@ async function command(type,data){
   state=r.state;summary=r.summary;
   if($('#modal').open)$('#modal').close();
   if(type==='order'){selected=r.result.id;mode='Caja';}
-  if(type==='send')flash('Comandas nuevas · Cocina: '+r.result.cocina+' · Barra: '+r.result.barra);
+  if(type==='sync-inventory')flash('Inventario: '+r.result.filter(x=>x.state==='confirmado').length+' confirmados, '+r.result.filter(x=>x.state==='pendiente').length+' pendientes.');
+  else if(type==='send')flash('Comandas nuevas · Cocina: '+r.result.cocina+' · Barra: '+r.result.barra);
   else if(type==='pay')flash('Pago registrado: '+money(r.result.amount));
   else if(type==='fiscal')flash('Mismo comprobante · '+r.result.status);
   else flash('Operación registrada.');
@@ -131,6 +134,7 @@ document.addEventListener('click',e=>{
  if(a==='ready'){const [order,line]=v.split(',');command('ready',{order,line});}
  if(a==='void')modal('Anular partida',form('void',input('reason','Motivo','text','required')),{order:selected,line:v});
  if(a==='discount')modal('Descuento autorizado',form('discount',input('discount','Descuento (RD$)','number','min="0.01" step=".01" required')+input('reason','Motivo','text','required')),{order:selected,line:v});
+ if(a==='syncInventory')command('sync-inventory',{});
  if(a==='fiscal')command('fiscal',{order:v});
  if(a==='pay'||a==='charge'){
   const o=picked(),unpaid=o.lines.filter(l=>!l.payment);

@@ -130,3 +130,33 @@ test('La misma sesión de UNO360X aplica contrato, rol y aislamiento de sucursal
  assert.equal(forged.status,400);
  assert.match((await forged.json()).error,/permiso/);
 });
+
+test('El inventario pendiente se reintenta con la misma referencia',async t=>{
+ const attempts=new Map();
+ const inventory=async(scope,event)=>{
+  assert.equal(scope,'negocio-demostracion:sucursal-centro');
+  assert.equal(event.ingredient,'ron');
+  const count=(attempts.get(event.reference)||0)+1;
+  attempts.set(event.reference,count);
+  if(count===1)throw Error('Tiempo de espera de laboratorio');
+  return 99;
+ };
+ const server=makeServer(':memory:',null,inventory);
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ t.after(()=>new Promise(r=>server.close(r)));
+ async function command(type,data,role){
+  const res=await fetch('http://127.0.0.1:'+server.address().port+'/api/command',{
+   method:'POST',headers:{'Content-Type':'application/json','X-Pos-Role':role},
+   body:JSON.stringify({key:randomUUID(),type,...data})});
+  const payload=await res.json();assert.equal(res.status,200,payload.error);return payload;
+ }
+ await command('waste',{ingredient:'ron',quantity:20,reason:'Prueba'},'barra');
+ const first=await command('sync-inventory',{},'caja');
+ const second=await command('sync-inventory',{},'caja');
+ const third=await command('sync-inventory',{},'caja');
+ assert.equal(first.result[0].state,'pendiente');
+ assert.equal(second.result[0].state,'confirmado');
+ assert.equal(second.result[0].reference,first.result[0].reference);
+ assert.deepEqual(third.result,[]);
+ assert.equal(third.state.ingredients.ron.stock,2480);
+});

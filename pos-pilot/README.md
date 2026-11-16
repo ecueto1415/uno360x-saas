@@ -66,3 +66,35 @@ Reinicia el piloto con esas dos variables. Los propietarios y administradores ha
 | 17 Usuarios y permisos, 18 Equipos y estaciones, 19 Contingencia | Roles y sesión compartida en laboratorio, más dos estaciones. Activación comercial, equipos, impresoras y continuidad sin internet pendientes. |
 
 Para continuidad, falta probar un servidor local de sucursal accesible desde caja, cocina y barra por la red interna, con cola persistente para sincronización y resolución de conflictos al volver internet. El piloto comparte estado cuando las pantallas alcanzan el mismo servidor local. No implementa trabajo independiente de una terminal desconectada ni sincronización con la nube.
+
+## Inventario central y certificación
+
+Para el conector de inventario prepara una base desechable de Odoo 18 cuyo nombre empiece por `uno360x_pos_lab`. Instala `uno360x_pos_pilot_stock`, crea los productos almacenables de ingredientes, una ubicación interna de origen y una ubicación de inventario de destino, ambas de la empresa. Usa un usuario técnico de inventario del laboratorio.
+
+Establece `POS_ODOO_KEY` fuera del repositorio y apunta `POS_ODOO_CONFIG` a un JSON con el siguiente formato. Los identificadores son ilustrativos. `factor` convierte la cantidad local a la unidad de medida de Odoo.
+
+```json
+{
+  "origin": "http://127.0.0.1:8069/",
+  "database": "uno360x_pos_lab",
+  "login": "pos-stock-lab",
+  "branches": {
+    "negocio-demostracion:sucursal-centro": {
+      "company": 1,
+      "source": 8,
+      "destination": 14,
+      "products": {
+        "ron": {"id": 101,"factor": 0.001},
+        "limon": {"id": 102,"factor": 0.001},
+        "jarabe": {"id": 103,"factor": 0.001},
+        "menta": {"id": 104,"factor": 1},
+        "soda": {"id": 105,"factor": 0.001}
+      }
+    }
+  }
+}
+```
+
+Cobra un mojito y abre **Inventario → Sincronizar inventario de pruebas**. Revisa los movimientos terminados en Odoo. Repite el botón y comprueba que no aparecen movimientos nuevos. Un fallo conserva el consumo local y la misma referencia para el siguiente intento. Los conteos físicos quedan como comparación local. En modo conectado usa `id-negocio:centro` como clave de sucursal. Una venta local previa a esta versión sin referencia queda fuera de la sincronización.
+
+La validación fiscal local usa el caso para llevar de RD$1,380.60 y comprueba firma y estructura de los XML E31 y E32 con un certificado ficticio. Ejecuta `python pos-pilot/fiscal_check.py` con `lxml`, `cryptography` y `tzdata` disponibles. E31 se dirige al servicio e-CF y ese E32 requiere un RFCE. Quedan por implementar la firma del RFCE, la representación fiscal de la propina para consumo local y el envío en certificación. Para una prueba real hacen falta el emisor autorizado en certificación, certificado de prueba y casos/e-NCF del set asignado por la DGII. El piloto continúa mostrando estado simulado.

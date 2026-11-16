@@ -48,7 +48,7 @@ export function apply(s,command,user,actor=user){
   role(user,'barra','supervisor');const item=s.ingredients[command.ingredient];
   fail(item&&nonnegative(command.quantity,100000),'Cantidad inválida.');
   if(type==='waste')fail(command.quantity>0&&item.stock>=command.quantity&&label(command.reason),'Indica una merma válida y su motivo.');
-  const event={type,ingredient:command.ingredient,quantity:command.quantity,expected:item.stock,
+  const event={type,reference:id()+':'+command.ingredient,ingredient:command.ingredient,quantity:command.quantity,expected:item.stock,
    difference:type==='count'?command.quantity-item.stock:-command.quantity,user:actor,reason:label(command.reason),at:new Date().toISOString()};
   if(type==='waste')item.stock-=command.quantity;
   s.events.push(event);return event;
@@ -122,11 +122,11 @@ export function apply(s,command,user,actor=user){
   const record={id:id(),method:command.method,order:o.id,shift:o.shift,user:actor,lines:command.lines,amount:totals(lines,o.service).total};
   s.payments.push(record);
   for(const l of lines)l.payment=record.id;
-  for(const [k,n] of Object.entries(use)){s.ingredients[k].stock-=n;s.events.push({type:'sale',ingredient:k,quantity:n,payment:record.id});}
+  for(const [k,n] of Object.entries(use)){s.ingredients[k].stock-=n;s.events.push({type:'sale',reference:record.id+':'+k,ingredient:k,quantity:n,payment:record.id});}
   o.billing={kind,rnc:kind==='E31'?rnc:''};
   if(o.lines.every(l=>l.payment)){
    o.closed=true;
-   o.fiscal={id:id(),status:'Simulado · sin envío a DGII',...o.billing,amount:totals(o.lines,o.service).total};
+   o.fiscal={id:id(),status:'Simulado · sin envío a DGII',...o.billing,amount:totals(o.lines,o.service).total, route:o.billing.kind==='E32' && totals(o.lines,o.service).total<25000000?'RFCE':'ECF'};
   }
   return record;
  }

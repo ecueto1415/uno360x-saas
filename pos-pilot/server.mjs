@@ -3,11 +3,12 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { stockConnector } from './lab-stock.mjs';
 import { businessAccess } from './access.mjs';
 import { seed, apply, cashSummary } from './domain.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 const roles=new Set(['caja','camarero','cocina','barra','supervisor']);
-export function makeServer(file, access=null){
+export function makeServer(file, access=null, inventory=null){
  if(file!==':memory:')mkdirSync(dirname(file),{recursive:true});
  const db=new DatabaseSync(file);
  db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS pilot (id TEXT PRIMARY KEY, state TEXT NOT NULL)');
@@ -30,6 +31,25 @@ export function makeServer(file, access=null){
    return {result,state:s,summary:cashSummary(s)};
   }catch(error){db.exec('ROLLBACK');throw error;}
  }
+ async function syncInventory(scope){
+  const pending=state(scope).events.filter(e=>['sale','waste'].includes(e.type)&&e.reference&&!e.centralMove);
+  const replies=[];
+  for(const event of pending){
+   try{
+    const move=await inventory(scope,event);
+    db.exec('BEGIN IMMEDIATE');
+    try{
+     const s=state(scope);
+     const current=s.events.find(row=>row.reference===event.reference);
+     if(!current)throw Error('Movimiento local no disponible.');
+     current.centralMove=move;
+     write.run(scope,JSON.stringify(s));db.exec('COMMIT');
+    }catch(e){db.exec('ROLLBACK');throw e;}
+    replies.push({reference:event.reference,state:'confirmado',move});
+   }catch(e){replies.push({reference:event.reference,state:'pendiente',reason:e.message});}
+  }
+  return replies;
+ }
  const files={'/':'index.html','/app.mjs':'app.mjs','/domain.mjs':'domain.mjs','/style.css':'style.css',
   '/images/burger.jpg':'images/burger.jpg','/images/wings.jpg':'images/wings.jpg','/images/mojito.jpg':'images/mojito.jpg'};
  const content={html:'text/html; charset=utf-8',mjs:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',jpg:'image/jpeg'};
@@ -48,7 +68,7 @@ export function makeServer(file, access=null){
    if(access&&!connected)return reply(res,403,{error:'La cuenta no tiene acceso al POS de esta sucursal.'});
    const scope=connected?.scope||'negocio-demostracion:sucursal-centro';
    if(req.method==='GET'&&url.pathname==='/api/state'){
-    const s=state(scope);return reply(res,200,{state:s,summary:cashSummary(s),connected:connected?{role:connected.role,branchName:connected.branchName}:null});
+    const s=state(scope);return reply(res,200,{state:s,summary:cashSummary(s),inventoryConnected:Boolean(inventory),connected:connected?{role:connected.role,branchName:connected.branchName}:null});
    }
    if(req.method==='POST'&&url.pathname==='/api/command'){
     if(req.headers.origin&&req.headers.origin!=='http://'+req.headers.host)return reply(res,403,{error:'Origen inválido.'});
@@ -58,7 +78,13 @@ export function makeServer(file, access=null){
     for await(const block of req){
      body+=block;if(body.length>850000)return reply(res,413,{error:'Archivo demasiado grande.'});
     }
-    return reply(res,200,mutation(JSON.parse(body),user,scope,connected?.account||user));
+    const command=JSON.parse(body);
+    if(command.type==='sync-inventory'){
+     if(!inventory||!['caja','supervisor'].includes(user))return reply(res,403,{error:'Inventario central de pruebas no disponible para este rol.'});
+     const result=await syncInventory(scope),s=state(scope);
+     return reply(res,200,{result,state:s,summary:cashSummary(s)});
+    }
+    return reply(res,200,mutation(command,user,scope,connected?.account||user));
    }
    reply(res,404,{error:'Ruta no encontrada.'});
   }catch(e){reply(res,400,{error:e.message});}
@@ -71,5 +97,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const {POS_IDENTITY_DB,POS_ENTITLEMENTS}=process.env;
  if(Boolean(POS_IDENTITY_DB)!==Boolean(POS_ENTITLEMENTS))throw new Error('Configura la base de identidad y las autorizaciones POS juntas.');
  const access=POS_IDENTITY_DB?businessAccess(POS_IDENTITY_DB,POS_ENTITLEMENTS):null;
- makeServer(process.env.POS_DB||join(here,'var','pilot.sqlite'),access).listen(port,'127.0.0.1',()=>console.log('UNO360X POS de pruebas: http://127.0.0.1:'+port));
+ makeServer(process.env.POS_DB||join(here,'var','pilot.sqlite'),access,process.env.POS_ODOO_CONFIG?stockConnector(process.env.POS_ODOO_CONFIG):null).listen(port,'127.0.0.1',()=>console.log('UNO360X POS de pruebas: http://127.0.0.1:'+port));
 }
