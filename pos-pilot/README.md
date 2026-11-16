@@ -97,4 +97,14 @@ Establece `POS_ODOO_KEY` fuera del repositorio y apunta `POS_ODOO_CONFIG` a un J
 
 Cobra un mojito y abre **Inventario → Sincronizar inventario de pruebas**. Revisa los movimientos terminados en Odoo. Repite el botón y comprueba que no aparecen movimientos nuevos. Un fallo conserva el consumo local y la misma referencia para el siguiente intento. Los conteos físicos quedan como comparación local. En modo conectado usa `id-negocio:centro` como clave de sucursal. Una venta local previa a esta versión sin referencia queda fuera de la sincronización.
 
-La validación fiscal local usa el caso para llevar de RD$1,380.60 y comprueba firma y estructura de los XML E31 y E32 con un certificado ficticio. Ejecuta `python pos-pilot/fiscal_check.py` con `lxml`, `cryptography` y `tzdata` disponibles. E31 se dirige al servicio e-CF y ese E32 requiere un RFCE. Quedan por implementar la firma del RFCE, la representación fiscal de la propina para consumo local y el envío en certificación. Para una prueba real hacen falta el emisor autorizado en certificación, certificado de prueba y casos/e-NCF del set asignado por la DGII. El piloto continúa mostrando estado simulado.
+La validación fiscal local usa el caso para llevar de RD$1,380.60 y comprueba firma y estructura de los XML E31 y E32 con un certificado ficticio. Ejecuta `python pos-pilot/fiscal_check.py` con `lxml`, `cryptography` y `tzdata` disponibles. E31 se dirige al servicio e-CF y ese E32 requiere un RFCE. El RFCE ya se deriva del E32 firmado, se firma y se valida localmente. El transporte de certificación está probado con respuestas simuladas. Todavía falta remitir los casos asignados y verificar la respuesta real. La representación fiscal de la propina para consumo local queda pendiente. Para una prueba real hacen falta el emisor autorizado en certificación, certificado de prueba y casos/e-NCF del set asignado por la DGII. El piloto continúa mostrando estado simulado.
+
+### Envío de un caso asignado por DGII
+
+Usa el XML E31 o E32 completo y firmado del set de certificación, el certificado autorizado que lo firmó y una carpeta persistente de bitácora. Configura `POS_CERT_PASSWORD` fuera del código. La herramienta llama exclusivamente a los servicios `certecf` y deriva el RFCE para un E32 inferior a RD$250,000. Si ya hay una entrada de bitácora para ese emisor y e-NCF, consulta el estado antes de intentar de nuevo. Una respuesta HTTP o un TrackId no prueban aceptación fiscal.
+
+```powershell
+python pos-pilot/dgii_certification.py E31-o-E32-firmado.xml --p12 certificado-certificacion.p12 --journal pos-pilot/var/dgii --submit-certification
+```
+
+Prueba de inventario en Odoo 18 y PostgreSQL 16 locales: se repitió la misma referencia de consumo de 45 unidades. El saldo pasó de 2,500 a 2,455 y la base conservó un único movimiento terminado. Prueba fiscal local: E31, E32 y RFCE firmados con certificado ficticio, selección de servicio, autenticación simulada y bloqueo del segundo envío.

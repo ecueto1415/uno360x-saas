@@ -13,6 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from addons.uno360x_ecf_core.builder import build_invoice, validate_signed
 from addons.uno360x_ecf_core.crypto import sign_xml, verify_xml
+from dgii_certification import create_rfce, submit, verify_xml as verify_certification_xml
+from tempfile import TemporaryDirectory
+import json
 
 
 def check():
@@ -56,7 +59,35 @@ def check():
         for node in schema.xpath('//xs:element[@name="IndicadorServicioTodoIncluido"]',namespaces=ns):
             node.getparent().remove(node)
     etree.XMLSchema(schema).assertValid(etree.fromstring(signed32))
-    print('E31 y E32: firma ficticia y estructura verificadas. Sin RFCE firmado ni envío DGII.')
+    summary = create_rfce(signed32,p12,password)
+    assert b'<RFCE>' in summary and verify_certification_xml(summary,cert)
+    def exercise(root, expected):
+        root = etree.fromstring(root)
+        root.find('Encabezado/Emisor/RNCEmisor').text = '101000001'
+        payload = sign_xml(etree.tostring(root),p12,password)
+        calls = []
+        def simulate(url, **kw):
+            calls.append(url)
+            if url.endswith('/Semilla'):
+                return b'<SemillaModel><valor>prueba</valor></SemillaModel>'
+            if url.endswith('/ValidarSemilla'):
+                assert verify_certification_xml(kw['xml'],cert)
+                return b'{"token":"local-only"}'
+            assert url.endswith(expected) and kw['token']=='local-only'
+            assert etree.fromstring(kw['xml']).tag == ('RFCE' if '/recepcionfc/' in url else 'ECF')
+            assert verify_certification_xml(kw['xml'],cert)
+            return b'{"estado":"SIMULADO"}'
+        with TemporaryDirectory() as temp:
+            assert submit(payload,p12,password,Path(temp),simulate)['estado']=='SIMULADO'
+            try:
+                submit(payload,p12,password,Path(temp),simulate)
+            except ValueError:
+                assert len(calls)==3
+            else:
+                raise AssertionError('El reintento no se bloqueó')
+    exercise(e31,'/recepcion/api/FacturasElectronicas')
+    exercise(e32,'/recepcionfc/api/recepcion/ecf')
+    print('E31, E32 y RFCE: XML y firma verificados. Transporte y reintento probados con respuestas simuladas.')
 
 
 if __name__ == '__main__':
