@@ -21,7 +21,15 @@ function modal(title,html,data={}){
  if(!$('#modal').open)$('#modal').showModal();
 }
 async function refresh(renderNow=true){
- const res=await fetch('/api/state');({state,summary}=await res.json());if(renderNow)render();
+ const res=await fetch('/api/state');
+ const data=await res.json();if(!res.ok)throw new Error(data.error);
+ ({state,summary}=data);
+ if(data.connected){
+  $('.rail-foot').hidden=true;
+  $('#role').value=data.connected.role;
+  $('header p').textContent='UNO360X POS / '+data.connected.branchName;
+ }
+ if(renderNow)render();
 }
 function switchTo(next){mode=next;render();}
 function render(){

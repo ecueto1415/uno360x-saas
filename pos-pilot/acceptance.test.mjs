@@ -91,3 +91,42 @@ test('Menú configurable, permisos y anulación auditada',async t=>{
  assert.equal(s.audits[0].user,'supervisor');assert.equal(s.audits[0].details.reason,data.reason);
  assert.equal(s.orders[0].closed,true);
 });
+test('La misma sesión de UNO360X aplica contrato, rol y aislamiento de sucursal', async t=>{
+ const {mkdtempSync,rmSync,writeFileSync}=await import('node:fs');
+ const {tmpdir}=await import('node:os');
+ const {join}=await import('node:path');
+ const {DatabaseSync}=await import('node:sqlite');
+ const {createHash}=await import('node:crypto');
+ const {businessAccess}=await import('./access.mjs');
+ const dir=mkdtempSync(join(tmpdir(),'uno360x-pos-'));
+ const identity=join(dir,'identity.sqlite'),grants=join(dir,'grants.json');
+ const fixture=new DatabaseSync(identity);
+ fixture.exec(`CREATE TABLE accounts(id TEXT, active INT, verified INT);
+  CREATE TABLE identity_sessions(digest TEXT, account_id TEXT, expires REAL);
+  CREATE TABLE memberships(account_id TEXT,tenant_id TEXT,role TEXT,active INT);
+  INSERT INTO accounts VALUES ('c01',1,1);
+  INSERT INTO memberships VALUES ('c01','a','member',1),('c01','b','member',1),('c01','c','member',1);`);
+ const session=randomUUID();
+ fixture.prepare('INSERT INTO identity_sessions VALUES (?,?,?)').run(createHash('sha256').update(session).digest('hex'),'c01',Date.now()/1000+300);
+ fixture.close();
+ writeFileSync(grants,JSON.stringify({defaultTenant:'a',tenants:{
+  a:{enabled:true,branch:'centro',users:{c01:'caja'}},
+  b:{enabled:false,branch:'centro',users:{c01:'caja'}},
+  c:{enabled:true,branch:'norte',users:{c01:'caja'}},
+ }}));
+ const server=makeServer(':memory:',businessAccess(identity,grants));
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ t.after(async()=>{await new Promise(r=>server.close(r));rmSync(dir,{recursive:true});});
+ const url='http://127.0.0.1:'+server.address().port;
+ const headers={cookie:'uno360x_lab_session='+session,'Content-Type':'application/json'};
+ assert.equal((await fetch(url+'/api/state')).status,403);
+ assert.equal((await fetch(url+'/api/state',{headers:{...headers,'x-pos-tenant':'b'}})).status,403);
+ const opened=await fetch(url+'/api/command',{method:'POST',headers,body:JSON.stringify({key:randomUUID(),type:'open',fund:200000})});
+ assert.equal(opened.status,200);
+ assert.equal((await opened.json()).state.shift.user,'c01');
+ const other=await fetch(url+'/api/state',{headers:{...headers,'x-pos-tenant':'c'}});
+ assert.equal((await other.json()).state.shift,null);
+ const forged=await fetch(url+'/api/command',{method:'POST',headers:{...headers,'x-pos-role':'supervisor'},body:JSON.stringify({key:randomUUID(),type:'product'})});
+ assert.equal(forged.status,400);
+ assert.match((await forged.json()).error,/permiso/);
+});

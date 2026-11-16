@@ -19,12 +19,12 @@ const role=(user,...roles)=>fail(roles.includes(user),'Este rol no tiene permiso
 const nonnegative=(n,max=100000000)=>Number.isSafeInteger(n)&&n>=0&&n<=max;
 const label=(s,max=100)=>String(s??'').trim().slice(0,max);
 const log=(s,user,action,details)=>s.audits.push({user,action,details,at:new Date().toISOString()});
-export function apply(s,command,user){
+export function apply(s,command,user,actor=user){
  const {type}=command;
  if(type==='open'){
   role(user,'caja','supervisor');fail(!s.shift||s.shift.closed,'Ya hay un turno abierto.');
   fail(nonnegative(command.fund),'Fondo inválido.');
-  return s.shift={id:id(),fund:command.fund,user,opened:new Date().toISOString()};
+  return s.shift={id:id(),fund:command.fund,user:actor,opened:new Date().toISOString()};
  }
  if(type==='product'){
   role(user,'supervisor');
@@ -49,7 +49,7 @@ export function apply(s,command,user){
   fail(item&&nonnegative(command.quantity,100000),'Cantidad inválida.');
   if(type==='waste')fail(command.quantity>0&&item.stock>=command.quantity&&label(command.reason),'Indica una merma válida y su motivo.');
   const event={type,ingredient:command.ingredient,quantity:command.quantity,expected:item.stock,
-   difference:type==='count'?command.quantity-item.stock:-command.quantity,user,reason:label(command.reason),at:new Date().toISOString()};
+   difference:type==='count'?command.quantity-item.stock:-command.quantity,user:actor,reason:label(command.reason),at:new Date().toISOString()};
   if(type==='waste')item.stock-=command.quantity;
   s.events.push(event);return event;
  }
@@ -63,7 +63,7 @@ export function apply(s,command,user){
  if(type==='close'){
   role(user,'caja','supervisor');fail(nonnegative(command.counted),'Efectivo contado inválido.');
   fail(!s.orders.some(o=>o.shift===s.shift.id&&!o.closed),'Hay pedidos abiertos en este turno.');
-  return Object.assign(s.shift,{closed:new Date().toISOString(),userClosed:user,counted:command.counted,...cashSummary(s),difference:command.counted-cashSummary(s).expected});
+  return Object.assign(s.shift,{closed:new Date().toISOString(),userClosed:actor,counted:command.counted,...cashSummary(s),difference:command.counted-cashSummary(s).expected});
  }
  if(type==='order'){
   role(user,'caja','camarero','supervisor');
@@ -97,13 +97,13 @@ export function apply(s,command,user){
   const l=o.lines.find(item=>item.id===command.line);
   fail(l&&!l.payment&&nonnegative(command.cents,l.cents)&&command.cents>0&&label(command.reason),'Indica un descuento y su motivo.');
   l.cents-=command.cents;
-  log(s,user,'descuento',{order:o.number,line:l.id,cents:command.cents,reason:label(command.reason)});
+  log(s,actor,'descuento',{order:o.number,line:l.id,cents:command.cents,reason:label(command.reason)});
   return l;
  }
  if(type==='void'){
   role(user,'supervisor');const l=o.lines.find(l=>l.id===command.line);
   fail(l&&!l.payment&&label(command.reason),'Indica una partida sin pagar y un motivo.');
-  log(s,user,'anulación',{order:o.number,line:l.id,reason:label(command.reason)});
+  log(s,actor,'anulación',{order:o.number,line:l.id,reason:label(command.reason)});
   o.lines=o.lines.filter(x=>x!==l);if(!o.lines.length)o.closed=true;
   return {voided:l.id};
  }
@@ -119,7 +119,7 @@ export function apply(s,command,user){
   fail(!o.billing||o.billing.kind===kind&&o.billing.rnc===(kind==='E31'?rnc:''),'Ya se eligió el comprobante para esta cuenta.');
   const use={};for(const l of lines)for(const [key,qty] of Object.entries(l.recipe||{}))use[key]=(use[key]||0)+qty;
   fail(Object.entries(use).every(([k,n])=>s.ingredients[k]?.stock>=n),'Existencia insuficiente para registrar esta venta.');
-  const record={id:id(),method:command.method,order:o.id,shift:o.shift,user,lines:command.lines,amount:totals(lines,o.service).total};
+  const record={id:id(),method:command.method,order:o.id,shift:o.shift,user:actor,lines:command.lines,amount:totals(lines,o.service).total};
   s.payments.push(record);
   for(const l of lines)l.payment=record.id;
   for(const [k,n] of Object.entries(use)){s.ingredients[k].stock-=n;s.events.push({type:'sale',ingredient:k,quantity:n,payment:record.id});}

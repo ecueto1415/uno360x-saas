@@ -26,10 +26,32 @@ La prueba HTTP usa una base en memoria. Verifica totales, comandas incrementales
 
 ## Integración con UNO360X
 
-- **Cuenta y contratación.** La entrada prevista es un módulo adicional habilitado por una suscripción POS independiente de Base Empresarial (US$45). El repositorio ya tiene sesiones y membresías de negocio en `control/identity.py` y `control/access_broker.py`. Al integrar, el acceso valida sesión, membresía y contrato POS en el servidor, y transmite cuenta, negocio, sucursal y permisos al POS. El selector de roles del piloto es exclusivo de laboratorio.
-- **Sucursales y usuarios.** El piloto usa Sucursal Centro y Caja 01. La integración asignará permiso y sucursal por usuario. Cada pedido, turno, comanda y autorización conservará el negocio, la sucursal y el identificador del usuario real.
+- **Cuenta y contratación.** La entrada prevista es un módulo adicional habilitado por una suscripción POS independiente de Base Empresarial (US$45). El repositorio ya tiene sesiones y membresías de negocio en `control/identity.py` y `control/access_broker.py`. El piloto puede leer la sesión del laboratorio y valida la membresía, la habilitación del módulo y el permiso de caja en el servidor. El selector de roles aparece en el modo de demostración.
+- **Sucursales y usuarios.** El piloto usa Sucursal Centro y Caja 01. En modo conectado, la configuración del piloto asigna la sucursal del negocio y el permiso por cuenta. Los negocios y sucursales guardan datos separados y el registro de caja identifica al usuario de la sesión. Queda pendiente la gestión comercial de contratos y sucursales desde UNO360X.
 - **Inventario.** Las recetas, mermas y conteos se prueban en SQLite. La integración mapeará ingredientes y unidades a productos y almacenes de la sucursal en UNO360X. El pago y los movimientos locales se registran en una sola transacción. La salida hacia inventario central deberá reutilizar el identificador del pago para evitar duplicados.
 - **Fiscal.** El comprobante del piloto es simulado. El adaptador real usará los datos fiscales y secuencias del negocio, y el constructor y las validaciones de `addons/uno360x_ecf_core`. Debe conservar una referencia fiscal única por pedido, guardar el XML firmado y consultar el estado antes de reenviar. Pago y estado fiscal permanecen separados. Las tasas y reglas de la maqueta son datos de aceptación del piloto.
+
+### Modo conectado al laboratorio
+
+Inicia primero el servicio de identidad del repositorio y entra desde el mismo host de loopback que usará el POS. Usa una base de identidad del laboratorio. El piloto verifica la cookie existente de UNO360X y lee esa base en modo de solo lectura.
+
+Configura `POS_IDENTITY_DB` con la ruta de esa base y `POS_ENTITLEMENTS` con la ruta de un JSON de habilitaciones de prueba. Usa los identificadores reales del laboratorio en lugar de los ejemplos:
+
+```json
+{
+  "defaultTenant": "id-negocio",
+  "tenants": {
+    "id-negocio": {
+      "enabled": true,
+      "branch": "centro",
+      "branchName": "Sucursal Centro",
+      "users": { "id-cuenta": "caja" }
+    }
+  }
+}
+```
+
+Reinicia el piloto con esas dos variables. Los propietarios y administradores habilitados tienen rol supervisor por defecto. La prueba automatizada verifica que un contrato deshabilitado deniega el acceso, que una cuenta comparte la sesión y que los turnos de otra sucursal quedan separados.
 
 ## Mapa de las 18 vistas del PDF
 
@@ -41,6 +63,6 @@ La prueba HTTP usa una base en memoria. Verifica totales, comandas incrementales
 | 09 División, 10 Cobro y facturación, 11 Comprobante | División por producto, tres métodos y estado fiscal simulado. PDF fiscal pendiente. |
 | 12 Devoluciones y nota de crédito | Próxima etapa. El piloto permite anular partidas sin pagar con autorización. |
 | 13 Cierre, 14 Menú y recetas, 15 Inventario y mermas, 16 Reportes | Cierre, receta, márgenes, merma, conteo y desglose funcionales. Horario automático de happy hour y reportes históricos pendientes. |
-| 17 Usuarios y permisos, 18 Equipos y estaciones, 19 Contingencia | Roles de demostración y dos estaciones. Cuenta real, equipos, impresoras y continuidad sin internet pendientes. |
+| 17 Usuarios y permisos, 18 Equipos y estaciones, 19 Contingencia | Roles y sesión compartida en laboratorio, más dos estaciones. Activación comercial, equipos, impresoras y continuidad sin internet pendientes. |
 
 Para continuidad, falta probar un servidor local de sucursal accesible desde caja, cocina y barra por la red interna, con cola persistente para sincronización y resolución de conflictos al volver internet. El piloto comparte estado cuando las pantallas alcanzan el mismo servidor local. No implementa trabajo independiente de una terminal desconectada ni sincronización con la nube.
