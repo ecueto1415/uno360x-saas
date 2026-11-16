@@ -160,3 +160,34 @@ test('El inventario pendiente se reintenta con la misma referencia',async t=>{
  assert.deepEqual(third.result,[]);
  assert.equal(third.state.ingredients.ron.stock,2480);
 });
+
+test('Una devolución de caja queda auditada y solo reduce una vez el efectivo esperado',async t=>{
+ const server=makeServer(':memory:');
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ t.after(()=>new Promise(r=>server.close(r)));
+ const url='http://127.0.0.1:'+server.address().port+'/api/command';
+ async function send(type,data,role='caja',key=randomUUID(),status=200){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-Pos-Role':role},body:JSON.stringify({type,key,...data})});
+  const json=await r.json();assert.equal(r.status,status,json.error);return json;
+ }
+ await send('open',{fund:200000});
+ const {result:o}=await send('order',{service:'llevar'});
+ const {result:l}=await send('add',{order:o.id,product:'mojito'});
+ await send('send',{order:o.id});
+ await send('pay',{order:o.id,lines:[l.id],method:'efectivo',kind:'E32'});
+ const payload={order:o.id,lines:[l.id],reason:'Cancelación después del cobro'};
+ await send('refund',payload,'caja',randomUUID(),400);
+ const key=randomUUID();
+ const first=await send('refund',payload,'supervisor',key);
+ const repeat=await send('refund',payload,'supervisor',key);
+ await send('refund',payload,'supervisor',randomUUID(),400);
+ assert.equal(first.result.id,repeat.result.id);
+ assert.equal(repeat.result.amount,35400);
+ assert.equal(repeat.state.refunds.length,1);
+ assert.equal(repeat.state.audits.at(-1).user,'supervisor');
+ assert.equal(repeat.state.ingredients.ron.stock,2455);
+ assert.deepEqual(repeat.summary.refunds,{efectivo:35400,tarjeta:0,transferencia:0});
+ const {result:closed}=await send('close',{counted:200000});
+ assert.equal(closed.difference,0);
+ assert.equal(closed.expected,200000);
+});

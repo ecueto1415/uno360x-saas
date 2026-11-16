@@ -3,6 +3,7 @@ const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const modes={Mesas:'Mesas',Caja:'Caja',Cocina:'Cocina',Barra:'Barra',Inventario:'Inventario y mermas',Reportes:'Reportes y cierre de caja',Menú:'Menú y recetas'};
 let inventoryConnected=false;
+let pendingRequest;
 let mode='Caja',state,summary,selected,locked=false,formData,category='',query='',stationPoll;
 const cash=v=>Math.round(Number(v)*100);
 const picked=()=>state.orders.find(o=>o.id===selected);
@@ -10,7 +11,7 @@ const orderName=o=>o.service==='mesa'?'Mesa '+String(o.table).padStart(2,'0'):o.
 const title=l=>esc(l.name);
 const action=(name,label,value='',style='')=>'<button type="button" class="'+style+'" data-action="'+name+'" data-value="'+esc(value)+'">'+label+'</button>';
 const panel=(label,content)=>'<section class="panel"><h2>'+label+'</h2>'+content+'</section>';
-const form=(type,content)=>'<form data-command="'+type+'">'+content+'<button class="primary" type="submit">'+({open:'Abrir turno',add:'Añadir a la cuenta',pay:'Registrar pago',product:'Guardar producto',order:'Abrir pedido',close:'Confirmar cierre',waste:'Registrar merma',count:'Guardar conteo',void:'Autorizar anulación',discount:'Autorizar descuento'}[type]||'Guardar')+'</button></form>';
+const form=(type,content)=>'<form data-command="'+type+'">'+content+'<button class="primary" type="submit">'+({open:'Abrir turno',add:'Añadir a la cuenta',pay:'Registrar pago',product:'Guardar producto',order:'Abrir pedido',close:'Confirmar cierre',waste:'Registrar merma',count:'Guardar conteo',void:'Autorizar anulación',discount:'Autorizar descuento',refund:'Registrar devolución'}[type]||'Guardar')+'</button></form>';
 const input=(name,label,type='text',extra='')=>'<label>'+label+'<input name="'+name+'" type="'+type+'" '+extra+'></label>';
 const options=(entries,chosen)=>entries.map(([v,t])=>'<option value="'+esc(v)+'" '+(v===chosen?'selected':'')+'>'+esc(t)+'</option>').join('');
 const select=(name,label,entries,chosen)=>'<label>'+label+'<select name="'+name+'">'+options(entries,chosen)+'</select></label>';
@@ -22,7 +23,7 @@ function modal(title,html,data={}){
  if(!$('#modal').open)$('#modal').showModal();
 }
 async function refresh(renderNow=true){
- const res=await fetch('/api/state');
+ const res=await fetch('/api/state',{signal:AbortSignal.timeout(5000)});
  const data=await res.json();if(!res.ok)throw new Error(data.error);
  ({state,summary,inventoryConnected}=data);
  if(data.connected){
@@ -57,9 +58,11 @@ function register(){
  }).join('')+'</div>';
  if(!o)return '<div class="layout">'+panel('Menú',catalog)+panel('Cuenta', '<p>Abre una mesa o selecciona un pedido.</p>'+action('nav','Ver mesas','Mesas','primary'))+'</div>';
  const items=o.lines.map(l=>line(title(l)+'<br><small>'+esc([l.station,l.status,'ITBIS '+l.tax+'%',...l.modifiers,l.note].filter(Boolean).join(' · '))+'</small>',
- money(l.cents)+(l.payment?' ✓':'')+(!l.payment&&!o.closed&&$('#role').value==='supervisor'?' '+action('void','Anular',l.id)+' '+action('discount','Descuento',l.id):''))).join('');
+ money(l.cents)+(l.refund?' · Devuelta':l.payment?' ✓':'')+(!l.payment&&!o.closed&&$('#role').value==='supervisor'?' '+action('void','Anular',l.id)+' '+action('discount','Descuento',l.id):''))).join('');
  let bill=items+prices(totals(o.lines,o.service));
- if(o.closed&&o.fiscal)bill+=line('Pago','Registrado')+line('Comprobante '+o.fiscal.kind,esc(o.fiscal.status))+action('fiscal','Reintentar comprobante',o.id);
+ if(o.closed&&o.fiscal)bill+=line('Pago','Registrado')+line('Comprobante '+o.fiscal.kind,esc(o.fiscal.status))+'<div class="actions">'+action('print','Imprimir ticket',o.id,'primary')+action('fiscal','Ver estado fiscal',o.id)+
+ (state.shift?.id===o.shift&&!state.shift.closed&&$('#role').value==='supervisor'&&o.lines.some(l=>!l.refund)?action('refund','Devolver partidas',o.id):'')+'</div>'+
+ (state.refunds||[]).filter(r=>r.order===o.id).map(r=>line('Devolución registrada',money(r.amount))).join('');
  else if(!o.closed)bill+='<div class="actions">'+action('send','Enviar comanda',o.id)+action('pay','Dividir y cobrar',o.id)+action('charge','Cobrar',o.id,'primary')+'</div>';
  return '<div class="layout">'+panel('Menú',catalog)+panel(orderName(o)+' · #'+o.number,(o.people?'<p class="muted">'+o.people+' personas</p>':'')+bill)+'</div>';
 }
@@ -82,9 +85,9 @@ function inventory(){
 function reports(){
  if(!state.shift)return panel('Sin turno','<p>Abre caja para ver los movimientos.</p>');
  const s=state.shift;
- return '<div class="layout">'+panel('Movimientos de caja',line('Fondo inicial',money(s.fund))+Object.entries(summary.methods).map(([n,m])=>line(n,money(m))).join('')+line('Efectivo esperado',money(summary.expected),'total'))+
+ return '<div class="layout">'+panel('Movimientos de caja',line('Fondo inicial',money(s.fund))+Object.entries(summary.methods).map(([n,m])=>line(n,money(m))).join('')+Object.entries(summary.refunds||{}).filter(([,m])=>m>0).map(([n,m])=>line('Devoluciones · '+n,money(m))).join('')+line('Efectivo esperado',money(summary.expected),'total'))+
  panel('Arqueo de efectivo',s.closed?line('Efectivo contado',money(s.counted))+line('Diferencia',money(s.difference))+line('Cerró',esc(s.userClosed)):form('close',input('counted','Efectivo contado','number','min="0" step=".01" required')))+
- panel('Comprobantes del turno',state.orders.filter(o=>o.shift===s.id&&o.fiscal).map(o=>line(orderName(o)+' #'+o.number,esc(o.fiscal.kind)+' · '+esc(o.fiscal.status))).join('')||'Sin comprobantes')+
+ panel('Comprobantes del turno',state.orders.filter(o=>o.shift===s.id&&o.fiscal).map(o=>line(orderName(o)+' #'+o.number,esc(o.fiscal.kind)+' · '+esc(o.fiscal.status)+' '+action('pick','Abrir venta',o.id)+' '+action('print','Imprimir',o.id))).join('')||'Sin comprobantes')+
  panel('Autorizaciones',state.audits.map(a=>line(esc(a.action)+' · '+esc(a.user),esc(a.details.reason))).join('')||'Sin autorizaciones')+'</div>';
 }
 function menu(){
@@ -94,21 +97,39 @@ function menu(){
   (Object.keys(p.recipe||{}).length?'<br><small>Costo estimado '+money(info.cost)+' · Margen normal '+money(info.normal)+(info.happy===null?'':' · Happy hour '+money(info.happy))+'</small>':''),action('edit','Editar',p.id));
  }).join(''))+panel('Menú y recetas','<p>Agrega categorías, modificadores y precios. Edita el mojito para revisar su receta y el precio de happy hour.</p>')+'</div>';
 }
+function printTicket(order){
+ const lines=order.lines.map(l=>line(title(l),money(l.cents))).join('');
+ const payments=state.payments.filter(p=>p.order===order.id).map(p=>line(esc(p.method),money(p.amount))).join('');
+ const refunds=(state.refunds||[]).filter(r=>r.order===order.id).map(r=>line('Devolución registrada',money(r.amount))).join('');
+ $('#printed-ticket').innerHTML='<h2>UNO360X POS</h2><p>Ticket de prueba · Sin valor fiscal</p><h3>'+orderName(order)+' · #'+order.number+'</h3>'+
+  lines+prices(totals(order.lines,order.service))+payments+refunds+'<p>Comprobante '+esc(order.fiscal.kind)+' · '+esc(order.fiscal.status)+'</p>';
+ window.print();
+}
 async function command(type,data){
  if(locked)return;locked=true;
  document.querySelectorAll('button').forEach(b=>b.disabled=true);
  try{
-  const response=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json','X-Pos-Role':$('#role').value},body:JSON.stringify({key:crypto.randomUUID(),type,...data})});
-  const r=await response.json();if(!response.ok)throw new Error(r.error);
+  const role=$('#role').value;
+  const payload=JSON.stringify({type,...data});
+  if(pendingRequest&&(pendingRequest.payload!==payload||pendingRequest.role!==role)){
+   throw new Error('Hay una operación sin confirmar. Repite la misma acción y datos antes de continuar.');
+  }
+  pendingRequest??={payload,role,key:crypto.randomUUID()};
+  const response=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json','X-Pos-Role':role},
+   body:JSON.stringify({key:pendingRequest.key,...JSON.parse(payload)})});
+  const r=await response.json();
+  pendingRequest=undefined;
+  if(!response.ok)throw new Error(r.error);
   state=r.state;summary=r.summary;
   if($('#modal').open)$('#modal').close();
   if(type==='order'){selected=r.result.id;mode='Caja';}
   if(type==='sync-inventory')flash('Inventario: '+r.result.filter(x=>x.state==='confirmado').length+' confirmados, '+r.result.filter(x=>x.state==='pendiente').length+' pendientes.');
   else if(type==='send')flash('Comandas nuevas · Cocina: '+r.result.cocina+' · Barra: '+r.result.barra);
+  else if(type==='refund')flash('Devolución de prueba registrada: '+money(r.result.amount));
   else if(type==='pay')flash('Pago registrado: '+money(r.result.amount));
   else if(type==='fiscal')flash('Mismo comprobante · '+r.result.status);
   else flash('Operación registrada.');
- }catch(e){flash(e.message,true);if($('#modal').open){const msg=document.createElement('p');msg.textContent=e.message;msg.setAttribute('role','alert');$('#modal-content').prepend(msg);}}
+ }catch(e){const message=e instanceof TypeError&&pendingRequest?'Sin comunicación con caja. Repite la misma operación al reconectar.':e.message;flash(message,true);if($('#modal').open){const msg=document.createElement('p');msg.textContent=message;msg.setAttribute('role','alert');$('#modal-content').prepend(msg);}}
  finally{locked=false;render();document.querySelectorAll('#modal button').forEach(b=>b.disabled=false);}
 }
 document.addEventListener('click',e=>{
@@ -135,6 +156,13 @@ document.addEventListener('click',e=>{
  if(a==='void')modal('Anular partida',form('void',input('reason','Motivo','text','required')),{order:selected,line:v});
  if(a==='discount')modal('Descuento autorizado',form('discount',input('discount','Descuento (RD$)','number','min="0.01" step=".01" required')+input('reason','Motivo','text','required')),{order:selected,line:v});
  if(a==='syncInventory')command('sync-inventory',{});
+ if(a==='print'){const o=state.orders.find(order=>order.id===v&&order.fiscal);if(o)printTicket(o);}
+ if(a==='refund'){
+  const o=state.orders.find(order=>order.id===v);
+  const choices=o.lines.filter(l=>l.payment&&!l.refund).map(l=>'<label class="check"><input type="checkbox" name="lines" value="'+l.id+'">'+title(l)+' · '+money(totals([l],o.service).total)+'</label>').join('');
+  modal('Devolver partidas',form('refund',choices+input('reason','Motivo','text','required')+
+    '<small>Se registra el ajuste de prueba en el método original. No se emite documento fiscal ni se procesa un abono bancario.</small>'),{order:o.id});
+ }
  if(a==='fiscal')command('fiscal',{order:v});
  if(a==='pay'||a==='charge'){
   const o=picked(),unpaid=o.lines.filter(l=>!l.payment);
@@ -174,7 +202,7 @@ document.addEventListener('submit',async e=>{
  if(type==='open')payload.fund=cash(values.fund);
  if(type==='order')payload.people=values.people?Number(values.people):undefined;
  if(type==='add'){payload.modifiers=data.getAll('modifiers');payload.happy=data.has('happy');}
- if(type==='pay')payload.lines=data.getAll('lines');
+ if(type==='pay'||type==='refund')payload.lines=data.getAll('lines');
  if(type==='discount')payload.cents=cash(values.discount);
  if(type==='close')payload.counted=cash(values.counted);
  if(type==='waste'||type==='count')payload.quantity=Number(values.quantity);

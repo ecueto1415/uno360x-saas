@@ -8,7 +8,9 @@ import { businessAccess } from './access.mjs';
 import { seed, apply, cashSummary } from './domain.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 const roles=new Set(['caja','camarero','cocina','barra','supervisor']);
-export function makeServer(file, access=null, inventory=null){
+export function makeServer(file, access=null, inventory=null, origin=null){
+ if(origin&&(!access||new URL(origin).protocol!=='https:'||new URL(origin).origin!==origin))
+  throw Error('El acceso por red local requiere HTTPS y una identidad del negocio.');
  if(file!==':memory:')mkdirSync(dirname(file),{recursive:true});
  const db=new DatabaseSync(file);
  db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS pilot (id TEXT PRIMARY KEY, state TEXT NOT NULL)');
@@ -71,7 +73,7 @@ export function makeServer(file, access=null, inventory=null){
     const s=state(scope);return reply(res,200,{state:s,summary:cashSummary(s),inventoryConnected:Boolean(inventory),connected:connected?{role:connected.role,branchName:connected.branchName}:null});
    }
    if(req.method==='POST'&&url.pathname==='/api/command'){
-    if(req.headers.origin&&req.headers.origin!=='http://'+req.headers.host)return reply(res,403,{error:'Origen inválido.'});
+    if(req.headers.origin&&req.headers.origin!==(origin||'http://'+req.headers.host))return reply(res,403,{error:'Origen inválido.'});
     if(!req.headers['content-type']?.startsWith('application/json'))return reply(res,415,{error:'Tipo de solicitud inválido.'});
     const user=connected?.role||req.headers['x-pos-role'];if(!roles.has(user))return reply(res,403,{error:'Rol de laboratorio inválido.'});
     let body='';
@@ -97,5 +99,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const {POS_IDENTITY_DB,POS_ENTITLEMENTS}=process.env;
  if(Boolean(POS_IDENTITY_DB)!==Boolean(POS_ENTITLEMENTS))throw new Error('Configura la base de identidad y las autorizaciones POS juntas.');
  const access=POS_IDENTITY_DB?businessAccess(POS_IDENTITY_DB,POS_ENTITLEMENTS):null;
- makeServer(process.env.POS_DB||join(here,'var','pilot.sqlite'),access,process.env.POS_ODOO_CONFIG?stockConnector(process.env.POS_ODOO_CONFIG):null).listen(port,'127.0.0.1',()=>console.log('UNO360X POS de pruebas: http://127.0.0.1:'+port));
+ makeServer(process.env.POS_DB||join(here,'var','pilot.sqlite'),access,process.env.POS_ODOO_CONFIG?stockConnector(process.env.POS_ODOO_CONFIG):null,process.env.POS_ORIGIN).listen(port,'127.0.0.1',()=>console.log('UNO360X POS de pruebas: http://127.0.0.1:'+port));
 }

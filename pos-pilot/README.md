@@ -60,10 +60,10 @@ Reinicia el piloto con esas dos variables. Los propietarios y administradores ha
 | 02 Apertura de turno, 03 Mesas, 04 Caja y menú | Funcionales en Sucursal Centro. |
 | 05 Personalización, 06 Para llevar y barra | Modificadores, notas y pedidos funcionales. |
 | 07 Cocina, 08 Barra | Comandas por estación, actualización periódica y estado lista. |
-| 09 División, 10 Cobro y facturación, 11 Comprobante | División por producto, tres métodos y estado fiscal simulado. PDF fiscal pendiente. |
-| 12 Devoluciones y nota de crédito | Próxima etapa. El piloto permite anular partidas sin pagar con autorización. |
+| 09 División, 10 Cobro y facturación, 11 Comprobante | División por producto, tres métodos y estado fiscal simulado. Ticket de prueba imprimible. PDF fiscal pendiente. |
+| 12 Devoluciones y nota de crédito | Devolución local por partidas, con autorización y ajuste de caja. E34 y abono externo pendientes. |
 | 13 Cierre, 14 Menú y recetas, 15 Inventario y mermas, 16 Reportes | Cierre, receta, márgenes, merma, conteo y desglose funcionales. Horario automático de happy hour y reportes históricos pendientes. |
-| 17 Usuarios y permisos, 18 Equipos y estaciones, 19 Contingencia | Roles y sesión compartida en laboratorio, más dos estaciones. Activación comercial, equipos, impresoras y continuidad sin internet pendientes. |
+| 17 Usuarios y permisos, 18 Equipos y estaciones, 19 Contingencia | Roles y sesión compartida en laboratorio, más dos estaciones. Activación comercial y equipos físicos pendientes. Continuidad por red local probada en navegador, con bloqueo de solicitudes externas. |
 
 Para continuidad, falta probar un servidor local de sucursal accesible desde caja, cocina y barra por la red interna, con cola persistente para sincronización y resolución de conflictos al volver internet. El piloto comparte estado cuando las pantallas alcanzan el mismo servidor local. No implementa trabajo independiente de una terminal desconectada ni sincronización con la nube.
 
@@ -108,3 +108,12 @@ python pos-pilot/dgii_certification.py E31-o-E32-firmado.xml --p12 certificado-c
 ```
 
 Prueba de inventario en Odoo 18 y PostgreSQL 16 locales: se repitió la misma referencia de consumo de 45 unidades. El saldo pasó de 2,500 a 2,455 y la base conservó un único movimiento terminado. Prueba fiscal local: E31, E32 y RFCE firmados con certificado ficticio, selección de servicio, autenticación simulada y bloqueo del segundo envío.
+
+
+## Tickets, devoluciones y operación por red local
+
+- Desde una venta pagada, usa **Imprimir ticket**. En Reportes puedes abrir la venta e imprimir otra copia. En la impresora selecciona papel de 80 mm. El ticket es de prueba y no sustituye un documento fiscal.
+- Con rol Supervisor y con el turno original todavía abierto, abre **Devolver partidas**, selecciona los artículos y escribe el motivo. El ajuste se registra con los métodos de pago originales. El arqueo muestra devoluciones por método y descuenta del efectivo esperado las devoluciones en efectivo. Los ingredientes preparados conservan su consumo. Una partida solo admite una devolución. En el piloto no se abona a tarjetas ni se transmite información a la DGII.
+- Caja, Cocina y Barra pueden operar si el navegador conserva acceso al servidor de la sucursal. El POS sirve sus recursos localmente. Para probar en varias terminales del laboratorio, configura un proxy HTTPS privado al servicio de loopback, integra la sesión de UNO360X y establece `POS_ORIGIN` con el origen HTTPS exacto. Mantén la base de identidad y POS en la sucursal. La prueba de navegador bloqueó solicitudes externas y verificó que la comanda llegara a Cocina desde una segunda pestaña. No equivale a una prueba en varios equipos físicos.
+- Si una terminal pierde contacto con Caja y no recibe respuesta, repite la misma acción con los mismos datos desde la misma pestaña. La pestaña conserva la referencia mientras permanece abierta. El trabajo con la terminal completamente desconectada, la recuperación tras cerrar una pestaña con una solicitud pendiente y la sincronización posterior con la nube siguen pendientes.
+- Para habilitar el módulo en el laboratorio, usa la autorización independiente del negocio en `POS_ENTITLEMENTS`. La prueba automatizada verifica que una cuenta con sesión de UNO360X entra con su permiso, y que un negocio que tiene el módulo deshabilitado queda fuera. Facturación de la suscripción, alta comercial y despliegue en producción quedan pendientes.

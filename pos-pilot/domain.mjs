@@ -65,6 +65,30 @@ export function apply(s,command,user,actor=user){
   fail(!s.orders.some(o=>o.shift===s.shift.id&&!o.closed),'Hay pedidos abiertos en este turno.');
   return Object.assign(s.shift,{closed:new Date().toISOString(),userClosed:actor,counted:command.counted,...cashSummary(s),difference:command.counted-cashSummary(s).expected});
  }
+ if(type==='refund'){
+  role(user,'supervisor');
+  const order=s.orders.find(o=>o.id===command.order&&o.shift===s.shift.id&&o.closed&&o.fiscal);
+  fail(order,'La venta debe estar pagada y pertenecer al turno abierto.');
+  const reason=label(command.reason,180);
+  const selection=command.lines;
+  fail(reason&&Array.isArray(selection)&&selection.length&&new Set(selection).size===selection.length,
+   'Selecciona partidas y escribe el motivo.');
+  const lines=selection.map(ref=>order.lines.find(l=>l.id===ref));
+  fail(lines.every(l=>l?.payment&&!l.refund),'Alguna partida no está pagada o ya fue devuelta.');
+  const methods={efectivo:0,tarjeta:0,transferencia:0};
+  for(const l of lines){
+   const payment=s.payments.find(p=>p.id===l.payment&&p.order===order.id);
+   fail(payment,'Falta el pago original.');
+   methods[payment.method]+=totals([l],order.service).total;
+  }
+  const refund={id:id(),order:order.id,shift:order.shift,lines:selection,methods,reason,
+   user:actor,amount:Object.values(methods).reduce((sum,n)=>sum+n,0),at:new Date().toISOString()};
+  fail(methods.efectivo<=cashSummary(s).expected,'Efectivo insuficiente en esta caja.');
+  (s.refunds??=[]).push(refund);
+  for(const l of lines)l.refund=refund.id;
+  log(s,actor,'devolución',{order:order.number,reference:refund.id,reason,amount:refund.amount});
+  return refund;
+ }
  if(type==='order'){
   role(user,'caja','camarero','supervisor');
   fail(['mesa','barra','llevar'].includes(command.service),'Tipo de pedido inválido.');
@@ -135,7 +159,11 @@ export function apply(s,command,user,actor=user){
 export function cashSummary(s){
  const methods={efectivo:0,tarjeta:0,transferencia:0};
  for(const p of s.payments.filter(p=>p.shift===s.shift?.id))methods[p.method]+=p.amount;
- return {methods,expected:(s.shift?.fund||0)+methods.efectivo};
+ const refunds={efectivo:0,tarjeta:0,transferencia:0};
+ for(const refund of (s.refunds||[]).filter(r=>r.shift===s.shift?.id)){
+  for(const method of Object.keys(refunds))refunds[method]+=refund.methods[method];
+ }
+ return {methods,refunds,expected:(s.shift?.fund||0)+methods.efectivo-refunds.efectivo};
 }
 export function margin(p,ingredients){const cost=Object.entries(p.recipe||{}).reduce((sum,[k,n])=>sum+n*ingredients[k].cost,0);
  return {cost,normal:p.cents-cost,happy:p.happy==null?null:p.happy-cost};}
