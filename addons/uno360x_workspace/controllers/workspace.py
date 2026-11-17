@@ -1,7 +1,19 @@
+from urllib.parse import parse_qs, urlsplit
 from odoo import http
 from odoo.http import request
 from odoo.exceptions import AccessError,UserError
 from werkzeug.exceptions import NotFound,Forbidden
+
+def _pos_ui_url(action, box_id):
+ """Accept only Odoo's local POS entry point for the selected cash register."""
+ url = action.get('url', '')
+ parts = urlsplit(url)
+ if (parts.scheme or parts.netloc or parts.fragment or
+     parts.path not in ('/pos/ui', '/pos/web') or
+     parse_qs(parts.query).get('config_id') != [str(box_id)]):
+  raise NotFound()
+ return '/pos/ui?' + parts.query
+
 
 class WorkspaceController(http.Controller):
  def _pos_values(self,error=''):
@@ -27,9 +39,7 @@ class WorkspaceController(http.Controller):
   try:
    with request.env.cr.savepoint():action=box.open_ui()
   except UserError as error:return self._render('uno360x_workspace.pos_home',self._pos_values(str(error)))
-  url=action.get('url','')
-  if not url.startswith('/pos/ui?'):raise NotFound()
-  return request.redirect(url,code=303)
+  return request.redirect(_pos_ui_url(action, box.id),code=303)
  def _service(self):
   if not request.env.user.has_group('base.group_user'):raise Forbidden()
   return request.env['uno360x.workspace']

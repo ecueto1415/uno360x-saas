@@ -41,6 +41,17 @@ class TestWorkspace(TransactionCase):
   self.assertFalse(data['can_finance']);self.assertEqual(data['series'],[])
   self.assertEqual(data['pending_total'],0)
 
+ def test_pos_launcher_accepts_both_odoo_entry_points_for_same_register(self):
+  from werkzeug.exceptions import NotFound
+  from ..controllers.workspace import _pos_ui_url
+  for path in ('/pos/ui','/pos/web'):
+   self.assertEqual(_pos_ui_url({'url':path+'?config_id=8&from_backend=True'},8),
+                    '/pos/ui?config_id=8&from_backend=True')
+  for invalid in ('https://example.com/pos/ui?config_id=8','/pos/ui?config_id=9',
+                  '/pos/ui?config_id=8&config_id=9','/web/login?config_id=8'):
+   with self.assertRaises(NotFound):
+    _pos_ui_url({'url':invalid},8)
+
  def test_pos_entry_has_setup_and_return_without_creating_a_session(self):
   before=self.env['pos.session'].search_count([])
   values=self.service._workspace_context();values.update(csrf='qa-csrf',pos_configs=self.env['pos.config'].browse(),can_manage_pos=True,pos_error='')
