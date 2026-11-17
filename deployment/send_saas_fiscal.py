@@ -1,109 +1,159 @@
-"""Run the production queue for one provisioned SaaS tenant/company.
-
-Run via the service manager with systemd credentials scope.json, identity.p12
-and password. The scope contains tenant_id, company_id, rnc and environment.
-Only environment ecf is allowed. Never run this worker in certification QA.
-"""
+"""Process one explicitly provisioned SaaS issuer without network in Odoo."""
 import base64
 import fcntl
+from hashlib import sha256
+import importlib
 import json
 import os
 from pathlib import Path
 import re
 import sqlite3
 import sys
+from types import ModuleType
 
 from certification.xmlsig import load_identity
 from deployment.shared_adapter import SharedHostAdapter
 from fiscal.trust import validate_certificate
+from lxml import etree
 
+ROOT = Path(__file__).resolve().parents[1]
 DATABASE = Path('/var/lib/uno360x-saas/control/control.sqlite3')
 TENANT_ROOT = Path('/var/lib/uno360x-saas/tenants')
 
 
+def load_fiscal():
+    # Host worker uses the same fiscal code without importing the Odoo ORM.
+    package = ModuleType('_uno360x_worker_fiscal')
+    package.__path__ = [str(ROOT/'addons/uno360x_ecf_core')]
+    sys.modules[package.__name__] = package
+    return [importlib.import_module(package.__name__+'.'+module)
+            for module in ('issuance','dgii_client','rfce')]
+
+
+def sql_text(value):
+    return "convert_from(decode('%s','hex'),'UTF8')" % str(value).encode().hex()
+
+
+class Queue:
+    def __init__(self, sql, tenant, company, issuer):
+        self.sql = sql
+        self.scope = f"""q.company_id={int(company)} AND q.issuer={sql_text(issuer)}
+            AND EXISTS (SELECT 1 FROM uno360x_tenant_identity i WHERE i.tenant_id={sql_text(tenant)})
+            AND EXISTS (SELECT 1 FROM res_company c JOIN res_partner p ON p.id=c.partner_id
+                 WHERE c.id=q.company_id AND regexp_replace(p.vat,'[[:space:]-]','','g')=q.issuer
+                 AND c.uno360x_ecf_enabled AND c.uno360x_ecf_fingerprint=q.fingerprint)"""
+
+    def pending(self):
+        return json.loads(self.sql(f"""
+            SELECT COALESCE(json_agg(pending),'[]'::json)::text FROM (
+                SELECT q.id,q.encf,q.issuer,q.fingerprint,q.payload,q.state,q.track_id,
+                       convert_from(q.signed_xml,'UTF8') AS signed_xml,q.signed_sha256,
+                       q.signed_summary IS NOT NULL AS is_summary
+                FROM uno360x_ecf_issue q WHERE ({self.scope}) AND (
+                    q.state='queued' OR (
+                        q.state IN ('sent','uncertain')
+                        AND q.write_date <= (now() AT TIME ZONE 'UTC') - interval '2 minutes'
+                    ))
+                ORDER BY q.write_date,q.id LIMIT 5
+            ) pending;"""))
+
+    def change(self, doc, assignments):
+        write = ', '.join(assignments + ["write_date=(now() AT TIME ZONE 'UTC')"])
+        result = self.sql(f"""
+            WITH change AS (
+                UPDATE uno360x_ecf_issue q SET {write}
+                WHERE q.id={int(doc['id'])} AND q.state={sql_text(doc['state'])}
+                 AND q.encf={sql_text(doc['encf'])} AND ({self.scope}) RETURNING q.id
+            ) SELECT count(*) FROM change;""")
+        return result == '1'
+
+
+def dispatch(queue, doc, client, issuance, api, rfce, p12, password):
+    try:
+        xml = issuance.prepare_signed(doc['payload'], doc['encf'], doc['issuer'],
+                                      doc['fingerprint'], p12, password)
+        summary = rfce.build_signed_summary(xml,p12,password) if rfce.requires_summary(doc['payload']) else None
+    except (ValueError, etree.LxmlError):
+        queue.change(doc, ["state='blocked'"])
+        return
+    changes = ["state='uncertain'", "signed_xml=decode('%s','hex')" % base64.b64encode(xml).hex(),
+               "signed_sha256="+sql_text(sha256(xml).hexdigest())]
+    if summary:
+        changes.append("signed_summary=decode('%s','hex')" % base64.b64encode(summary).hex())
+    if not queue.change(doc, changes):
+        return
+    # The uncertain state is committed before the only non-idempotent request.
+    doc['state'] = 'uncertain'
+    try:
+        if summary:
+            result = ["state="+sql_text(client.submit_summary(summary,doc['issuer'],doc['encf']))]
+        else:
+            track = client.submit(xml,doc['issuer'],doc['encf'])['trackId']
+            result = ["state='sent'","track_id="+sql_text(track)]
+    except api.SubmissionUnknown:
+        return
+    queue.change(doc, result)
+
+
+def consult(queue, doc, client, api, rfce):
+    try:
+        if doc['is_summary']:
+            signed=base64.b64decode(doc['signed_xml'],validate=True)
+            if sha256(signed).hexdigest()!=doc['signed_sha256']:
+                raise api.DGIIError('XML de conciliación alterado.')
+            state=client.lookup_summary(doc['issuer'],doc['encf'],rfce.security_code(signed))
+            queue.change(doc, ['state='+sql_text(state)])
+            return
+        track=doc['track_id']
+        if not track:
+            tracks={str(row['trackId']) for row in client.tracks(doc['issuer'],doc['encf']) if row.get('trackId')}
+            if len(tracks)!=1:
+                queue.change(doc, [])
+                return
+            track=tracks.pop()
+        state=api.validate_result(client.result(track),doc['issuer'],doc['encf'],track)
+        queue.change(doc, ['state='+sql_text(state),'track_id='+sql_text(track)] if state else [])
+    except ValueError:
+        queue.change(doc, [])
+
+
 def main():
     credentials = Path(os.environ['CREDENTIALS_DIRECTORY'])
-    scope = json.loads((credentials / 'scope.json').read_bytes())
-    tenant = scope['tenant_id']
-    if len(sys.argv) != 2 or sys.argv[1] != tenant:
-        raise ValueError('La instancia del servicio no coincide con la empresa fiscal.')
-    company = scope['company_id']
-    issuer = scope['rnc']
-    if (scope.get('environment') != 'ecf' or not re.fullmatch('[0-9a-f]{32}', tenant)
-            or type(company) is not int or company < 1 or not re.fullmatch('[0-9]{9}|[0-9]{11}', issuer)):
+    scope = json.loads((credentials/'scope.json').read_bytes())
+    tenant, company, issuer = scope['tenant_id'], scope['company_id'], scope['rnc']
+    if (len(sys.argv)!=2 or sys.argv[1]!=tenant or scope.get('environment')!='ecf'
+            or not re.fullmatch('[0-9a-f]{32}',tenant) or type(company) is not int
+            or company<1 or not re.fullmatch('[0-9]{9}|[0-9]{11}',issuer)):
         raise ValueError('Alcance fiscal productivo inválido.')
-    with sqlite3.connect(f'file:{DATABASE}?mode=ro', uri=True) as db:
-        record = db.execute(
-            "SELECT snapshot FROM preparation_jobs WHERE tenant_id=? AND status='ready_local'", (tenant,),
-        ).fetchone()
+    with sqlite3.connect(f'file:{DATABASE}?mode=ro',uri=True) as db:
+        record=db.execute("SELECT snapshot FROM preparation_jobs WHERE tenant_id=? AND status='ready_local'",(tenant,)).fetchone()
     if not record:
         raise ValueError('Empresa SaaS no preparada.')
-    snapshot = json.loads(record[0])
-    if snapshot['tenant_id'] != tenant:
+    snapshot=json.loads(record[0])
+    if snapshot['tenant_id']!=tenant:
         raise ValueError('El destino no corresponde a la credencial.')
-    lock_file = TENANT_ROOT / tenant / 'fiscal-production-worker.lock'
-    with lock_file.open('a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        adapter = SharedHostAdapter()
-        queued = adapter.sql(snapshot, f'''SELECT count(*) FROM uno360x_ecf_issue issue
-            JOIN res_company company ON company.id=issue.company_id
-            WHERE company.id={company} AND company.uno360x_ecf_enabled
-            AND issue.issuer='{issuer}'
-            AND (issue.state='queued' OR (
-                issue.state IN ('sent','uncertain')
-                AND issue.write_date<=now() AT TIME ZONE 'UTC' - interval '2 minutes'
-            ));''')
-        if queued == '0':
+    with (TENANT_ROOT/tenant/'fiscal-production-worker.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        adapter=SharedHostAdapter()
+        name=adapter.names(snapshot)['role']
+        if not re.fullmatch(r'tenant_[0-9a-f]{32}',name):
+            raise ValueError('La base no pertenece al SaaS.')
+        queue=Queue(lambda query:adapter.sql(snapshot,query),tenant,company,issuer)
+        documents=queue.pending()
+        if not documents:
             return
-        app = adapter.names(snapshot)['app']
-        adapter.check_container(app, snapshot)
-        p12 = (credentials/'identity.p12').read_bytes()
-        password = (credentials/'password').read_bytes()
-        _, certificate = load_identity(p12, password)
-        validate_certificate(certificate, Path(os.environ['UNO360X_FISCAL_TRUST']))
-        secret = {
-            'tenant': tenant, 'company': company, 'issuer': issuer,
-            'p12': base64.b64encode(p12).decode(),
-            'password': base64.b64encode(password).decode(),
-        }
-        # No credentials in CLI args, configuration, Odoo DB, or command logs.
-        code = 'scope = ' + repr(secret) + '\n' + '''
-import base64
-from odoo import fields
-from datetime import timedelta
-from odoo.addons.uno360x_ecf_core.builder import rnc
-from odoo.addons.uno360x_ecf_core.dgii_client import DGIIError
-from odoo.addons.uno360x_ecf_core.issuance import connect
-identity=env['uno360x.tenant.identity'].search([])
-company=env['res.company'].browse(scope['company']).exists()
-assert len(identity)==1 and identity.tenant_id==scope['tenant'] and company
-assert rnc(company.vat,'RNC')==scope['issuer'] and env.cr.dbname.startswith('tenant_')
-if company.uno360x_ecf_enabled:
- p12=base64.b64decode(scope['p12'],validate=True)
- password=base64.b64decode(scope['password'],validate=True)
- model=env['uno360x.ecf.issue']
- domain=[('company_id','=',company.id),('issuer','=',scope['issuer'])]
- for document in model.search(domain+[('state','=','queued')],limit=5,order='id'):
-  document._dispatch(p12,password,company)
- waiting=model.search(domain+[('state','in',['sent','uncertain']),('write_date','<=',fields.Datetime.now()-timedelta(minutes=2))],limit=5,order='write_date,id')
- if waiting:
-  client=connect(p12,password)
-  for document in waiting:
-   if document.fingerprint==company.uno360x_ecf_fingerprint:
-    try:
-     document._consult(client)
-    except DGIIError:
-     document.write_date=fields.Datetime.now()
-     continue
-    if document.state in ('sent','uncertain'):
-     document.write_date=fields.Datetime.now()
-  env.cr.commit()
-'''
-        result = adapter.run('exec','-i',app,'odoo','shell','-c','/etc/odoo/odoo.conf','--no-http',
-                             input=code,check=False)
-        if result.returncode:
-            raise RuntimeError('El trabajador fiscal no completó el ciclo. Revisar el estado en UNO360X.')
+        p12=(credentials/'identity.p12').read_bytes()
+        password=(credentials/'password').read_bytes()
+        _,cert=load_identity(p12,password)
+        validate_certificate(cert,Path(os.environ['UNO360X_FISCAL_TRUST']))
+        issuance,api,rfce=load_fiscal()
+        client=issuance.connect(p12,password)
+        for doc in documents:
+            if doc['state']=='queued':
+                dispatch(queue,doc,client,issuance,api,rfce,p12,password)
+            else:
+                consult(queue,doc,client,api,rfce)
 
 
-if __name__ == '__main__':
+if __name__=='__main__':
     main()
