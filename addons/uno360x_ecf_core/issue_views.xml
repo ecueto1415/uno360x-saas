@@ -43,6 +43,8 @@
                     <field name="currency_id" invisible="1"/>
                     <field name="amount_total"/>
                     <field name="kind"/>
+                    <field name="reference_move_id" invisible="kind not in ('33', '34')" required="kind in ('33', '34')"/>
+                    <field name="modification" invisible="kind != '34'"/>
                     <field name="payment_type"/>
                     <field name="income_type"/>
                 </group>
@@ -71,7 +73,7 @@
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
                 <button name="action_uno360x_fiscal_open" string="Emitir factura electrónica" type="object"
-                        groups="account.group_account_manager" invisible="state != 'draft' or move_type != 'out_invoice'"/>
+                        groups="account.group_account_manager" invisible="state != 'draft' or move_type not in ('out_invoice','out_refund','in_invoice')"/>
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <field name="uno360x_ecf_issue_ids" nolabel="1" readonly="1" invisible="not uno360x_ecf_issue_ids"
@@ -107,6 +109,8 @@
             <field name="amount" position="after">
                 <field name="uno360x_ecf_exempt" groups="account.group_account_manager"
                        invisible="amount_type != 'percent' or amount != 0"/>
+                <field name="uno360x_ecf_export_zero" groups="account.group_account_manager" invisible="amount_type != 'percent' or amount != 0"/>
+                <field name="uno360x_ecf_retention" groups="account.group_account_manager" invisible="amount_type != 'percent' or amount &gt;= 0"/>
             </field>
         </field>
     </record>

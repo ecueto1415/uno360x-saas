@@ -1,0 +1,18 @@
+[Unit]
+Description=Emisión fiscal UNO360X para la empresa SaaS %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=uno360x-saas
+WorkingDirectory=/srv/uno360x-saas/master-current
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/uno360x-saas/fiscal-worker/runtime.env
+LoadCredential=scope.json:/etc/uno360x-saas/fiscal-worker/%i/scope.json
+LoadCredential=identity.p12:/etc/uno360x-saas/fiscal-worker/%i/identity.p12
+LoadCredential=password:/etc/uno360x-saas/fiscal-worker/%i/password
+ExecStart=/opt/odoo18/venv/bin/python3.12 -m deployment.send_saas_fiscal %i
+TimeoutStartSec=12min
+NoNewPrivileges=yes
+UMask=0077

@@ -11,6 +11,9 @@ import urllib.error
 from .crypto import sign_xml
 
 HOST = 'https://ecf.dgii.gov.do'
+SUMMARY_HOST = 'https://fc.dgii.gov.do'
+SUMMARY_SUBMIT = 'recepcionfc/api/recepcion/ecf'
+SUMMARY_LOOKUP = 'consultarfce/api/consultas/consulta'
 ENVIRONMENTS = ('ecf',)
 class DGIIError(ValueError):
     pass
@@ -37,7 +40,8 @@ class Client:
         self._last_request=0.0
 
     def request(self, path, *, payload=None, filename=None, query=None, is_submission=False):
-        url = HOST + '/' + self.environment + '/' + path
+        host = SUMMARY_HOST if path in (SUMMARY_SUBMIT, SUMMARY_LOOKUP) else HOST
+        url = host + '/' + self.environment + '/' + path
         if query:
             url += '?' + urllib.parse.urlencode(query)
         headers = {'Accept': 'application/xml' if path.lower().endswith('/semilla') else 'application/json','User-Agent':'UNO360X/1.0'}
@@ -115,6 +119,26 @@ class Client:
             raise SubmissionUnknown('La recepción no entregó TrackId; conciliar el e-NCF antes de reenviar.')
         return {'trackId': str(data['trackId'])}
 
+    def submit_summary(self, signed, issuer, encf):
+        if not self.token:
+            raise DGIIError('Autentique antes de enviar.')
+        try:
+            raw = self.request(SUMMARY_SUBMIT, payload=signed, filename=issuer+encf+'.xml', is_submission=True)
+            return summary_state(json.loads(raw), encf)
+        except (ValueError, UnicodeDecodeError):
+            raise SubmissionUnknown('Resultado RFCE incierto; consulte antes de reenviar.') from None
+
+    def lookup_summary(self, issuer, encf, code):
+        if not self.token:
+            raise DGIIError('Autentique antes de consultar.')
+        try:
+            raw = self.request(SUMMARY_LOOKUP, query={
+                'RNC_Emisor':issuer, 'ENCF':encf, 'Cod_Seguridad_eCF':code,
+            })
+            return summary_state(json.loads(raw), encf, issuer=issuer)
+        except (ValueError, UnicodeDecodeError):
+            raise DGIIError('Respuesta de consulta RFCE no verificable.') from None
+
     def result(self, track):
         if not self.token:
             raise DGIIError('Autentique antes de consultar.')
@@ -140,6 +164,20 @@ class Client:
         if not isinstance(data, list) or any(not isinstance(row, dict) for row in data):
             raise DGIIError('Respuesta de TrackIds inesperada.')
         return data
+
+
+def summary_state(response, encf, issuer=None):
+    if not isinstance(response, dict) or response.get('encf') != encf:
+        raise DGIIError('La DGII no confirmó la identidad del RFCE.')
+    if issuer is not None and str(response.get('rnc','')) != issuer:
+        raise DGIIError('El RNC del RFCE no coincide.')
+    state = {
+        'aceptado':'accepted', 'aceptado condicional':'conditional',
+        'rechazado':'rejected', 'en proceso':'sent',
+    }.get(str(response.get('estado','')).strip().casefold())
+    if not state:
+        raise DGIIError('Estado RFCE no reconocido.')
+    return state
 
 
 def validate_result(result, issuer, encf, track=None):

@@ -33,8 +33,8 @@ def parse(xml):
     root = etree.fromstring(xml, parser)
     if root.getroottree().docinfo.doctype:
         raise ValueError('No se permiten DTD.')
-    if root.tag not in ('ECF', 'SemillaModel'):
-        raise ValueError('Solo se permite ECF o SemillaModel.')
+    if root.tag not in ('ECF', 'SemillaModel', 'RFCE'):
+        raise ValueError('Tipo de XML fiscal no permitido.')
     return root
 
 def load_identity(p12, password):

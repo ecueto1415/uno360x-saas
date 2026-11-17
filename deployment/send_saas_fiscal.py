@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import sys
 
 from certification.xmlsig import load_identity
 from deployment.shared_adapter import SharedHostAdapter
@@ -24,6 +25,8 @@ def main():
     credentials = Path(os.environ['CREDENTIALS_DIRECTORY'])
     scope = json.loads((credentials / 'scope.json').read_bytes())
     tenant = scope['tenant_id']
+    if len(sys.argv) != 2 or sys.argv[1] != tenant:
+        raise ValueError('La instancia del servicio no coincide con la empresa fiscal.')
     company = scope['company_id']
     issuer = scope['rnc']
     if (scope.get('environment') != 'ecf' or not re.fullmatch('[0-9a-f]{32}', tenant)
@@ -42,6 +45,16 @@ def main():
     with lock_file.open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         adapter = SharedHostAdapter()
+        queued = adapter.sql(snapshot, f'''SELECT count(*) FROM uno360x_ecf_issue issue
+            JOIN res_company company ON company.id=issue.company_id
+            WHERE company.id={company} AND company.uno360x_ecf_enabled
+            AND issue.issuer='{issuer}'
+            AND (issue.state='queued' OR (
+                issue.state IN ('sent','uncertain')
+                AND issue.write_date<=now() AT TIME ZONE 'UTC' - interval '2 minutes'
+            ));''')
+        if queued == '0':
+            return
         app = adapter.names(snapshot)['app']
         adapter.check_container(app, snapshot)
         p12 = (credentials/'identity.p12').read_bytes()
@@ -56,6 +69,8 @@ def main():
         # No credentials in CLI args, configuration, Odoo DB, or command logs.
         code = 'scope = ' + repr(secret) + '\n' + '''
 import base64
+from odoo import fields
+from datetime import timedelta
 from odoo.addons.uno360x_ecf_core.builder import rnc
 from odoo.addons.uno360x_ecf_core.dgii_client import DGIIError
 from odoo.addons.uno360x_ecf_core.issuance import connect
@@ -70,7 +85,7 @@ if company.uno360x_ecf_enabled:
  domain=[('company_id','=',company.id),('issuer','=',scope['issuer'])]
  for document in model.search(domain+[('state','=','queued')],limit=5,order='id'):
   document._dispatch(p12,password,company)
- waiting=model.search(domain+[('state','in',['sent','uncertain'])],limit=5,order='write_date,id')
+ waiting=model.search(domain+[('state','in',['sent','uncertain']),('write_date','<=',fields.Datetime.now()-timedelta(minutes=2))],limit=5,order='write_date,id')
  if waiting:
   client=connect(p12,password)
   for document in waiting:
@@ -78,7 +93,10 @@ if company.uno360x_ecf_enabled:
     try:
      document._consult(client)
     except DGIIError:
+     document.write_date=fields.Datetime.now()
      continue
+    if document.state in ('sent','uncertain'):
+     document.write_date=fields.Datetime.now()
   env.cr.commit()
 '''
         result = adapter.run('exec','-i',app,'odoo','shell','-c','/etc/odoo/odoo.conf','--no-http',

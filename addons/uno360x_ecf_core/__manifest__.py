@@ -1,1 +1,1 @@
-{'name': 'UNO360X - Emisión fiscal por empresa', 'version': '18.0.0.2.0', 'license': 'LGPL-3', 'author': 'OUTSOLUTECH', 'depends': ['uno360x_tenant_config', 'account'], 'data': ['issue_views.xml'], 'installable': True, 'application': False}
+{'name': 'UNO360X - Emisión fiscal por empresa', 'version': '18.0.0.4.0', 'license': 'LGPL-3', 'author': 'OUTSOLUTECH', 'depends': ['uno360x_tenant_config', 'account'], 'data': ['issue_views.xml'], 'installable': True, 'application': False}
