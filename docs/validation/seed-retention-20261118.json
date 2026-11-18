@@ -1,0 +1,24 @@
+{
+  "finished": 1795042211.0670214,
+  "deleted_internal_seeds": 479,
+  "deleted_database_bytes": 31092700193,
+  "filesystem_recovered_bytes": 31247392768,
+  "disk_used_bytes": 54376615936,
+  "disk_free_bytes": 118468415488,
+  "internal_seeds_remaining": {
+    "count": 30,
+    "bytes": 1891585666
+  },
+  "nonseed_databases_unchanged": true,
+  "business_counters_and_fiscal_sequences_unchanged": true,
+  "current_profiles_verified": 8,
+  "ready_reserves_verified": 1,
+  "no_fiscal_issuance": true,
+  "native_outsolutech_modified": false,
+  "post_cleanup_dry_run_candidates": 0,
+  "incivi_invoice_list_hash_unchanged": true,
+  "incivi_fiscal_documents_unchanged": 6,
+  "maintenance_timer_active": true,
+  "maintenance_local_schedule": "03:30–03:40 America/Santo_Domingo",
+  "safety_unit_tests_passed": 6
+}
