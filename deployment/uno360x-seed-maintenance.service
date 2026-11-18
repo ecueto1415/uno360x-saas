@@ -1,0 +1,17 @@
+[Unit]
+Description=Retire obsolete pristine UNO360X PostgreSQL seeds
+ConditionPathExists=/var/lib/uno360x-saas/shared-postgres/inventory.sqlite3
+
+[Service]
+Type=oneshot
+User=uno360x-saas
+Group=uno360x-saas
+WorkingDirectory=/srv/uno360x-saas/master-current
+Environment=XDG_RUNTIME_DIR=/run/user/996
+ExecStart=/usr/bin/python3 /srv/uno360x-saas/master-current/deployment/prune_seed_templates.py --apply --keep-previous 2 --limit 600
+UMask=0077
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=10
+CPUQuota=25%
+TimeoutStartSec=30min

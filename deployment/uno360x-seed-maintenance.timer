@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily retention of UNO360X internal PostgreSQL seeds
+
+[Timer]
+OnCalendar=*-*-* 07:30:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+Unit=uno360x-seed-maintenance.service
+
+[Install]
+WantedBy=timers.target
