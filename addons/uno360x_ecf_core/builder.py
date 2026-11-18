@@ -293,6 +293,9 @@ def build_preview(data):
         add(ref, 'NCFModificado', reference[0])
         add(ref, 'FechaNCFModificado', reference[1].strftime('%d-%m-%Y'))
         add(ref, 'CodigoModificacion', reference[2])
+        reason = (data.get('reference') or {}).get('reason')
+        if document_type == '34' and reason:
+            add(ref, 'RazonModificacion', text(reason, 'Motivo de modificación', 90))
     try:
         xml = etree.tostring(root, encoding='UTF-8', xml_declaration=True)
         validate_preliminary(xml, document_type)

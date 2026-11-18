@@ -69,19 +69,60 @@
     <record id="view_move_ecf_issue" model="ir.ui.view">
         <field name="name">Emisión electrónica desde factura</field>
         <field name="model">account.move</field>
-        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="inherit_id" ref="account.view_move_form" />
         <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='button_draft']" position="attributes">
+                <attribute name="invisible" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
             <xpath expr="//header" position="inside">
-                <button name="action_uno360x_fiscal_open" string="Emitir factura electrónica" type="object"
-                        groups="account.group_account_manager" invisible="state != 'draft' or move_type not in ('out_invoice','out_refund','in_invoice')"/>
+                <button name="action_uno360x_fiscal_open" string="Emitir factura electrónica" type="object" groups="account.group_account_manager" invisible="state != 'draft' or move_type not in ('out_invoice','out_refund','in_invoice') or uno360x_ecf_issue_ids or move_type == 'out_refund'" />
+            <button name="action_uno360x_fiscal_open" string="Emitir nota de crédito electrónica" type="object" groups="account.group_account_manager" invisible="state != 'draft' or move_type != 'out_refund' or uno360x_ecf_issue_ids" />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='invoice_date'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='invoice_date_due'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='invoice_payment_term_id'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='invoice_line_ids'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='narration'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='ref'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='date'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='currency_id'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='fiscal_position_id'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='journal_id'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="(//sheet//field[@name='partner_id'])[1]" position="attributes">
+                <attribute name="readonly" add="uno360x_ecf_issue_ids" separator=" or " />
+            </xpath>
+            <xpath expr="//header" position="after">
+                <div class="alert alert-info mb-0" role="status" groups="account.group_account_invoice" invisible="not uno360x_ecf_issue_ids">
+                    Este comprobante tiene un e-NCF asignado. Sus datos fiscales quedan protegidos.
+                    Para corregirlo, utilice el documento fiscal correspondiente.
+                </div>
             </xpath>
             <xpath expr="//sheet" position="inside">
-                <field name="uno360x_ecf_issue_ids" nolabel="1" readonly="1" invisible="not uno360x_ecf_issue_ids"
-                       groups="account.group_account_invoice">
-                    <list create="0" edit="0" delete="0"><field name="encf"/><field name="state"/><field name="track_id"/></list>
+                <field name="uno360x_ecf_issue_ids" nolabel="1" readonly="1" invisible="not uno360x_ecf_issue_ids" groups="account.group_account_invoice">
+                    <list create="0" edit="0" delete="0"><field name="encf" /><field name="state" /><field name="track_id" /></list>
                 </field>
             </xpath>
-        </field>
+        <xpath expr="//header/button[@name='action_reverse']" position="attributes"><attribute name="invisible" add="move_type == 'out_refund'" separator=" or " /></xpath></field>
     </record>
     <record id="view_company_ecf_issue" model="ir.ui.view">
         <field name="name">Habilitación de emisión fiscal</field>
@@ -112,6 +153,89 @@
                 <field name="uno360x_ecf_export_zero" groups="account.group_account_manager" invisible="amount_type != 'percent' or amount != 0"/>
                 <field name="uno360x_ecf_retention" groups="account.group_account_manager" invisible="amount_type != 'percent' or amount &gt;= 0"/>
             </field>
+        </field>
+    </record>
+    <record id="view_fiscal_credit_reversal" model="ir.ui.view">
+        <field name="name">UNO360X Nota de crédito electrónica directa</field>
+        <field name="model">account.move.reversal</field>
+        <field name="inherit_id" ref="account.view_account_move_reversal"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='reason']" position="before">
+                <field name="uno360x_fiscal_credit" invisible="1"/>
+                <field name="uno360x_has_fiscal_issue" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='reason']" position="attributes">
+                <attribute name="required" add="uno360x_fiscal_credit" separator=" or "/>
+            </xpath>
+            <xpath expr="//button[@name='refund_moves']" position="before">
+                <p invisible="not uno360x_fiscal_credit">Indique el motivo. Al confirmar se anulará el importe total mediante un E34 referido al comprobante original y se pondrá en cola para la DGII.</p>
+                <button name="action_uno360x_confirm_credit" string="Confirmar nota de crédito electrónica" type="object" class="btn-primary" invisible="not uno360x_fiscal_credit" groups="account.group_account_manager"/>
+            </xpath>
+            <xpath expr="//button[@name='refund_moves']" position="attributes">
+                <attribute name="invisible" add="uno360x_has_fiscal_issue" separator=" or "/>
+            </xpath>
+            <xpath expr="//button[@name='modify_moves']" position="attributes">
+                <attribute name="invisible" add="uno360x_has_fiscal_issue" separator=" or "/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_e34_credit_display" model="ir.ui.view">
+        <field name="name">UNO360X Nota de crédito electrónica</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="priority" eval="95"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_reverse']" position="attributes">
+                <attribute name="invisible" add="uno360x_full_credit_encf or (move_type == 'out_invoice' and not uno360x_credit_eligible)" separator=" or "/>
+            </xpath>
+            <xpath expr="//header" position="after">
+                <div class="alert alert-info mb-0" role="status" invisible="not uno360x_full_credit_encf">
+                    <field name="uno360x_credit_eligible" invisible="1"/>
+                    <strong>Nota de crédito electrónica aplicada: </strong>
+                    <button name="action_uno360x_applied_credit" type="object" class="btn btn-link p-0">
+                        <field name="uno360x_full_credit_encf" readonly="1" class="oe_inline"/>
+                    </button>
+                </div>
+            </xpath>
+
+            <xpath expr="(//widget[@name='web_ribbon'][contains(@invisible, &quot;payment_state != 'paid'&quot;)])[1]" position="attributes">
+                <attribute name="invisible" add="uno360x_credit_no_payment" separator=" or "/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_payments_widget']" position="attributes">
+                <attribute name="invisible" add="uno360x_credit_no_payment" separator=" or "/>
+            </xpath>
+            <xpath expr="//button[@id='account_invoice_payment_btn']" position="attributes">
+                <attribute name="invisible" add="uno360x_credit_no_payment" separator=" or "/>
+            </xpath>
+            <xpath expr="//button[@id='account_invoice_payment_secondary_btn']" position="attributes">
+                <attribute name="invisible" add="uno360x_credit_no_payment" separator=" or "/>
+            </xpath>
+            <xpath expr="//header" position="after">
+                <div class="alert alert-info mb-0" role="status" invisible="not uno360x_credit_state">
+                    <field name="uno360x_credit_no_payment" invisible="1"/>
+                    <strong>Nota de crédito electrónica</strong>
+                    <div>Estado DGII: <field name="uno360x_credit_state" readonly="1" class="oe_inline"/></div>
+                    <div><label for="reversed_entry_id" string="Factura original"/> <field name="reversed_entry_id" invisible="1"/><button name="action_uno360x_credit_original" type="object" class="btn btn-link p-0" invisible="not reversed_entry_id or not uno360x_credit_original_encf"><field name="uno360x_credit_original_encf" readonly="1" class="oe_inline"/></button></div>
+                    <div invisible="not uno360x_credit_no_payment">El crédito se aplica a la factura original. Esta operación no requiere registrar un pago.</div>
+                    <div>Saldo pendiente <field name="amount_residual" readonly="1" class="oe_inline" widget="monetary"/></div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_fiscal_live_status" model="ir.ui.view">
+        <field name="name">UNO360X estado fiscal actualizado</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="priority" eval="96"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="after">
+                <field name="uno360x_fiscal_live_token" invisible="1"/>
+                <div class="alert alert-info mb-0" role="status" invisible="not uno360x_fiscal_live_status">
+                    <strong>Estado DGII </strong><field name="uno360x_fiscal_live_status" readonly="1" class="oe_inline"/>
+                </div>
+            </xpath>
         </field>
     </record>
 </odoo>

@@ -1,0 +1,118 @@
+[
+  {
+    "test": "concurrent_cashiers",
+    "cashier_count": 3,
+    "parallel": true,
+    "environment": "uno360x_ecf_isolated_lab",
+    "dgii": "SIMULATED; submit=1.0s; result=0.7s; no external network",
+    "worker": "SaaS Queue/dispatch/consult; real dummy-certificate signing; five slots",
+    "cashiers": {
+      "2": {
+        "invoice_id": 47,
+        "encf": "E318000001904",
+        "confirmation_seconds": 0.149,
+        "attempts": 1,
+        "accepted_seconds": 1.952
+      },
+      "1": {
+        "invoice_id": 46,
+        "encf": "E318000001905",
+        "confirmation_seconds": 0.178,
+        "attempts": 1,
+        "accepted_seconds": 2.165
+      },
+      "3": {
+        "invoice_id": 48,
+        "encf": "E318000001906",
+        "confirmation_seconds": 0.207,
+        "attempts": 1,
+        "accepted_seconds": 2.167
+      }
+    },
+    "documents": 3,
+    "submissions": 3,
+    "duplicate_encf": false,
+    "numbers_consumed": 3,
+    "note": "Numbers and accounting entries exist only in the isolated laboratory.",
+    "resources": {
+      "odoo_and_fiscal": {
+        "average_cpu_percent_one_core": 19.01,
+        "peak_cpu_percent_one_core_200ms": 99.84,
+        "peak_memory_mib": 135.95
+      },
+      "postgres": {
+        "average_cpu_percent_one_core": 5.39,
+        "peak_cpu_percent_one_core_200ms": 40.6,
+        "peak_memory_mib": 211.29
+      }
+    },
+    "host_logical_cpus": 12,
+    "resource_sampling_ms": 200,
+    "total_seconds": 2.189
+  },
+  {
+    "test": "concurrent_cashiers",
+    "cashier_count": 5,
+    "parallel": true,
+    "environment": "uno360x_ecf_isolated_lab",
+    "dgii": "SIMULATED; submit=1.0s; result=0.7s; no external network",
+    "worker": "SaaS Queue/dispatch/consult; real dummy-certificate signing; five slots",
+    "cashiers": {
+      "4": {
+        "invoice_id": 52,
+        "encf": "E318000002004",
+        "confirmation_seconds": 0.257,
+        "attempts": 1,
+        "accepted_seconds": 2.085
+      },
+      "3": {
+        "invoice_id": 51,
+        "encf": "E318000002005",
+        "confirmation_seconds": 0.3,
+        "attempts": 1,
+        "accepted_seconds": 2.346
+      },
+      "5": {
+        "invoice_id": 53,
+        "encf": "E318000002006",
+        "confirmation_seconds": 0.347,
+        "attempts": 1,
+        "accepted_seconds": 2.345
+      },
+      "1": {
+        "invoice_id": 49,
+        "encf": "E318000002007",
+        "confirmation_seconds": 0.381,
+        "attempts": 1,
+        "accepted_seconds": 2.344
+      },
+      "2": {
+        "invoice_id": 50,
+        "encf": "E318000002008",
+        "confirmation_seconds": 0.409,
+        "attempts": 1,
+        "accepted_seconds": 2.339
+      }
+    },
+    "documents": 5,
+    "submissions": 5,
+    "duplicate_encf": false,
+    "numbers_consumed": 5,
+    "note": "Numbers and accounting entries exist only in the isolated laboratory.",
+    "resources": {
+      "odoo_and_fiscal": {
+        "average_cpu_percent_one_core": 50.92,
+        "peak_cpu_percent_one_core_200ms": 211.28,
+        "peak_memory_mib": 139.52
+      },
+      "postgres": {
+        "average_cpu_percent_one_core": 16.24,
+        "peak_cpu_percent_one_core_200ms": 74.76,
+        "peak_memory_mib": 225.42
+      }
+    },
+    "host_logical_cpus": 12,
+    "resource_sampling_ms": 200,
+    "total_seconds": 2.383
+  }
+]

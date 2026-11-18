@@ -1,0 +1,62 @@
+<odoo>
+    <record id="access_ecf_review_invoice_user" model="ir.model.access">
+        <field name="name">Revisión de factura electrónica</field>
+        <field name="model_id" ref="model_uno360x_ecf_review"/>
+        <field name="group_id" ref="account.group_account_invoice"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_write" eval="True"/>
+    </record>
+    <record id="ecf_review_form" model="ir.ui.view">
+        <field name="name">uno360x.ecf.review.form</field>
+        <field name="model">uno360x.ecf.review</field>
+        <field name="arch" type="xml">
+            <form string="Factura electrónica"><div class="alert alert-info" role="status">Revisa el cliente, el tipo de comprobante y el total. La emisión en producción está pendiente de configurar.</div>
+                <group>
+                    <field name="move_id" invisible="1"/>
+                    <field name="partner_id"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="amount_total"/>
+                    <field name="document_type"/>
+                    <field name="payment_type"/>
+                    <field name="income_type"/>
+                    <field name="certification_ready" invisible="1"/>
+                    <field name="test_encf" invisible="not certification_ready" groups="account.group_account_manager"/>
+                </group>
+                <footer>
+                    <button name="action_review" type="object" string="Revisar datos" class="btn-primary"/>
+                    <button name="action_emit_certification" type="object" string="Emitir en certificación" invisible="not certification_ready"
+                            groups="account.group_account_manager"
+                            confirm="Se preparará una solicitud de prueba. No se consumirá una secuencia de producción."/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="account_tax_ecf_exempt" model="ir.ui.view">
+        <field name="name">account.tax.uno360x.ecf.exempt</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_form"/>
+        <field name="arch" type="xml">
+            <field name="amount" position="after">
+                <field name="uno360x_ecf_exempt" groups="account.group_account_manager"
+                       invisible="amount_type != 'percent' or amount != 0"/>
+            </field>
+        </field>
+    </record>
+    <record id="account_move_ecf_review" model="ir.ui.view">
+        <field name="name">account.move.uno360x.ecf.review</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_date']" position="after">
+                <field name="uno360x_certification_state" invisible="not uno360x_certification_state"/>
+                <field name="uno360x_certification_encf" invisible="not uno360x_certification_encf"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_uno360x_review_ecf" type="object" string="Preparar factura electrónica" class="oe_highlight"
+                        groups="account.group_account_invoice" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

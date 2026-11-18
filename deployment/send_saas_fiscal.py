@@ -1,5 +1,6 @@
 """Process one explicitly provisioned SaaS issuer without network in Odoo."""
 import base64
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import fcntl
 from hashlib import sha256
 import importlib
@@ -9,6 +10,7 @@ from pathlib import Path
 import re
 import sqlite3
 import sys
+import time
 from types import ModuleType
 
 from certification.xmlsig import load_identity
@@ -51,10 +53,13 @@ class Queue:
                        q.signed_summary IS NOT NULL AS is_summary
                 FROM uno360x_ecf_issue q WHERE ({self.scope}) AND (
                     q.state='queued' OR (
-                        q.state IN ('sent','uncertain')
+                        q.state='sent' AND q.track_id IS NOT NULL
+                        AND q.write_date <= (now() AT TIME ZONE 'UTC') - interval '8 seconds'
+                    ) OR (
+                        (q.state='uncertain' OR (q.state='sent' AND q.track_id IS NULL))
                         AND q.write_date <= (now() AT TIME ZONE 'UTC') - interval '2 minutes'
                     ))
-                ORDER BY q.write_date,q.id LIMIT 5
+                ORDER BY (q.state='queued') DESC,q.write_date,q.id LIMIT 5
             ) pending;"""))
 
     def change(self, doc, assignments):
@@ -92,7 +97,8 @@ def dispatch(queue, doc, client, issuance, api, rfce, p12, password):
             result = ["state='sent'","track_id="+sql_text(track)]
     except api.SubmissionUnknown:
         return
-    queue.change(doc, result)
+    if queue.change(doc, result) and not summary:
+        consult(queue, dict(doc, state='sent', track_id=track), client, api, rfce)
 
 
 def consult(queue, doc, client, api, rfce):
@@ -115,6 +121,50 @@ def consult(queue, doc, client, api, rfce):
         queue.change(doc, ['state='+sql_text(state),'track_id='+sql_text(track)] if state else [])
     except ValueError:
         queue.change(doc, [])
+
+
+def process_document(queue, doc, issuance, api, rfce, p12, password):
+    # Each task owns its authenticated client. Never share a token/session
+    # between concurrent requests or across companies.
+    client = issuance.connect(p12, password)
+    if doc['state'] == 'queued':
+        dispatch(queue, doc, client, issuance, api, rfce, p12, password)
+    else:
+        consult(queue, doc, client, api, rfce)
+
+
+def process_pending(queue, documents, issuance, api, rfce, p12, password):
+    """Fill five issuer slots, including arrivals while other sends are active."""
+    deadline = time.monotonic() + 60
+    processed = set()
+    failures = []
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        running = {}
+        while documents or running:
+            for doc in documents:
+                if len(running) == 5:
+                    break
+                if doc['id'] in processed:
+                    continue
+                processed.add(doc['id'])
+                future = executor.submit(
+                    process_document, queue, doc, issuance, api, rfce, p12, password
+                )
+                running[future] = doc['id']
+            if not running:
+                break
+            done, _ = wait(running, timeout=0.2, return_when=FIRST_COMPLETED)
+            for future in done:
+                running.pop(future)
+                try:
+                    future.result()
+                except Exception as error:
+                    failures.append(type(error).__name__)
+            # Bound each activation so a busy business cannot keep the
+            # oneshot service running beyond its normal timeout.
+            documents = queue.pending() if time.monotonic() < deadline else []
+    if failures:
+        raise RuntimeError('Fiscal worker tasks failed: ' + ', '.join(failures))
 
 
 def main():
@@ -147,12 +197,7 @@ def main():
         _,cert=load_identity(p12,password)
         validate_certificate(cert,Path(os.environ['UNO360X_FISCAL_TRUST']))
         issuance,api,rfce=load_fiscal()
-        client=issuance.connect(p12,password)
-        for doc in documents:
-            if doc['state']=='queued':
-                dispatch(queue,doc,client,issuance,api,rfce,p12,password)
-            else:
-                consult(queue,doc,client,api,rfce)
+        process_pending(queue,documents,issuance,api,rfce,p12,password)
 
 
 if __name__=='__main__':

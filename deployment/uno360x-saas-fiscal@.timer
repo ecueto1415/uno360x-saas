@@ -2,9 +2,9 @@
 Description=Procesar comprobantes fiscales UNO360X de %i
 
 [Timer]
-OnActiveSec=15s
-OnUnitInactiveSec=30s
-AccuracySec=5s
+OnActiveSec=3s
+OnUnitInactiveSec=8s
+AccuracySec=1s
 
 [Install]
 WantedBy=timers.target
