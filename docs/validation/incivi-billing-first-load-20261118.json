@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-18",
+  "company": "INCIVI",
+  "browser": "Chrome, authenticated existing session",
+  "before_browser_cache_disabled": {
+    "billing_load_ms": 1550,
+    "billing_document_ms": 486,
+    "invoice_load_ms": 11730,
+    "invoice_network_finish_ms": 16940,
+    "invoice_document_ms": 8560
+  },
+  "after_browser_cache_disabled": {
+    "billing_load_ms": 1610,
+    "billing_document_ms": 447,
+    "invoice_load_ms": 2970,
+    "invoice_network_finish_ms": 7550
+  },
+  "after_first_list_after_application_restart": {
+    "billing_load_ms": 3110,
+    "background_get_views_ms": 8320,
+    "background_document_preparation_ms": 7200
+  },
+  "after_normal_browser_cache": {
+    "billing_load_ms": 1490,
+    "billing_document_ms": 447
+  },
+  "server_baseline": {
+    "first_call_ms": 1177.3,
+    "warm_ms": [
+      133.1,
+      180.8,
+      137.3
+    ],
+    "queries_first": 329,
+    "queries_warm": 194
+  },
+  "server_candidate": {
+    "first_call_ms": 933.7,
+    "warm_ms": [
+      60.0,
+      26.2,
+      23.4
+    ],
+    "queries_first": 167,
+    "queries_warm": 32
+  },
+  "navigation_and_rows_signature_unchanged": true,
+  "fiscal_documents_before_and_after": 6,
+  "methodology": "Chrome Network panel. Load is the browser load event, not a fiscal response time. Invoice opened after background preparation from the billing list. The normal-cache sample is separate from the disabled-cache samples. Browser network times vary; background preparation shifts work earlier and does not eliminate a cold application startup.",
+  "no_comprobantes_emitted": true,
+  "outsolutech_modified": false
+}

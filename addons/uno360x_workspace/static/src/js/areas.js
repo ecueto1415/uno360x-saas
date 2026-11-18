@@ -81,3 +81,78 @@
     new MutationObserver(schedule).observe(document.documentElement, {subtree: true, childList: true});
     schedule();
 })();
+
+(() => {
+    if (window.location.pathname !== "/uno360x/area/inventory") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("product_saved") !== "1") return;
+    url.searchParams.delete("product_saved");
+    window.history.replaceState(window.history.state, "", url);
+})();
+
+/* Prepare the invoice screen using the current user's session and permissions. */
+(() => {
+    const area = document.querySelector('.ua-area[data-area="billing"]');
+    if (!area || navigator.connection?.saveData) return;
+    const anchor = area.querySelector('.ua-table-panel a[href^="/odoo/"]');
+    if (!anchor) return;
+    const target = new URL(anchor.href, location.href);
+    if (target.origin !== location.origin) return;
+
+    let started = false;
+    const prepare = async () => {
+        if (started || document.hidden) return;
+        started = true;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        const context = {
+            lang: area.dataset.lang,
+            tz: area.dataset.tz || "UTC",
+            allowed_company_ids: [Number(area.dataset.company)],
+        };
+        const options = { toolbar: false, load_filters: false };
+        const actionId = target.pathname.match(/\/action-(\d+)/);
+        if (actionId) options.action_id = Number(actionId[1]);
+        const warmView = fetch("/web/dataset/call_kw/account.move/get_views", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            priority: "low",
+            body: JSON.stringify({
+                jsonrpc: "2.0", method: "call", id: "uno360x-invoice-preparation",
+                params: { model: "account.move", method: "get_views", args: [],
+                    kwargs: { views: [[false, "form"]], options, context } },
+            }),
+        }).then((response) => response.ok ? response.json() : null);
+        const warmAssets = fetch(target.href, {
+            credentials: "same-origin", signal: controller.signal, priority: "low",
+        }).then(async (response) => {
+            if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) return;
+            const html = new DOMParser().parseFromString(await response.text(), "text/html");
+            const urls = [...html.querySelectorAll("script[src],link[rel=stylesheet][href]")]
+                .map((element) => element.src || element.href)
+                .map((value) => new URL(value, location.href))
+                .filter((url) => url.origin === location.origin && url.pathname.startsWith("/web/assets/"));
+            for (const url of urls.slice(0, 4)) {
+                if ([...document.querySelectorAll('link[rel=prefetch]')].some((link) => link.href === url.href)) continue;
+                const link = document.createElement("link");
+                link.rel = "prefetch";
+                link.href = url.href;
+                link.as = url.pathname.endsWith(".css") ? "style" : "script";
+                document.head.appendChild(link);
+            }
+        });
+        await Promise.allSettled([warmView, warmAssets]);
+        clearTimeout(timeout);
+    };
+    const idle = () => {
+        if ("requestIdleCallback" in window) requestIdleCallback(prepare, { timeout: 1500 });
+        else setTimeout(prepare, 500);
+    };
+    if (document.readyState === "complete") idle();
+    else window.addEventListener("load", idle, { once: true });
+    area.addEventListener("pointerover", (event) => {
+        if (event.target.closest('.ua-table-panel a[href^="/odoo/"]')) prepare();
+    }, { passive: true });
+})();
