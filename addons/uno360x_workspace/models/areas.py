@@ -1,6 +1,7 @@
 """Approved 14-area workspace: user-scoped reads and existing native actions."""
 import calendar,datetime,math
 from urllib.parse import urlencode
+from ..billing_assets import billing_asset_urls
 from zoneinfo import ZoneInfo
 from odoo import api,models,fields
 from odoo.exceptions import AccessError, UserError
@@ -78,6 +79,7 @@ class WorkspaceAreas(models.AbstractModel):
  @api.model
  def _workspace_context(self):
   ctx=super()._workspace_context()
+  ctx['billing_assets']=False
   ctx['asset_revision']=self.env['ir.config_parameter'].sudo().get_param('uno360x.workspace.release','18.0.2.0.0')
   return self._area_navigation(ctx)
  @api.model
@@ -277,6 +279,7 @@ class WorkspaceAreas(models.AbstractModel):
   }.get(key,[])
   readable_fields=obj.fields_get([f for f,l in columns if f in obj._fields])
   columns=[(f,l) for f,l in columns if f in readable_fields]
+  if key == 'billing':ctx['billing_assets']=billing_asset_urls()
   ctx['area_columns']=[l for f,l in columns]
   stock_summary = self._inventory_replenishment_summary(records) if key == 'inventory' else {}
   if key == 'inventory':

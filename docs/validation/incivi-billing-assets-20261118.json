@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-18",
+  "tenant": "INCIVI",
+  "browser": "Chrome",
+  "measurement": "DevTools Network Load event; cache disabled; no throttling; server warmed",
+  "before_seconds": [
+    1.62,
+    1.44,
+    1.32
+  ],
+  "after_seconds": [
+    0.87,
+    0.894,
+    0.814
+  ],
+  "before_document_ms": [
+    490,
+    337,
+    351
+  ],
+  "after_document_ms": [
+    325,
+    338,
+    404
+  ],
+  "median_before_seconds": 1.44,
+  "median_after_seconds": 0.87,
+  "median_reduction_percent": 39.5833,
+  "first_after_restart_seconds": 1.89,
+  "first_after_restart_document_seconds": 1.35,
+  "blocking_assets_before": {
+    "css": 4,
+    "js": 2
+  },
+  "blocking_assets_after": {
+    "css": 1,
+    "js": 1
+  },
+  "payload_permissions_hash_before_after": "b87557f086d0b611ece451b15ae5d938df5dfcc0da3e762e4bb3d6f6984d4d37",
+  "fiscal_documents_before_after": 6,
+  "next_e31_before_after": "4",
+  "next_e34_before_after": "4",
+  "fiscal_issuance_performed": false,
+  "native_outsolutech_modified": false,
+  "validation": [
+    "exact CSS/JS byte concatenation in original order",
+    "same list data and allowed menus",
+    "HTTP 200 bodies and ETag 304 on both SaaS backends",
+    "unknown asset kind 404; previous hash redirects",
+    "other areas retain existing individual files"
+  ],
+  "limitations": [
+    "Three samples per version are an observation, not a latency guarantee.",
+    "First access after restart still has server cold-start work.",
+    "Only task-specific changes are included in the Git patch; unrelated live baseline customizations are preserved on server."
+  ]
+}
