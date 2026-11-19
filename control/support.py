@@ -30,9 +30,13 @@ def dispatch(handler,handle,url):
         store=Store()
         if handler.command=='GET':
             params=parse_qs(url.query,keep_blank_values=True)
-            if set(params)-{'case_id'} or any(len(v)!=1 for v in params.values()):
+            if set(params)-{'case_id','before'} or any(len(v)!=1 for v in params.values()):
                 raise Invalid('Solicitud inválida.')
-            value=store.listing(tenant,account,params.get('case_id',[None])[0])
+            before=params.get('before',[None])[0]
+            if before is not None:
+                if not before.isascii() or not before.isdigit() or len(before)>18:raise Invalid('Historial no disponible.')
+                before=int(before)
+            value=store.listing(tenant,account,params.get('case_id',[None])[0],before=before)
             reply(200,dict(value,csrf_token=token_for(handle)));return
         if handler.command!='POST':
             reply(405,{'error':'Método no permitido.'});return

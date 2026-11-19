@@ -41,6 +41,18 @@ Se corrigieron durante la prueba la ausencia del chat en rutas `/uno360x/…`, l
 
 ## Publicación y reversión
 
+### Conversación continua por usuario y empresa — 19 de noviembre
+
+El widget ya no ofrece selector de conversaciones ni Nueva consulta. La tabla `conversations` fija un único hilo por `(tenant, account)`, también ante dos envíos simultáneos. Los mensajes de las consultas anteriores se leen en orden dentro de ese mismo historial, sin moverlos ni borrarlos. Se mantienen sus identificadores, cuerpos, fechas, contexto y auditoría originales. Los mensajes nuevos y sus reintentos utilizan el hilo persistente; la deduplicación también reconoce envíos de los hilos anteriores.
+
+El cliente carga los últimos 80 mensajes y puede pedir páginas anteriores sin duplicarlos; las actualizaciones conservan lo que ya leyó. La bandeja del propietario muestra el mismo hilo continuo. Al resolver una consulta humana, el siguiente mensaje vuelve a Jenifer; durante la atención humana se conserva la opción Volver a Jenifer. El redactor recibe el contexto reciente de la misma cuenta y empresa, limitado a 24 mensajes por llamada; el historial completo permanece guardado y navegable. No implica memoria ilimitada del modelo.
+
+Validación: 21 pruebas de almacenamiento y continuidad, cuatro de diagnóstico autorizado, diez DOM del widget y tres recorridos HTTP de autenticación, derivación y respuesta del propietario. Cubren aislamiento por empresa y usuario, reintentos antiguos, primeros envíos simultáneos, paginación de 171 mensajes, resolución y retorno a IA sin seleccionar ni enviar un identificador de conversación.
+
+En la sesión real de INCIVI se conservaron los 29 mensajes anteriores íntegros, comprobados contra el respaldo. Se hicieron dos preguntas identificadas como pruebas: una antes de volver a entrar y otra desde una nueva pestaña de acceso. Ambas obtuvieron una sola respuesta de Jenifer, en el mismo hilo y con enlace al CRM, sin generar otro caso. El chat mostró 33 mensajes en total. Captura: `outputs/UNO360X_INCIVI_chat_continuo.jpg` en el espacio de trabajo de Codex.
+
+Respaldo de código y base de soporte: `/var/backups/uno360x-support-continuous-20261119`. Publicado en el gateway y servicios comunes del soporte y administrador; no exige reconstruir empresas ni reservas. Para revertir, restaurar el código anterior y reiniciar solo esos servicios; conservar la base actual y la tabla adicional para no perder mensajes posteriores al respaldo. El PID del Odoo nativo de OUTSOLUTECH permaneció idéntico y no se modificaron datos de negocio, certificados ni secuencias fiscales.
+
 Código común en `addons/uno360x_workspace/models/support.py` y `support_guide.py`; capturador en `control/support_context.py`; cola y redactor en `support_center`. No se cambiaron credenciales ni permisos de negocio. La guía se instala tanto para Base Empresarial como para las combinaciones de módulos; solo muestra lo que corresponde al plan y usuario.
 
 Respaldo anterior en `/var/backups/uno360x-support-diagnostics-20261119`. Revertir exige restaurar modelos y soporte previos y volver a sincronizar huellas, empresas y reservas del SaaS. Conservar las conversaciones y la tabla adicional; no borrarlas para revertir código. El proceso Odoo de OUTSOLUTECH no se reinició.

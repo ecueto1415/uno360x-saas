@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS cases (
  title TEXT NOT NULL, topic TEXT NOT NULL DEFAULT 'other', status TEXT NOT NULL DEFAULT 'open',
  human INTEGER NOT NULL DEFAULT 0, created REAL NOT NULL, updated REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS case_scope ON cases(tenant,account,updated);
+CREATE TABLE IF NOT EXISTS conversations (
+ tenant TEXT NOT NULL, account TEXT NOT NULL, case_id TEXT NOT NULL UNIQUE REFERENCES cases(id),
+ PRIMARY KEY(tenant,account));
 CREATE TABLE IF NOT EXISTS messages (
  id INTEGER PRIMARY KEY, case_id TEXT NOT NULL REFERENCES cases(id),
  role TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL,
@@ -93,22 +96,48 @@ class Store:
             raise Invalid('Conversación no disponible.')
         return dict(row)
 
-    def messages(self, case_id):
-        return [dict(r) for r in self.db.execute('SELECT id,role,body,created,state FROM messages WHERE case_id=? ORDER BY id DESC LIMIT 80', (case_id,))][::-1]
+    def conversation_id(self, tenant, account, requested=None):
+        # Keep legacy rows intact: one durable anchor, shared scoped history.
+        # Called under the writer transaction when selecting or creating an anchor.
+        if requested is not None:
+            self.case(tenant,account,requested)
+        row=self.db.execute('SELECT case_id FROM conversations WHERE tenant=? AND account=?',(tenant,account)).fetchone()
+        if row:
+            self.case(tenant,account,row['case_id'])
+            return row['case_id']
+        row=self.db.execute('SELECT id FROM cases WHERE tenant=? AND account=? ORDER BY updated DESC,id DESC LIMIT 1',(tenant,account)).fetchone()
+        if row:
+            self.db.execute('INSERT OR IGNORE INTO conversations VALUES (?,?,?)',(tenant,account,row['id']))
+            return row['id']
+        return hashlib.sha256(('continuous-v1\0'+tenant+'\0'+account).encode()).hexdigest()[:32]
 
-    def listing(self, tenant, account, case_id=None):
-        cases = [dict(r) for r in self.db.execute('SELECT * FROM cases WHERE tenant=? AND account=? ORDER BY updated DESC LIMIT 30',(tenant,account))]
-        selected = self.case(tenant,account,case_id) if case_id else (cases[0] if cases else None)
-        return {'cases':cases,'selected':selected,'messages':self.messages(selected['id']) if selected else []}
+    def messages(self, case_id, before=None, limit=80):
+        scope=self.db.execute('SELECT tenant,account FROM cases WHERE id=?',(case_id,)).fetchone()
+        if not scope:return []
+        return [dict(r) for r in self.db.execute('''SELECT m.id,m.role,m.body,m.created,m.state FROM messages m
+            JOIN cases c ON c.id=m.case_id WHERE c.tenant=? AND c.account=? AND (? IS NULL OR m.id<?)
+            ORDER BY m.id DESC LIMIT ?''',(scope['tenant'],scope['account'],before,before,limit))][::-1]
+
+    def listing(self, tenant, account, case_id=None, before=None):
+        if before is not None and (type(before) is not int or before<1):raise Invalid('Historial no disponible.')
+        with self.transaction():
+            anchor=self.conversation_id(tenant,account,case_id)
+            exists=self.db.execute('SELECT 1 FROM cases WHERE id=?',(anchor,)).fetchone()
+            selected=self.case(tenant,account,anchor) if exists else None
+            page=self.messages(anchor,before,81) if selected else []
+        return {'cases':[selected] if selected else [],'selected':selected,'messages':page[-80:],
+                'has_older':len(page)>80,'continuous':True}
 
     def send(self, tenant, account, data, *, context=None):
         body,key,case_id,human=submission(tenant,account,data)
         now = self.clock()
         with self.transaction():
+            case_id=self.conversation_id(tenant,account,data.get('case_id'))
             existing = self.db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
             if existing:
                 self.case(tenant,account,case_id)
-            previous = self.db.execute('SELECT body FROM messages WHERE case_id=? AND request_id=?',(case_id,key)).fetchone()
+            previous = self.db.execute('''SELECT m.body FROM messages m JOIN cases c ON c.id=m.case_id
+                WHERE c.tenant=? AND c.account=? AND m.request_id=? LIMIT 1''',(tenant,account,key)).fetchone()
             if previous:
                 if previous['body'] != body:
                     raise Invalid('El identificador del mensaje ya fue utilizado.')
@@ -117,6 +146,7 @@ class Store:
             self.allow('tenant:'+tenant,60)
             if not existing:
                 self.db.execute('INSERT INTO cases (id,tenant,account,title,human,created,updated) VALUES (?,?,?,?,?,?,?)',(case_id,tenant,account,body[:100],int(human),now,now))
+                self.db.execute('INSERT INTO conversations VALUES (?,?,?)',(tenant,account,case_id))
             else:
                 if self.db.execute("SELECT 1 FROM messages WHERE case_id=? AND state IN ('pending','working')",(case_id,)).fetchone():
                     raise Invalid('Jenifer está preparando la respuesta anterior. Espera un momento.')
@@ -134,10 +164,13 @@ class Store:
 
     def needs_context(self, tenant, account, data):
         body,key,case_id,human=submission(tenant,account,data)
+        with self.transaction():
+            case_id=self.conversation_id(tenant,account,data.get('case_id'))
         row=self.db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if row:
             self.case(tenant,account,case_id)
-            previous=self.db.execute('SELECT body FROM messages WHERE case_id=? AND request_id=?',(case_id,key)).fetchone()
+            previous=self.db.execute('''SELECT m.body FROM messages m JOIN cases c ON c.id=m.case_id
+                WHERE c.tenant=? AND c.account=? AND m.request_id=? LIMIT 1''',(tenant,account,key)).fetchone()
             if previous:
                 if previous['body']!=body:raise Invalid('El identificador del mensaje ya fue utilizado.')
                 return False
@@ -159,6 +192,7 @@ class Store:
 
     def handoff(self, tenant, account, case_id):
         with self.transaction():
+            case_id=self.conversation_id(tenant,account,case_id)
             self.case(tenant,account,case_id)
             self.db.execute("UPDATE cases SET human=1,status='open',updated=? WHERE id=?",(self.clock(),case_id))
             self.db.execute("UPDATE messages SET state='done' WHERE case_id=? AND state IN ('pending','working')",(case_id,))
@@ -167,6 +201,7 @@ class Store:
         encoded=json.dumps(context,ensure_ascii=False)
         if len(encoded)>60000:raise Invalid('El diagnóstico es demasiado extenso.')
         with self.transaction():
+            case_id=self.conversation_id(tenant,account,case_id)
             self.case(tenant,account,case_id)
             if self.db.execute("SELECT 1 FROM messages WHERE case_id=? AND state IN ('pending','working')",(case_id,)).fetchone():
                 return
@@ -220,7 +255,10 @@ class Store:
              (tenant,hour,area,int(milliseconds>=2500),int(status>=500),milliseconds,milliseconds))
 
     def overview(self):
-        return {'cases':[dict(r) for r in self.db.execute('SELECT * FROM cases ORDER BY updated DESC LIMIT 150')],
+        return {'cases':[dict(r) for r in self.db.execute('''SELECT c.* FROM cases c WHERE c.id=COALESCE(
+                    (SELECT x.case_id FROM conversations x WHERE x.tenant=c.tenant AND x.account=c.account),
+                    (SELECT x.id FROM cases x WHERE x.tenant=c.tenant AND x.account=c.account ORDER BY x.updated DESC,x.id DESC LIMIT 1))
+                    ORDER BY c.updated DESC LIMIT 150''')],
                 'reports':[dict(r) for r in self.db.execute('SELECT day,created,body FROM reports ORDER BY day DESC LIMIT 14')]}
 
     def admin_case(self, case_id):
@@ -229,7 +267,9 @@ class Store:
         row=self.db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
         if not row:
             raise Invalid('Conversación no disponible.')
-        return {'selected':dict(row),'messages':self.messages(case_id)}
+        with self.transaction():
+            anchor=self.conversation_id(row['tenant'],row['account'],case_id)
+        return {'selected':self.case(row['tenant'],row['account'],anchor),'messages':self.messages(anchor)}
 
     def admin_action(self, actor, data):
         if set(data) != {'case_id','action','body','request_id'} or data['action'] not in ('reply','resolve'):
@@ -240,7 +280,9 @@ class Store:
             data['action']=='reply' and not body.strip()):
             raise Invalid('Escribe una respuesta de hasta 3,000 caracteres.')
         with self.transaction():
-            self.admin_case(case_id)
+            scope=self.db.execute('SELECT tenant,account FROM cases WHERE id=?',(case_id,)).fetchone()
+            if not scope:raise Invalid('Conversación no disponible.')
+            case_id=self.conversation_id(scope['tenant'],scope['account'],case_id)
             if self.db.execute('SELECT 1 FROM messages WHERE case_id=? AND request_id=?',(case_id,'admin:'+key)).fetchone():
                 return
             self.db.execute("UPDATE cases SET human=1,status=?,updated=? WHERE id=?",('resolved' if data['action']=='resolve' else 'open',self.clock(),case_id))

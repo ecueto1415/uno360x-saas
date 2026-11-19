@@ -12,7 +12,6 @@ function setup(t,fetcher,lang='es_DO'){
 }
 async function openExisting(w,d){
  d.querySelector('.us-launch').click();await wait();
- d.querySelector('select').value='a'.repeat(32);d.querySelector('select').dispatchEvent(new w.Event('change'));await wait();
 }
 test('idle chat makes no requests; support link opens it and escape closes it',async t=>{
  const {w,d,calls}=setup(t);assert.equal(calls.length,0);
@@ -48,7 +47,7 @@ test('resolved human conversation displays its resolved state',async t=>{
  const selected={id:'a'.repeat(32),title:'Consulta',human:1,status:'resolved'};
  const {w,d}=setup(t,()=>({cases:[selected],selected,messages:[],csrf_token:'safe-token'}));
  await openExisting(w,d);
- assert.match(d.querySelector('.us-status').textContent,/resuelta/);
+ assert.match(d.querySelector('.us-status').textContent,/resolvió/);
  assert.doesNotMatch(d.querySelector('.us-status').textContent,/Enviado al equipo/);
 });
 test('active human conversation can explicitly return to Jenifer',async t=>{
@@ -69,11 +68,26 @@ test('verified local paths become clickable while external links remain text',as
  assert.equal(links[0].getAttribute('href'),'/uno360x/area/crm');
  assert.match(d.querySelector('.us-message').textContent,/https:\/\/evil.example/);
 });
-test('first opening starts fresh while keeping closed history available',async t=>{
+test('reopening and a fresh page retain the continuous history without a selector',async t=>{
  const selected={id:'a'.repeat(32),title:'Cerrada',human:1,status:'resolved'};
  const {d}=setup(t,()=>({cases:[selected],selected,messages:[{id:1,role:'team',body:'Mensaje viejo',state:'done'}],csrf_token:'safe-token'}));
  d.querySelector('.us-launch').click();await wait();
- assert.equal(d.querySelector('select').value,'');assert.equal(d.querySelectorAll('.us-message').length,0);
- assert.match(d.querySelector('.us-messages').textContent,/Hola, soy Jenifer/);
- assert.equal(d.querySelectorAll('select option').length,2);
+ assert.equal(d.querySelector('select'),null);assert.equal(d.querySelector('.us-new'),null);
+ assert.match(d.querySelector('.us-messages').textContent,/Mensaje viejo/);
+ assert.match(d.querySelector('.us-status').textContent,/Jenifer está disponible/);
+ d.querySelector('.us-close').click();d.querySelector('.us-launch').click();await wait();
+ assert.match(d.querySelector('.us-messages').textContent,/Mensaje viejo/);
+});
+
+test('older history is loaded once and retained across refreshes without duplication',async t=>{
+ const selected={id:'a'.repeat(32),human:0,status:'open'};
+ const message=(id)=>({id,role:'assistant',body:'Mensaje '+id,state:'done'});
+ const {w,d,calls}=setup(t,(url)=>({cases:[selected],selected,messages:url.includes('before=')?[message(1)]:[message(2),message(3)],has_older:!url.includes('before='),csrf_token:'safe-token'}));
+ await openExisting(w,d);assert.equal(d.querySelector('.us-older').hidden,false);
+ d.querySelector('.us-older').click();await wait();
+ assert.match(calls.at(-1).url,/case_id=a{32}&before=2/);
+ assert.equal(d.querySelectorAll('.us-message').length,3);
+ assert.equal(d.querySelector('.us-older').hidden,true);
+ d.querySelector('.us-close').click();d.querySelector('.us-launch').click();await wait();
+ assert.equal(d.querySelectorAll('.us-message').length,3);assert.equal(d.querySelector('.us-older').hidden,true);
 });

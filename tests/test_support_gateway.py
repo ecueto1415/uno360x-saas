@@ -29,6 +29,10 @@ class SupportGatewayTests(GatewayTests):
         finally:s.close()
         self.assertEqual(400,self.request('/__support?case_id='+('f'*32))[0])
         self.assertEqual(400,self.request('/__support?tenant=forged')[0])
+        for query in ['before=0','before=-1','before=abc','before=1&before=2']:
+            self.assertEqual(400,self.request('/__support?'+query)[0])
+        value=json.loads(self.request('/__support?before=1')[2])
+        self.assertTrue(value['continuous']);self.assertEqual([],value['messages'])
         self.assertEqual(200,self.request('/__support/chat.js?v=1')[0])
         self.assertEqual(404,self.request('/__support/worker.py')[0])
         self.assertEqual(405,self.request('/__support','DELETE',headers={'Origin':self.server.origin})[0])

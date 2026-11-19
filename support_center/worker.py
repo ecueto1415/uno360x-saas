@@ -18,6 +18,8 @@ verificada de features.route o menus.route en una línea separada: Abrir: /ruta.
 enlace pulsable. Nunca inventes una ruta ni envíes al portal de otra empresa. Para apariencia o diseño de facturas,
 usa Mi empresa (logo y plantilla visual); Plantillas de facturación de Ventas sirve para reutilizar artículos y generar borradores.
 Si un usuario dice «estás ahí» o «sí», retoma la pregunta pendiente del historial sin obligarlo a repetirla.
+Es una sola conversación continua por usuario y empresa. El historial puede contener varios temas y respuestas del
+equipo humano: sigue la última pregunta y conserva el contexto pertinente. No trates una consulta resuelta como un chat cerrado.
 Tu función es explicar, diagnosticar con evidencia concreta y recoger sugerencias. Recibes diagnostics: una consulta real
 de solo lectura a menús, módulos, permisos y configuración de esta empresa con los accesos del solicitante. Si verified
 es true, puedes explicar exactamente lo verificado y los recorridos, usando path y route de features y menus. No digas
@@ -63,7 +65,7 @@ def answer(settings, history, context=None):
     if not settings.get('OPENAI_API_KEY'):
         raise RuntimeError('Existing Jenifer connection unavailable')
     payload={'model':settings.get('OPENAI_MODEL','gpt-5.6-luna'),'store':False,
-        'instructions':INSTRUCTIONS,'input':json.dumps({'diagnostic_evidence':context or {'verified':False},'conversation':history[-8:]},ensure_ascii=False),
+        'instructions':INSTRUCTIONS,'input':json.dumps({'diagnostic_evidence':context or {'verified':False},'conversation':history[-24:]},ensure_ascii=False),
         'max_output_tokens':1600,'text':{'format':{'type':'json_schema','name':'support_reply','strict':True,
         'schema':{'type':'object','properties':{'reply':{'type':'string'},'topic':{'type':'string','enum':list(TOPICS)},
         'human':{'type':'boolean'}},'required':['reply','topic','human'],'additionalProperties':False}}}}

@@ -2,3 +2,4 @@
 #us-panel>header,#us-panel>.us-privacy,#us-panel>.us-tools,#us-panel>.us-status,#us-panel>form{flex-shrink:0}#uno-support .us-messages{min-height:0}
 @media(max-height:600px){#us-panel header{padding:10px 12px}#uno-support .us-privacy{padding:6px 12px}#uno-support .us-tools{padding:6px 12px}#uno-support textarea{height:55px;min-height:55px;resize:none}#uno-support .us-status:empty{display:none}#us-panel{overflow-y:auto}}
 #uno-support .us-message a{color:#087f79;text-decoration:underline;font-weight:600;overflow-wrap:anywhere}
+#uno-support .us-tools{flex-direction:column;gap:5px;padding:8px 12px;border-bottom:1px solid #edf2f3}#uno-support .us-continuous{font-size:11px;color:#587079}#uno-support .us-older{font-size:12px;padding:5px 10px;align-self:center}#uno-support [hidden]{display:none!important}

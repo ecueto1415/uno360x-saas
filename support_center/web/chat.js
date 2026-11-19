@@ -7,27 +7,31 @@
     <section id="us-panel" hidden role="dialog" aria-label="Soporte UNO360X">
       <header><div><strong>Jenifer · Soporte UNO360X</strong><small>Estamos para ayudarte</small></div><button type="button" class="us-close" aria-label="Cerrar soporte">×</button></header>
       <p class="us-privacy">Cuéntanos qué necesitas. No envíes contraseñas, códigos ni certificados. Este chat se comparte con el equipo de soporte.</p>
-      <div class="us-tools"><select aria-label="Conversaciones anteriores"></select><button type="button" class="us-new">Nueva consulta</button></div>
+      <div class="us-tools"><small class="us-continuous">Tu conversación queda guardada en esta empresa.</small><button type="button" class="us-older" hidden>Ver mensajes anteriores</button></div>
       <div class="us-messages" role="log" aria-live="polite"></div><p class="us-status" role="status"></p>
       <form><label for="us-text">Tu mensaje</label><textarea id="us-text" rows="3" maxlength="3000" required placeholder="¿En qué te ayudamos?"></textarea>
       <div class="us-actions"><button type="button" class="us-human">Hablar con el equipo</button><button type="button" class="us-ai" hidden>Volver a Jenifer</button><button type="submit" class="us-send">Enviar</button></div></form>
     </section>`;
   document.body.append(root);
   const $ = q => root.querySelector(q), launch = $('.us-launch'), panel = $('#us-panel'), log = $('.us-messages'), status = $('.us-status');
-  let data = null, selected = null, csrf = '', poll = null, loading = false, request = null, newChat = true, humanNew = false, generation = 0;
+  let data = null, selected = null, csrf = '', poll = null, loading = false, request = null, humanNew = false, generation = 0, older = [], hasOlder = false, historyLoading = false, historyLoaded = false;
   const en = document.documentElement.lang?.startsWith('en');
   if (en) {
     launch.querySelector('span').textContent = 'Support';
     $('header strong').textContent = 'Jenifer · UNO360X Support';
     $('header small').textContent = 'Here to help';
     $('.us-privacy').textContent = 'Tell us what you need. Do not send passwords, codes or certificates. This chat is shared with the support team.';
-    $('.us-new').textContent = 'New conversation';
+    $('.us-continuous').textContent = 'Your conversation is saved for this company.';
+    $('.us-older').textContent = 'View earlier messages';
     $('label').textContent = 'Your message'; $('#us-text').placeholder = 'How can we help?';
     $('.us-human').textContent = 'Talk to the team'; $('.us-send').textContent = 'Send';
     $('.us-ai').textContent = 'Back to Jenifer';
   }
-  async function api(body, id) {
-    const response = await fetch('/__support' + (id ? '?case_id=' + encodeURIComponent(id) : ''), {
+  async function api(body, id, before) {
+    const query = new URLSearchParams();
+    if (id) query.set('case_id',id);
+    if (before) query.set('before',String(before));
+    const response = await fetch('/__support' + (query.size ? '?' + query : ''), {
       credentials: 'same-origin', cache: 'no-store', ...(body ? {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)} : {})
     });
     if (response.status === 401) throw new Error(en ? 'Sign in again to continue.' : 'Vuelve a iniciar sesión para continuar.');
@@ -52,19 +56,22 @@
     node.append(document.createTextNode(text.slice(last)));
   }
   function render(value) {
-    data = value; csrf = value.csrf_token; selected = newChat ? null : value.selected?.id || null;
-    const select = $('select'); select.replaceChildren();
-    const empty = new Option(en ? 'New conversation' : 'Nueva consulta', ''); select.add(empty);
-    for (const c of value.cases) select.add(new Option(c.title, c.id));
-    select.value = selected || '';
-    const messages = selected ? value.messages : [];
+    const changed = selected !== (value.selected?.id || null);
+    data = value; csrf = value.csrf_token; selected = value.selected?.id || null;
+    if (changed || older.length && value.messages.length && value.messages[0].id > older[older.length-1].id) { older = []; historyLoaded = false; }
+    // Keep already viewed history when polling advances the newest page.
+    const combined = new Map([...older,...(selected ? value.messages : [])].map(m => [m.id,m]));
+    const messages = [...combined.values()].sort((a,b) => a.id-b.id);
+    older = messages;
+    if (!historyLoaded) hasOlder = Boolean(value.has_older);
+    $('.us-older').hidden = !hasOlder;
     const signature = JSON.stringify(messages.map(m => [m.id, m.state, m.body]));
     if (log.dataset.signature !== signature) {
       const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
       log.replaceChildren();
       if (!messages.length) {
         const p = document.createElement('p'); p.className = 'us-empty';
-        p.textContent = en ? 'Hi, I am Jenifer. How can I help? Your previous conversations are available in the history above.' : 'Hola, soy Jenifer. ¿En qué puedo ayudarte? Tus conversaciones anteriores están en el historial de arriba.'; log.append(p);
+        p.textContent = en ? 'Hi, I am Jenifer. How can I help? We can continue here whenever you return.' : 'Hola, soy Jenifer. ¿En qué puedo ayudarte? Cuando vuelvas, seguimos aquí.'; log.append(p);
       }
       for (const m of messages) {
         const article = document.createElement('article'); article.className = 'us-message us-' + m.role;
@@ -80,7 +87,7 @@
     $('.us-human').hidden = Boolean(human) && value.selected?.status !== 'resolved';
     $('header strong').textContent = human && value.selected?.status !== 'resolved' ? (en ? 'UNO360X Support Team' : 'Equipo de soporte UNO360X') : (en ? 'Jenifer · UNO360X Support' : 'Jenifer · Soporte UNO360X');
     $('#us-text').placeholder = human && value.selected?.status !== 'resolved' ? (en ? 'Message for the team. Use Back to Jenifer for AI assistance.' : 'Mensaje para el equipo. Pulsa Volver a Jenifer para hablar con ella.') : (en ? 'How can we help?' : '¿En qué te ayudamos?');
-    status.textContent = pending ? (en ? 'Jenifer is preparing a response…' : 'Jenifer está preparando una respuesta…') : value.selected?.status === 'resolved' && selected ? (en ? 'Resolved by the team.' : 'Marcada como resuelta por el equipo.') : human ? (en ? 'Sent to the team. Your conversation is saved; you can close this window.' : 'Enviado al equipo. La conversación queda guardada; puedes cerrar esta ventana.') : '';
+    status.textContent = pending ? (en ? 'Jenifer is preparing a response…' : 'Jenifer está preparando una respuesta…') : value.selected?.status === 'resolved' && selected ? (en ? 'The team resolved your request. Jenifer is available; keep writing here.' : 'El equipo resolvió tu consulta. Jenifer está disponible; sigue escribiendo aquí.') : human ? (en ? 'Sent to the team. Your conversation is saved; you can close this window.' : 'Enviado al equipo. La conversación queda guardada; puedes cerrar esta ventana.') : '';
     $('.us-send').disabled = loading || pending;
     schedule();
   }
@@ -97,12 +104,21 @@
   }
   launch.onclick = () => {
     panel.hidden = !panel.hidden; launch.setAttribute('aria-expanded', String(!panel.hidden));
-    if (!panel.hidden && data?.selected?.status === 'resolved') { newChat = true; selected = null; humanNew = false; request = null; }
     if (panel.hidden) { generation++; clearTimeout(poll); } else { refresh(); $('#us-text').focus(); }
   };
   $('.us-close').onclick = () => { panel.hidden = true; launch.setAttribute('aria-expanded','false'); generation++; clearTimeout(poll); launch.focus(); };
-  $('.us-new').onclick = () => { generation++; newChat = true; humanNew = false; request = null; selected = null; render(data || {cases:[],messages:[],csrf_token:csrf}); $('#us-text').focus(); };
-  $('select').onchange = async event => { generation++; newChat = !event.target.value; humanNew = false; selected = event.target.value || null; request = null; await refresh(); };
+  $('.us-older').onclick = async () => {
+    if (historyLoading || !selected || !older.length) return;
+    historyLoading = true; $('.us-older').disabled = true;
+    const mine = generation, height = log.scrollHeight, top = log.scrollTop;
+    try {
+      const page = await api(null,selected,older[0].id);
+      if (mine !== generation || page.selected?.id !== selected) return;
+      older = [...page.messages,...older]; hasOlder = Boolean(page.has_older); historyLoaded = true;
+      render(data); log.scrollTop = top + log.scrollHeight - height;
+    } catch (error) { status.textContent = error.message; }
+    finally { historyLoading = false; $('.us-older').disabled = false; }
+  };
   $('#us-text').addEventListener('input', () => { request = null; });
   $('form').onsubmit = async event => {
     event.preventDefault();
@@ -110,7 +126,7 @@
     const body = $('#us-text').value.trim(); if (!body) return;
     loading = true; generation++; clearTimeout(poll); $('.us-send').disabled = true;
     const payload = request || {case_id:selected,body,request_id:crypto.randomUUID(),human:humanNew}; request = payload;
-    try { if (!csrf) csrf = (await api()).csrf_token; const result = await api(payload); newChat = false; request = null; $('#us-text').value = ''; loading = false; render(result); log.scrollTop = log.scrollHeight; }
+    try { if (!csrf) csrf = (await api()).csrf_token; const result = await api(payload); request = null; humanNew = false; $('#us-text').value = ''; loading = false; render(result); log.scrollTop = log.scrollHeight; }
     catch (error) { status.textContent = error.message; }
     finally { loading = false; $('.us-send').disabled = data?.messages.some(m => ['pending','working'].includes(m.state)) || false; }
   };

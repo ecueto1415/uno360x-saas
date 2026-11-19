@@ -72,7 +72,7 @@ class SupportTest(unittest.TestCase):
         self.assertEqual('review',self.s.db.execute('SELECT state FROM messages').fetchone()[0])
         self.assertEqual(1,self.s.db.execute('SELECT human FROM cases').fetchone()[0])
     def test_limits_do_not_block_business_gateway(self):
-        for i in range(12):self.s.send('t','a',dict(self.message(),request_id=('%032x'%i)))
+        for i in range(12):self.s.send('t','a',dict(self.message(human=True),request_id=('%032x'%i)))
         with self.assertRaises(Limited):self.s.send('t','a',dict(self.message(),request_id='f'*32))
         self.assertIsNotNone(self.s.send('other','a',self.message()))
     def test_bad_input_rejected(self):
@@ -150,5 +150,70 @@ class SupportTest(unittest.TestCase):
         job=self.s.claim();self.assertTrue(self.s.job_context(job)['verified'])
         self.s.finish(job,'Aquí está el CRM.','sales')
         self.assertEqual(2,len(self.s.messages(c)))
+
+    def test_continuous_chat_reuses_anchor_without_case_id(self):
+        c=self.s.send('t','a',self.message())
+        self.s.finish(self.s.claim(),'Abre Inventario.','inventory')
+        second=dict(self.message(),body='¿Y los mínimos?',request_id='b'*32)
+        self.assertEqual(c,self.s.send('t','a',second))
+        self.assertEqual(c,self.s.listing('t','a')['selected']['id'])
+        self.assertEqual(1,self.s.db.execute('SELECT COUNT(*) FROM cases').fetchone()[0])
+        self.assertEqual(3,len(self.s.messages(c)))
+
+    def test_legacy_history_preserved_and_scoped_and_admin_uses_same_thread(self):
+        for cid,tenant,account,title,updated in [('1'*32,'t','a','Anterior',1),('2'*32,'t','a','Reciente',2),('3'*32,'other','a','Privada',3),('4'*32,'t','other','Otra persona',4)]:
+            self.s.db.execute('INSERT INTO cases(id,tenant,account,title,created,updated) VALUES (?,?,?,?,?,?)',(cid,tenant,account,title,updated,updated))
+            self.s.db.execute("INSERT INTO messages(case_id,role,body,created) VALUES (?,'user',?,?)",(cid,title,updated))
+        self.s.db.commit()
+        listing=self.s.listing('t','a')
+        self.assertEqual('2'*32,listing['selected']['id'])
+        self.assertEqual(['Anterior','Reciente'],[m['body'] for m in listing['messages']])
+        self.assertEqual(1,len(listing['cases']))
+        self.assertEqual('2'*32,self.s.listing('t','a','1'*32)['selected']['id'])
+        self.s.send('t','a',dict(self.message(case_id='1'*32),body='Continúo',request_id='b'*32),context={'verified':True})
+        history=[]
+        run({},self.path,lambda settings,h,c:(history.extend(h) or {'reply':'Seguimos.','topic':'other','human':False}),budget=.1)
+        self.assertEqual(['Anterior','Reciente','Continúo'],[m['body'] for m in history])
+        self.assertEqual(4,self.s.db.execute('SELECT COUNT(*) FROM cases').fetchone()[0])
+        self.assertEqual(3,len(self.s.overview()['cases']))
+        self.assertEqual('2'*32,self.s.admin_case('1'*32)['selected']['id'])
+        self.assertEqual(4,len(self.s.admin_case('2'*32)['messages']))
+        self.assertEqual(1,self.s.db.execute('SELECT COUNT(*) FROM messages WHERE case_id=?',('1'*32,)).fetchone()[0])
+
+    def test_retry_of_legacy_message_does_not_duplicate_after_unification(self):
+        for cid,stamp in [('1'*32,1),('2'*32,2)]:
+            self.s.db.execute('INSERT INTO cases(id,tenant,account,title,created,updated) VALUES (?,\'t\',\'a\',\'Legacy\',?,?)',(cid,stamp,stamp))
+        self.s.db.execute("INSERT INTO messages(case_id,role,body,created,request_id) VALUES (?,'user',?,1,?)",('1'*32,self.message()['body'],'a'*32))
+        self.s.db.commit()
+        self.s.listing('t','a')
+        retry=self.message(case_id='1'*32)
+        self.assertFalse(self.s.needs_context('t','a',retry))
+        self.assertEqual('2'*32,self.s.send('t','a',retry))
+        self.assertEqual(1,len(self.s.messages('2'*32)))
+
+    def test_all_history_can_be_loaded_without_overlap_or_cross_scope(self):
+        c=self.s.send('t','a',self.message(human=True))
+        for i in range(170):self.s.db.execute("INSERT INTO messages(case_id,role,body,created) VALUES (?,'team',?,?)",(c,str(i),self.now+i))
+        self.s.db.commit()
+        page=self.s.listing('t','a');ids=[m['id'] for m in page['messages']]
+        self.assertTrue(page['has_older'])
+        while page['has_older']:
+            page=self.s.listing('t','a',before=page['messages'][0]['id'])
+            ids=[m['id'] for m in page['messages']]+ids
+        self.assertEqual(list(range(1,172)),ids)
+        with self.assertRaises(Invalid):self.s.listing('other','a',c,before=100)
+        for before in [0,-1,True,'2']:
+            with self.assertRaises(Invalid):self.s.listing('t','a',before=before)
+
+    def test_two_distinct_first_messages_cannot_create_two_threads(self):
+        def send(i):
+            db=Store(self.path,clock=lambda:self.now)
+            try:
+                try:return db.send('t','a',dict(self.message(),request_id=('%032x'%i)))
+                except Invalid:return None
+            finally:db.close()
+        with ThreadPoolExecutor(2) as p:ids=list(p.map(send,range(2)))
+        self.assertEqual(1,sum(x is not None for x in ids))
+        self.assertEqual(1,self.s.db.execute('SELECT COUNT(*) FROM cases').fetchone()[0])
 
 if __name__=='__main__':unittest.main()
