@@ -37,11 +37,15 @@ class Tax(models.Model):
 
     def _uno606_role(self):
         self.ensure_one()
+        self.check_access('read')
         if self.uno606_role: return self.uno606_role
-        if 'uno360x_ecf_retention' in self._fields and self.uno360x_ecf_retention:
-            return {'itbis':'vat_withheld','isr':'isr_withheld'}.get(self.uno360x_ecf_retention)
-        if 'outs_ecf_category' in self._fields and self.outs_ecf_category:
-            return 'exempt' if self.outs_ecf_category in ('3','4') else 'vat'
+        # Legacy classification fields may be manager-only. Read only these
+        # configuration values after checking the caller's access to this tax;
+        # invoice/payment/report records retain the caller's own permissions.
+        if 'uno360x_ecf_retention' in self._fields and self.sudo().uno360x_ecf_retention:
+            return {'itbis':'vat_withheld','isr':'isr_withheld'}.get(self.sudo().uno360x_ecf_retention)
+        if 'outs_ecf_category' in self._fields and self.sudo().outs_ecf_category:
+            return 'exempt' if self.sudo().outs_ecf_category in ('3','4') else 'vat'
         return False
 
 
@@ -250,15 +254,19 @@ class Report(models.TransientModel):
     def action_preview(self):
         result=self._result()
         output=Markup('<h3>EN PRUEBAS · Requiere confirmación de contabilidad</h3><p>Archivo para carga manual. No se envía a la DGII desde aquí.</p>')
-        output+=Markup('<p>Registros: %s · Neto facturado DOP: %s · ITBIS: %s · ITBIS retenido: %s · ISR retenido: %s</p>') % tuple(escape(v) for v in [len(result['rows'])]+[result['totals'].get(k,'0.00') for k in ('total','vat','vat_withheld','isr_withheld')])
+        unclassified_tax=any(p['field']=='Impuesto' for p in result['errors'])
+        totals=[result['totals'].get(k,'0.00') for k in ('total','vat','vat_withheld','isr_withheld')]
+        if unclassified_tax: totals[1]='Pendiente de clasificar'
+        output+=Markup('<p>Registros: %s · Neto facturado DOP: %s · ITBIS: %s · ITBIS retenido: %s · ISR retenido: %s</p>') % tuple(escape(v) for v in [len(result['rows'])]+totals)
+        issues=Markup('')
         if result['errors']:
-            output+=Markup('<h4>Corrige estos errores antes de exportar</h4><ul>')
+            issues+=Markup('<h4>Corrige estos errores antes de exportar</h4><ul>')
             for problem in result['errors']:
                 source=escape(problem['source'])
                 if problem.get('move_id'):
                     source=Markup('<a href="/odoo/account.move/%s" target="_blank">%s</a>') % (problem['move_id'],source)
-                output+=Markup('<li>%s · <strong>%s</strong>: %s</li>') % (source,escape(problem['field']),escape(problem['message']))
-            output+=Markup('</ul>')
+                issues+=Markup('<li>%s · <strong>%s</strong>: %s</li>') % (source,escape(problem['field']),escape(problem['message']))
+            issues+=Markup('</ul>')
         else: output+=Markup('<p>Sin errores locales. Pendiente cotejo contable y prevalidación oficial.</p>')
         output+=Markup('<div style="overflow-x:auto"><table class="table table-sm"><thead><tr>')
         columns=[('source','Factura'),('supplier','RNC'),('ncf','NCF/e-NCF'),('modified','Modificado'),('issued','Emisión'),('paid','Pago'),('expense','Gasto'),('total','Base DOP'),('vat','ITBIS'),('vat_withheld','ITBIS retenido'),('isr_withheld','ISR retenido'),('payment_form','Forma de pago'),('retention_only','Solo retenciones')]
@@ -266,9 +274,18 @@ class Report(models.TransientModel):
         output+=Markup('</tr></thead><tbody>')
         for row in result['rows']:
             output+=Markup('<tr>')
-            for key,_ in columns: output+=Markup('<td>%s</td>') % escape(str(row.get(key,'')))
+            for key,_ in columns:
+                value=row.get(key)
+                if key=='retention_only': value='Sí' if value else 'No'
+                elif key=='payment_form': value=dict(PAYMENTS).get(value,value)
+                elif key in ('issued','paid') and value:
+                    value=f'{value[6:8]}/{value[4:6]}/{value[:4]}'
+                elif value is False or value is None or value=='': value='—'
+                if key=='vat' and any(p.get('move_id')==row.get('move_id') and p['field']=='Impuesto' for p in result['errors']):value='Por revisar'
+                output+=Markup('<td>%s</td>') % escape(str(value))
             output+=Markup('</tr>')
         output+=Markup('</tbody></table></div>')
+        output+=issues
         self.write({'preview':output,'file_data':False,'filename':False})
         return {'type':'ir.actions.act_window','res_model':self._name,'res_id':self.id,'view_mode':'form','target':'current'}
 

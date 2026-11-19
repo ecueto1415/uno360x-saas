@@ -58,6 +58,9 @@ class Test606(unittest.TestCase):
     def test_note_requires_original_reported_evidence(self):
         r=self.report([sample(ncf='B0400000001',modified='B0100000001',credit=True,payment_form='06')])
         self.assertTrue(any(e['field']=='NCF original reportado' for e in r['errors']))
+    def test_empty_numbers_are_missing_not_duplicates(self):
+        r=self.report([sample(ncf='',supplier=''),sample(ncf='',supplier='')])
+        self.assertFalse(any(e['field']=='NCF duplicado' for e in r['errors']))
 
 
 if __name__=='__main__':unittest.main()

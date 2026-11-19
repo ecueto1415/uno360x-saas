@@ -85,9 +85,9 @@ def build(issuer, period, entries, today=None):
         elif modified: error('NCF modificado', 'Solo corresponde a una nota de crédito/débito.')
         if bool(data.get('credit')) != credit: error('Tipo de documento', 'La nota de crédito contable y el NCF no coinciden.')
         key = (data['supplier'], number)
-        if key in seen:
+        if NCF.fullmatch(number) and data['supplier'] and key in seen:
             error('NCF duplicado', 'Duplicado con ' + seen[key])
-        seen[key] = source
+        if NCF.fullmatch(number) and data['supplier']: seen[key] = source
         try:
             issued = fiscal_date(data.get('issued'))
             if issued > today: error('Fecha comprobante', 'No puede ser futura.')

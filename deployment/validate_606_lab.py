@@ -89,6 +89,14 @@ else:raise AssertionError('Unauthorized export')
 owner=base['res.users'].with_context(no_reset_password=True).create({'name':'QA606 Contabilidad',
     'login':'qa606accountantrollback','company_id':company.id,'company_ids':[(6,0,[company.id])],
     'groups_id':[(6,0,[base.ref('base.group_user').id,base.ref('account.group_account_user').id])]})
+normal_report=base['uno360x.606.report'].with_user(owner).create({'company_id':company.id,'month':'11','year':2026})
+normal_report.action_preview()
+assert normal_report.preview and '>False<' not in str(normal_report.preview)
+assert str(normal_report.preview).index('<table') < str(normal_report.preview).index('Corrige estos errores')
+if 'outs_ecf_category' in vat._fields:
+    vat.write({'uno606_role':False,'outs_ecf_category':'1'})
+    assert vat.with_user(owner)._uno606_role()=='vat'
+    vat.uno606_role='vat'
 foreign=base['uno360x.606.report'].new({'company_id':other.id,'month':'11','year':2026})
 try:foreign.with_user(owner)._result()
 except AccessError:pass
