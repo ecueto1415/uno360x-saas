@@ -323,7 +323,11 @@ class GatewayHandler(BaseHTTPRequestHandler):
         try:
             handle = self.cookie_handle()
             from . import team_access
+            from . import support
             url = urllib.parse.urlsplit(self.path)
+            if url.path == support.PATH or url.path.startswith(support.PATH + '/'):
+                support.dispatch(self,handle,url)
+                return
             if url.path == team_access.PATH:
                 team_access.dispatch(self,handle,url)
                 return
@@ -353,9 +357,13 @@ class GatewayHandler(BaseHTTPRequestHandler):
             if not 0 <= size <= MAX_BODY:
                 self.reply(413);return
             body = self.rfile.read(size) if size else b''
+            started = time.monotonic()
             status,headers,body = self.server.manager.forward(handle,self.command,self.path,dict(self.headers),body)
+            if self.command == 'GET':
+                support.record(handle,self.path,status,(time.monotonic()-started)*1000)
             status,headers,body = team_access.decorate(handle,self.path,status,headers,body)
             status,headers,body = brand_workspace_title(self.path,status,headers,body)
+            status,headers,body = support.decorate(self.path,status,headers,body)
             now = self.server.manager.clock()
             if status < 400 and now >= handle.cookie_refreshed + 86400:
                 handle.cookie_refreshed = now

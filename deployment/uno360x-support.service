@@ -1,0 +1,24 @@
+[Unit]
+Description=UNO360X on-demand support replies and daily evidence report
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/uno360x-support/current
+ExecStart=/usr/bin/python3 -m support_center.worker
+UMask=0007
+TimeoutStartSec=110
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/uno360x-support
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+MemoryMax=160M
+CPUQuota=25%
+
+[Install]
+WantedBy=multi-user.target
+

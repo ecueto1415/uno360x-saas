@@ -6,6 +6,7 @@ from urllib.parse import urlsplit,parse_qs
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from admin_console.auth import Auth,Denied,Limited,csrf
 from admin_console.resource_history import read_history,METRICS
+from support_center.store import Store as SupportStore,Invalid as SupportInvalid
 from admin_console.storage import overlay,increase,QuotaError,Conflict
 from admin_console.deletion_client import request_deletion,is_test_company
 
@@ -62,11 +63,20 @@ class Handler(BaseHTTPRequestHandler):
    kind,name=assets[route];self.common(200,kind+'; charset=utf-8',(ROOT/'web'/name).read_bytes());return
   if route=='/api/auth-config':self.reply(200,{'factor':self.server.factor});return
   if route=='/health':self.reply(200,{'status':'available'});return
-  if route not in ('/api/session','/api/overview','/api/activity','/api/resources/history'):
+  if route not in ('/api/session','/api/overview','/api/activity','/api/resources/history','/api/support'):
    self.reply(404,{'error':'Ruta no disponible.'});return
   auth=self.auth()
   try:
    account=auth.account(self.cookie(COOKIE),self.agent(),touch=route=='/api/session')
+   if route=='/api/support':
+    params=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
+    if set(params)-{'case_id'} or any(len(v)!=1 for v in params.values()):
+     self.reply(400,{'error':'Solicitud inválida.'});return
+    support=SupportStore()
+    try:self.reply(200,support.admin_case(params['case_id'][0]) if 'case_id' in params else support.overview())
+    except SupportInvalid as error:self.reply(400,{'error':str(error)})
+    finally:support.close()
+    return
    if route=='/api/session':self.reply(200,account);return
    if route=='/api/resources/history':
     params=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
@@ -86,12 +96,12 @@ class Handler(BaseHTTPRequestHandler):
   finally:auth.close()
  def do_POST(self):
   if not self.valid_origin():self.reply(403,{'error':'Origen no autorizado.'});return
-  if self.path not in ('/api/login','/api/mfa','/api/mfa/resend','/api/enroll/start','/api/enroll/finish','/api/logout','/api/storage/quota','/api/clients/delete-test'):
+  if self.path not in ('/api/login','/api/mfa','/api/mfa/resend','/api/enroll/start','/api/enroll/finish','/api/logout','/api/storage/quota','/api/clients/delete-test','/api/support'):
    self.reply(404,{'error':'Ruta no disponible.'});return
   auth=None
   try:
    n=int(self.headers.get('Content-Length','0'))
-   if self.headers.get('Transfer-Encoding') or not 1<=n<=4096 or self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError()
+   if self.headers.get('Transfer-Encoding') or not 1<=n<=(14000 if self.path=='/api/support' else 4096) or self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError()
    data=json.loads(self.rfile.read(n))
    if not isinstance(data,dict):raise ValueError()
    auth=self.auth()
@@ -110,6 +120,13 @@ class Handler(BaseHTTPRequestHandler):
     self.reply(200,{'authenticated':True,'recovery_codes':codes},[self.setcookie(COOKIE,session,28800),self.setcookie(CHALLENGE)]);return
    token=self.cookie(COOKIE);auth.account(token,self.agent())
    if not hmac.compare_digest(self.headers.get('X-CSRF-Token',''),csrf(token)):self.reply(403,{'error':'Solicitud no autorizada.'});return
+   if self.path=='/api/support':
+    auth.allow('support-reply',30)
+    support=SupportStore()
+    try:support.admin_action(self.server.owner,data);self.reply(200,{'saved':True})
+    except SupportInvalid as error:self.reply(400,{'error':str(error)})
+    finally:support.close()
+    return
    if self.path=='/api/clients/delete-test':
     auth.allow('test-company-delete',10)
     if set(data)!={'tenant_id','email'} or not all(isinstance(v,str) for v in data.values()):
