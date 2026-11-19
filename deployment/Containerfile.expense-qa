@@ -1,0 +1,5 @@
+# Isolated laboratory image. Never replace production Odoo images with this tag.
+FROM docker.io/library/odoo:18.0
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa && rm -rf /var/lib/apt/lists/*
+USER odoo
