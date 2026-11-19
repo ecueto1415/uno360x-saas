@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from admin_console.auth import Auth,Denied,Limited,csrf
 from admin_console.storage import overlay,increase,QuotaError,Conflict
+from admin_console.deletion_client import request_deletion,is_test_company
 
 COOKIE='__Host-uno360x_admin';CHALLENGE='__Host-uno360x_admin_challenge'
 ROOT=Path(__file__).resolve().parent
@@ -69,6 +70,8 @@ class Handler(BaseHTTPRequestHandler):
    if route=='/api/activity':
     entries=auth.db.execute('SELECT event,occurred FROM audit ORDER BY id DESC LIMIT 60').fetchall();self.reply(200,{'entries':[dict(r) for r in entries]});return
    data=overlay(auth.db,json.loads(self.server.snapshot.read_text()))
+   for client in data['clients']:
+    client['can_delete_test']=is_test_company(client.get('name'),client.get('email')) and client.get('preparation_status') in ('ready_local','failed')
    stale=time.time()-data['generated']>180
    self.reply(200,{'snapshot':data,'stale':stale,'storage_quota_enforced':False,'billing_configured':False})
   except Denied:self.reply(401,{'error':'Inicia sesión para continuar.'})
@@ -76,7 +79,7 @@ class Handler(BaseHTTPRequestHandler):
   finally:auth.close()
  def do_POST(self):
   if not self.valid_origin():self.reply(403,{'error':'Origen no autorizado.'});return
-  if self.path not in ('/api/login','/api/mfa','/api/mfa/resend','/api/enroll/start','/api/enroll/finish','/api/logout','/api/storage/quota'):
+  if self.path not in ('/api/login','/api/mfa','/api/mfa/resend','/api/enroll/start','/api/enroll/finish','/api/logout','/api/storage/quota','/api/clients/delete-test'):
    self.reply(404,{'error':'Ruta no disponible.'});return
   auth=None
   try:
@@ -100,6 +103,14 @@ class Handler(BaseHTTPRequestHandler):
     self.reply(200,{'authenticated':True,'recovery_codes':codes},[self.setcookie(COOKIE,session,28800),self.setcookie(CHALLENGE)]);return
    token=self.cookie(COOKIE);auth.account(token,self.agent())
    if not hmac.compare_digest(self.headers.get('X-CSRF-Token',''),csrf(token)):self.reply(403,{'error':'Solicitud no autorizada.'});return
+   if self.path=='/api/clients/delete-test':
+    auth.allow('test-company-delete',10)
+    if set(data)!={'tenant_id','email'} or not all(isinstance(v,str) for v in data.values()):
+     self.reply(400,{'error':'Solicitud inválida.'});return
+    result=request_deletion(data['tenant_id'],data['email'])
+    if result.get('deleted'):
+     with auth.db:auth.audit('test_company_deleted')
+    self.reply(200 if result.get('deleted') else 409,result);return
    if self.path=='/api/storage/quota':
     auth.allow('storage-change',30);result=increase(auth.db,json.loads(self.server.snapshot.read_text()),data,self.server.owner,self.server.clock());self.reply(200,result);return
    auth.logout(token);self.reply(200,{'logged_out':True},[self.setcookie(COOKIE),self.setcookie(CHALLENGE)])
