@@ -22,7 +22,10 @@
             restore?.addEventListener('click', () => {
                 try {
                     const target = localStorage.getItem(key + ':filter');
-                    if (target && target.startsWith('/uno360x/')) location.assign(target);
+                    if (target && target.startsWith('/uno360x/')) {
+                        const navigation = new CustomEvent('uno360x:navigate', { cancelable: true, detail: { url: target } });
+                        if (document.dispatchEvent(navigation)) location.assign(target);
+                    }
                 } catch {}
             });
             area.querySelectorAll('.ua-favorite').forEach((button) => {
@@ -92,8 +95,15 @@
 
 /* Prepare the invoice screen using the current user's session and permissions. */
 (() => {
+    let activeController;
+    const prepared = new Set();
+    document.addEventListener('uno360x:navigation-start', () => activeController?.abort());
+    function setupInvoicePreparation() {
     const area = document.querySelector('.ua-area[data-area="billing"]');
-    if (!area || navigator.connection?.saveData) return;
+    if (!area || area.dataset.invoicePreparation || navigator.connection?.saveData) return;
+    area.dataset.invoicePreparation = '1';
+    const preparationKey = [area.dataset.company, area.dataset.user, area.dataset.lang].join(':');
+    if (prepared.has(preparationKey)) return;
     const anchor = area.querySelector('.ua-table-panel a[href^="/odoo/"]');
     if (!anchor) return;
     const target = new URL(anchor.href, location.href);
@@ -101,9 +111,10 @@
 
     let started = false;
     const prepare = async () => {
-        if (started || document.hidden) return;
+        if (started || document.hidden || !area.isConnected) return;
         started = true;
         const controller = new AbortController();
+        activeController = controller;
         const timeout = setTimeout(() => controller.abort(), 12000);
         const context = {
             lang: area.dataset.lang,
@@ -145,6 +156,8 @@
         });
         await Promise.allSettled([warmView, warmAssets]);
         clearTimeout(timeout);
+        if (!controller.signal.aborted) prepared.add(preparationKey);
+        if (activeController === controller) activeController = null;
     };
     const idle = () => {
         if ("requestIdleCallback" in window) requestIdleCallback(prepare, { timeout: 1500 });
@@ -155,4 +168,7 @@
     area.addEventListener("pointerover", (event) => {
         if (event.target.closest('.ua-table-panel a[href^="/odoo/"]')) prepare();
     }, { passive: true });
+    }
+    document.addEventListener('uno360x:pagechange', setupInvoicePreparation);
+    setupInvoicePreparation();
 })();

@@ -1,0 +1,17 @@
+# Persistent navigation for read-only workspace pages
+
+The common sidebar, top bar and footer now stay in the document while read-only workspace content changes. The browser fetches a fresh authenticated HTML page, verifies its context and replaces only the siblings between the existing header and footer. CSS, scripts and document initialization are reused. Query filters, tabs, paging, global search, Summary, Applications and Help use the same mechanism. No HTML records are cached in storage or reused on Back/Forward.
+
+The allowed area routes are Contacts, CRM, Sales, POS landing, Billing, Expenses, Projects, Purchases, Inventory, Maintenance, Attendance, Leave and Reports. Native /odoo forms, company editing, fiscal actions, templates, cheques and other specialized forms retain their existing navigation and unsaved-change handling. This is the first stage, not a claim that every form transition is now a partial update.
+
+Each response must match the authenticated user, company, language and release plus the unique database UUID. Numeric user/company IDs repeat across independent tenant databases, so the UUID is part of the context token. Changed menus, failed requests, session redirects, scripts, embedded apps, business forms and unknown routes fall back to a normal authenticated page. Responses from aborted older navigations cannot overwrite the latest one. Only GET filters are intercepted; POST forms, new tabs, downloads, logout and native actions are left intact. Header CSRF values are refreshed from the verified response without replacing header nodes.
+
+The shared versioned bundle is now used on all common-shell pages. Invoice-screen preparation initializes on entry to Billing, stops when navigating away and avoids preparing the same company/user/language repeatedly in the same document. It remains read-only and does not reserve fiscal numbers or issue documents.
+
+## Validation
+
+Run `NODE_PATH=/path/to/jsdom/node_modules node --test tests/partial-navigation.test.cjs` with jsdom 26.1.0 installed outside the production application. Fourteen DOM integration tests cover preserved node identity, GET encoding, fresh Back/Forward and scroll, POST/native/new-tab exclusions, unsaved business forms, user/company/language/release/tenant-scope changes, expiry/permission changes, racing responses, unsafe content and saved filters. Existing asset-order/cache tests also pass.
+
+Chrome with the existing INCIVI session confirmed that Sales tabs, Summary, search and Back use fetch requests rather than new document loads, preserving the same accessibility document root. Before the change, three Sales tab navigations had full-page Load events of 1.82, 1.59 and 1.55 seconds. Initial partial Sales content requests took 451 and 616 ms before the template build started. These are different timing definitions (full document Load versus content fetch), so they do not establish a like-for-like percentage or a user-visible latency guarantee. DOM integration tests prove node preservation; Chrome observations confirm actual fetch navigation and rendered results. Browser cache remained enabled.
+
+Publication updates the two managed live SaaS apps and eight pristine profiles and replenishes the ready reserve. Native OUTSOLUTECH is excluded. No fiscal document is issued, e-NCF reserved or customer record created during validation. Pre-change source files are backed up server-side. The release patch excludes unrelated pre-existing live customizations.

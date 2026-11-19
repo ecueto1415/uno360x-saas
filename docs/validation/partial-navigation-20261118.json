@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-18",
+  "browser": "Chrome",
+  "tenant": "INCIVI",
+  "baseline_full_document_load_seconds": [
+    1.82,
+    1.59,
+    1.55
+  ],
+  "initial_partial_content_fetch_ms": [
+    451,
+    616
+  ],
+  "timings_directly_comparable": false,
+  "document_root_preserved_in_chrome": true,
+  "chrome_flows_verified": [
+    "Sales tabs",
+    "Summary",
+    "Back",
+    "GET search",
+    "empty filtered list"
+  ],
+  "dom_integration_tests_passed": 14,
+  "asset_tests_passed": 2,
+  "database_scopes_verified_unique": 4,
+  "fiscal_documents_before": 6,
+  "no_fiscal_issuance": true,
+  "native_outsolutech_modified": false,
+  "mobile_emulation_width": 400,
+  "mobile_flows_verified": [
+    "Sales tab navigation",
+    "mobile menu",
+    "Summary navigation and menu auto-close"
+  ],
+  "fiscal_documents_after": 6,
+  "next_e31_after": "4",
+  "next_e34_after": "4",
+  "invoice_list_payload_hash_unchanged": "b87557f086d0b611ece451b15ae5d938df5dfcc0da3e762e4bb3d6f6984d4d37",
+  "live_managed_tenants_updated": 2,
+  "current_pristine_profiles_verified": 8,
+  "ready_reserve_with_scoped_shell_verified": 1
+}

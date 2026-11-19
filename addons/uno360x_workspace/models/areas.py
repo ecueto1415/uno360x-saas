@@ -79,7 +79,7 @@ class WorkspaceAreas(models.AbstractModel):
  @api.model
  def _workspace_context(self):
   ctx=super()._workspace_context()
-  ctx['billing_assets']=False
+  ctx['billing_assets']=billing_asset_urls()
   ctx['asset_revision']=self.env['ir.config_parameter'].sudo().get_param('uno360x.workspace.release','18.0.2.0.0')
   return self._area_navigation(ctx)
  @api.model

@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent
 FILES = {
     'css': ('static/src/css/workspace.css', 'static/src/css/extra.css',
             'static/src/css/reference.css', 'static/src/css/areas.css'),
-    'js': ('static/src/js/navigation.js', 'static/src/js/areas.js'),
+    'js': ('static/src/js/navigation.js', 'static/src/js/partial_navigation.js', 'static/src/js/areas.js'),
 }
 
 
