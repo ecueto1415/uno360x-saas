@@ -120,7 +120,7 @@ class Store:
             else:
                 if self.db.execute("SELECT 1 FROM messages WHERE case_id=? AND state IN ('pending','working')",(case_id,)).fetchone():
                     raise Invalid('Jenifer está preparando la respuesta anterior. Espera un momento.')
-                self.db.execute("UPDATE cases SET human=MAX(human,?),status='open',updated=? WHERE id=?",(int(human),now,case_id))
+                self.db.execute("UPDATE cases SET human=CASE WHEN status='resolved' THEN ? ELSE MAX(human,?) END,status='open',updated=? WHERE id=?",(int(human),int(human),now,case_id))
             row = self.case(tenant,account,case_id)
             inserted=self.db.execute('INSERT INTO messages (case_id,role,body,created,request_id,state) VALUES (?,?,?,?,?,?)',
                             (case_id,'user',body,now,key,'done' if row['human'] else 'pending'))
@@ -146,7 +146,7 @@ class Store:
         for scope,maximum in [('message:'+tenant+':'+account,12),('tenant:'+tenant,60)]:
             limit=self.db.execute('SELECT n FROM limits WHERE scope=? AND bucket=?',(scope,int(self.clock()//60))).fetchone()
             if limit and limit['n']>=maximum:raise Limited('Hay varios mensajes seguidos. Espera un minuto e inténtalo otra vez.')
-        return not human and not (row and row['human'])
+        return not human and not (row and row['human'] and row['status']!='resolved')
 
     def job_context(self, job):
         row=self.db.execute('''SELECT x.body,x.captured FROM message_context x
@@ -162,6 +162,24 @@ class Store:
             self.case(tenant,account,case_id)
             self.db.execute("UPDATE cases SET human=1,status='open',updated=? WHERE id=?",(self.clock(),case_id))
             self.db.execute("UPDATE messages SET state='done' WHERE case_id=? AND state IN ('pending','working')",(case_id,))
+
+    def resume_ai(self, tenant, account, case_id, context):
+        encoded=json.dumps(context,ensure_ascii=False)
+        if len(encoded)>60000:raise Invalid('El diagnóstico es demasiado extenso.')
+        with self.transaction():
+            self.case(tenant,account,case_id)
+            if self.db.execute("SELECT 1 FROM messages WHERE case_id=? AND state IN ('pending','working')",(case_id,)).fetchone():
+                return
+            self.allow('resume:'+tenant+':'+account)
+            self.db.execute("UPDATE cases SET human=0,status='open',updated=? WHERE id=?",(self.clock(),case_id))
+            last=self.db.execute('SELECT id,role FROM messages WHERE case_id=? ORDER BY id DESC LIMIT 1',(case_id,)).fetchone()
+            if last and last['role']=='user':
+                self.db.execute("UPDATE messages SET state='pending',lease=NULL WHERE id=?",(last['id'],))
+                self.db.execute('''INSERT INTO message_context VALUES (?,?,?,?,?) ON CONFLICT(message_id)
+                    DO UPDATE SET tenant=excluded.tenant,account=excluded.account,captured=excluded.captured,body=excluded.body''',
+                    (last['id'],tenant,account,self.clock(),encoded))
+            self.db.execute('INSERT INTO audit(actor,case_id,event,created) VALUES (?,?,?,?)',
+                (account,case_id,'resume_ai',self.clock()))
 
     def claim(self):
         now = self.clock()

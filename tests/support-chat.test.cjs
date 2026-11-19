@@ -10,6 +10,10 @@ function setup(t,fetcher,lang='es_DO'){
  w.fetch=async(url,options)=>{calls.push({url,options});const result=fetcher?await fetcher(url,options):{cases:[],selected:null,messages:[],csrf_token:'safe-token'};return {ok:true,json:async()=>result};};
  w.eval(source);t.after(()=>w.close());return {w,d:w.document,calls};
 }
+async function openExisting(w,d){
+ d.querySelector('.us-launch').click();await wait();
+ d.querySelector('select').value='a'.repeat(32);d.querySelector('select').dispatchEvent(new w.Event('change'));await wait();
+}
 test('idle chat makes no requests; support link opens it and escape closes it',async t=>{
  const {w,d,calls}=setup(t);assert.equal(calls.length,0);
  d.querySelector('a').click();await wait();assert.equal(d.querySelector('#us-panel').hidden,false);assert.equal(calls.length,1);
@@ -34,16 +38,42 @@ test('loader is idempotent across partial navigation',t=>{const {w,d}=setup(t);w
 test('handoff keeps sending available without waiting for a refresh',async t=>{
  const selected={id:'a'.repeat(32),title:'Consulta',human:0,status:'open'};
  const messages=[{id:1,role:'user',body:'Consulta de prueba',state:'done'},{id:2,role:'assistant',body:'Respuesta de prueba',state:'done'}];
- const {d,calls}=setup(t,(url,options)=>({cases:[{...selected,human:options.method==='POST'?1:0}],selected:{...selected,human:options.method==='POST'?1:0},messages,csrf_token:'safe-token'}));
- d.querySelector('.us-launch').click();await wait();d.querySelector('.us-human').click();await wait();
+ const {w,d,calls}=setup(t,(url,options)=>({cases:[{...selected,human:options.method==='POST'?1:0}],selected:{...selected,human:options.method==='POST'?1:0},messages,csrf_token:'safe-token'}));
+ await openExisting(w,d);d.querySelector('.us-human').click();await wait();
  assert.equal(d.querySelector('.us-send').disabled,false);
  assert.match(d.querySelector('.us-status').textContent,/Enviado al equipo/);
- assert.equal(JSON.parse(calls[1].options.body).handoff,true);
+ assert.equal(JSON.parse(calls.find(c=>c.options.method==='POST').options.body).handoff,true);
 });
 test('resolved human conversation displays its resolved state',async t=>{
  const selected={id:'a'.repeat(32),title:'Consulta',human:1,status:'resolved'};
- const {d}=setup(t,()=>({cases:[selected],selected,messages:[],csrf_token:'safe-token'}));
- d.querySelector('.us-launch').click();await wait();
+ const {w,d}=setup(t,()=>({cases:[selected],selected,messages:[],csrf_token:'safe-token'}));
+ await openExisting(w,d);
  assert.match(d.querySelector('.us-status').textContent,/resuelta/);
  assert.doesNotMatch(d.querySelector('.us-status').textContent,/Enviado al equipo/);
+});
+test('active human conversation can explicitly return to Jenifer',async t=>{
+ const selected={id:'a'.repeat(32),title:'Consulta',human:1,status:'open'};
+ const {w,d,calls}=setup(t,(url,o)=>({cases:[selected],selected:{...selected,human:o.method==='POST'?0:1},messages:[],csrf_token:'safe-token'}));
+ await openExisting(w,d);
+ assert.equal(d.querySelector('.us-ai').hidden,false);
+ d.querySelector('.us-ai').click();await wait();
+ assert.equal(JSON.parse(calls.find(c=>c.options.method==='POST').options.body).resume,true);
+ assert.equal(d.querySelector('.us-ai').hidden,true);
+ assert.equal(d.querySelector('.us-send').disabled,false);
+});
+test('verified local paths become clickable while external links remain text',async t=>{
+ const selected={id:'a'.repeat(32),title:'CRM',human:0,status:'open'};
+ const {w,d}=setup(t,()=>({cases:[selected],selected,messages:[{id:1,role:'assistant',state:'done',body:'Comercial → CRM. Abrir: /uno360x/area/crm. https://evil.example/uno360x/data'}],csrf_token:'safe-token'}));
+ await openExisting(w,d);
+ const links=d.querySelectorAll('.us-message a');assert.equal(links.length,1);
+ assert.equal(links[0].getAttribute('href'),'/uno360x/area/crm');
+ assert.match(d.querySelector('.us-message').textContent,/https:\/\/evil.example/);
+});
+test('first opening starts fresh while keeping closed history available',async t=>{
+ const selected={id:'a'.repeat(32),title:'Cerrada',human:1,status:'resolved'};
+ const {d}=setup(t,()=>({cases:[selected],selected,messages:[{id:1,role:'team',body:'Mensaje viejo',state:'done'}],csrf_token:'safe-token'}));
+ d.querySelector('.us-launch').click();await wait();
+ assert.equal(d.querySelector('select').value,'');assert.equal(d.querySelectorAll('.us-message').length,0);
+ assert.match(d.querySelector('.us-messages').textContent,/Hola, soy Jenifer/);
+ assert.equal(d.querySelectorAll('select option').length,2);
 });

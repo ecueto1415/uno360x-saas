@@ -10,11 +10,11 @@
       <div class="us-tools"><select aria-label="Conversaciones anteriores"></select><button type="button" class="us-new">Nueva consulta</button></div>
       <div class="us-messages" role="log" aria-live="polite"></div><p class="us-status" role="status"></p>
       <form><label for="us-text">Tu mensaje</label><textarea id="us-text" rows="3" maxlength="3000" required placeholder="¿En qué te ayudamos?"></textarea>
-      <div class="us-actions"><button type="button" class="us-human">Hablar con el equipo</button><button type="submit" class="us-send">Enviar</button></div></form>
+      <div class="us-actions"><button type="button" class="us-human">Hablar con el equipo</button><button type="button" class="us-ai" hidden>Volver a Jenifer</button><button type="submit" class="us-send">Enviar</button></div></form>
     </section>`;
   document.body.append(root);
   const $ = q => root.querySelector(q), launch = $('.us-launch'), panel = $('#us-panel'), log = $('.us-messages'), status = $('.us-status');
-  let data = null, selected = null, csrf = '', poll = null, loading = false, request = null, newChat = false, humanNew = false, generation = 0;
+  let data = null, selected = null, csrf = '', poll = null, loading = false, request = null, newChat = true, humanNew = false, generation = 0;
   const en = document.documentElement.lang?.startsWith('en');
   if (en) {
     launch.querySelector('span').textContent = 'Support';
@@ -24,15 +24,32 @@
     $('.us-new').textContent = 'New conversation';
     $('label').textContent = 'Your message'; $('#us-text').placeholder = 'How can we help?';
     $('.us-human').textContent = 'Talk to the team'; $('.us-send').textContent = 'Send';
+    $('.us-ai').textContent = 'Back to Jenifer';
   }
   async function api(body, id) {
     const response = await fetch('/__support' + (id ? '?case_id=' + encodeURIComponent(id) : ''), {
       credentials: 'same-origin', cache: 'no-store', ...(body ? {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)} : {})
     });
+    if (response.status === 401) throw new Error(en ? 'Sign in again to continue.' : 'Vuelve a iniciar sesión para continuar.');
     let result;
     try { result = await response.json(); } catch { throw new Error(en ? 'Support is temporarily unavailable.' : 'El soporte no está disponible en este momento.'); }
     if (!response.ok) throw new Error(response.status === 401 ? (en ? 'Sign in again to continue.' : 'Vuelve a iniciar sesión para continuar.') : result.error || 'No se pudo completar la solicitud.');
     return result;
+  }
+  function linkedText(node,text) {
+    const pattern=/(https?:\/\/[^\s<>"']+|\/(?:uno360x(?:[-/][^\s<>"']*)?|odoo(?:\/[^\s<>"']*)?|__team(?:\?[^\s<>"']*)?))/g;
+    let last=0;
+    for(const match of String(text).matchAll(pattern)) {
+      const raw=match[0].replace(/[.,;!?)]+$/,'');
+      node.append(document.createTextNode(text.slice(last,match.index)));
+      let url;
+      try {url=new URL(raw,location.origin);} catch {}
+      if(url && url.origin===location.origin && /^(?:\/uno360x[-/]|\/odoo(?:\/|$)|\/__team(?:$|\/))/.test(url.pathname)) {
+        const a=document.createElement('a');a.href=url.pathname+url.search+url.hash;a.textContent=raw;node.append(a);
+      } else node.append(document.createTextNode(raw));
+      last=match.index+raw.length;
+    }
+    node.append(document.createTextNode(text.slice(last)));
   }
   function render(value) {
     data = value; csrf = value.csrf_token; selected = newChat ? null : value.selected?.id || null;
@@ -47,18 +64,22 @@
       log.replaceChildren();
       if (!messages.length) {
         const p = document.createElement('p'); p.className = 'us-empty';
-        p.textContent = en ? 'Ask a question, report a problem or suggest an improvement.' : 'Consulta cómo usar UNO360X, reporta un problema o comparte una mejora.'; log.append(p);
+        p.textContent = en ? 'Hi, I am Jenifer. How can I help? Your previous conversations are available in the history above.' : 'Hola, soy Jenifer. ¿En qué puedo ayudarte? Tus conversaciones anteriores están en el historial de arriba.'; log.append(p);
       }
       for (const m of messages) {
         const article = document.createElement('article'); article.className = 'us-message us-' + m.role;
         const name = document.createElement('strong'); name.textContent = m.role === 'user' ? (en ? 'You' : 'Tú') : m.role === 'team' ? (en ? 'UNO360X Team' : 'Equipo UNO360X') : 'Jenifer';
-        const p = document.createElement('p'); p.textContent = m.body; article.append(name, p); log.append(article);
+        const p = document.createElement('p'); linkedText(p,m.body); article.append(name, p); log.append(article);
       }
       log.dataset.signature = signature;
       if (nearBottom) log.scrollTop = log.scrollHeight;
     }
     const pending = messages.some(m => ['pending','working'].includes(m.state));
     const human = selected ? value.selected?.human : humanNew;
+    $('.us-ai').hidden = !human || value.selected?.status === 'resolved';
+    $('.us-human').hidden = Boolean(human) && value.selected?.status !== 'resolved';
+    $('header strong').textContent = human && value.selected?.status !== 'resolved' ? (en ? 'UNO360X Support Team' : 'Equipo de soporte UNO360X') : (en ? 'Jenifer · UNO360X Support' : 'Jenifer · Soporte UNO360X');
+    $('#us-text').placeholder = human && value.selected?.status !== 'resolved' ? (en ? 'Message for the team. Use Back to Jenifer for AI assistance.' : 'Mensaje para el equipo. Pulsa Volver a Jenifer para hablar con ella.') : (en ? 'How can we help?' : '¿En qué te ayudamos?');
     status.textContent = pending ? (en ? 'Jenifer is preparing a response…' : 'Jenifer está preparando una respuesta…') : value.selected?.status === 'resolved' && selected ? (en ? 'Resolved by the team.' : 'Marcada como resuelta por el equipo.') : human ? (en ? 'Sent to the team. Your conversation is saved; you can close this window.' : 'Enviado al equipo. La conversación queda guardada; puedes cerrar esta ventana.') : '';
     $('.us-send').disabled = loading || pending;
     schedule();
@@ -76,6 +97,7 @@
   }
   launch.onclick = () => {
     panel.hidden = !panel.hidden; launch.setAttribute('aria-expanded', String(!panel.hidden));
+    if (!panel.hidden && data?.selected?.status === 'resolved') { newChat = true; selected = null; humanNew = false; request = null; }
     if (panel.hidden) { generation++; clearTimeout(poll); } else { refresh(); $('#us-text').focus(); }
   };
   $('.us-close').onclick = () => { panel.hidden = true; launch.setAttribute('aria-expanded','false'); generation++; clearTimeout(poll); launch.focus(); };
@@ -98,6 +120,12 @@
     loading = true; generation++; clearTimeout(poll);
     try { render(await api({case_id:selected,handoff:true})); } catch (error) { status.textContent = error.message; }
     finally { loading = false; $('.us-send').disabled = data?.messages.some(m => ['pending','working'].includes(m.state)) || false; }
+  };
+  $('.us-ai').onclick = async () => {
+    if (loading || !selected) return;
+    loading = true; generation++; clearTimeout(poll); $('.us-ai').disabled = true;
+    try { render(await api({case_id:selected,resume:true})); } catch (error) { status.textContent = error.message; }
+    finally { loading = false; $('.us-ai').disabled = false; $('.us-send').disabled = data?.messages.some(m => ['pending','working'].includes(m.state)) || false; }
   };
   root.addEventListener('keydown', event => { if (event.key === 'Escape' && !panel.hidden) $('.us-close').click(); });
   document.addEventListener('visibilitychange', schedule);

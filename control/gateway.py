@@ -161,7 +161,7 @@ class GatewayManager:
             grant = secrets.token_urlsafe(32)
             with self.lock:
                 self.grants = {k:v for k,v in self.grants.items() if v[1] > self.clock()}
-                stale = [k for k,h in self.handles.items() if h.backend.claims['account_id'] == backend.claims['account_id'] and h.tenant == tenant]
+                stale = [k for k,h in self.handles.items() if h.backend.claims['account_id'] == backend.claims['account_id'] and h.tenant == tenant and h.backend.central_session == backend.central_session]
                 for key in stale:
                     self.handles[key].active = False
                     del self.handles[key]

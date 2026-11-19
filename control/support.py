@@ -49,7 +49,12 @@ def dispatch(handler,handle,url):
                 raise ValueError()
         except (ValueError,TypeError):
             raise Invalid('Solicitud inválida.') from None
-        if set(data)=={'case_id','handoff'} and data['handoff'] is True:
+        if set(data)=={'case_id','resume'} and data['resume'] is True:
+            from .support_context import capture
+            store.case(tenant,account,data['case_id'])
+            store.resume_ai(tenant,account,data['case_id'],capture(handler.server.manager,handle))
+            case_id=data['case_id']
+        elif set(data)=={'case_id','handoff'} and data['handoff'] is True:
             store.handoff(tenant,account,data['case_id']);case_id=data['case_id']
         else:
             from .support_context import capture

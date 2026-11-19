@@ -98,6 +98,15 @@ class GatewayTests(unittest.TestCase):
         self.identity.logout(self.session)
         self.assertEqual(self.request('/odoo')[0],401)
         self.assertEqual(self.request('/web/assets/test.js')[0],401)
+    def test_another_authenticated_browser_does_not_close_existing_session(self):
+        self.enter();old=next(iter(self.manager.handles.values()))
+        second=self.identity.login('gateway@example.test','Gateway ficticio password 2026')['session']
+        backend=BackendSession(self.backend.onboarding,second,self.backend.claims,self.backend.snapshot,self.backend.opener,self.backend.base,self.backend.uid)
+        with patch('control.gateway.open_space',return_value=backend):
+            self.manager.launch(second,'another-browser-ticket')
+        self.assertEqual(self.manager.lookup(old.token,self.tid),old)
+        self.manager.validate(old,self.identity)
+        self.assertEqual(self.request('/odoo')[0],200)
     def test_expired_trial_blocks_existing_cookie_without_deleting_company(self):
         from control.trials import Trials
         Trials(self.identity)

@@ -132,4 +132,23 @@ class SupportTest(unittest.TestCase):
         with self.assertRaises(Invalid):self.s.needs_context('other','a',self.message(case_id=c))
         with self.assertRaises(Invalid):self.s.needs_context('t','a',dict(self.message(),model='res.users'))
 
+    def test_message_after_resolution_returns_to_ai(self):
+        c=self.s.send('t','a',self.message(human=True))
+        self.s.admin_action('owner',{'case_id':c,'action':'resolve','body':'','request_id':'b'*32})
+        data=dict(self.message(case_id=c),body='¿Dónde está el CRM?',request_id='c'*32)
+        self.assertTrue(self.s.needs_context('t','a',data))
+        self.s.send('t','a',data,context={'verified':True})
+        self.assertEqual(0,self.s.case('t','a',c)['human'])
+        self.assertIsNotNone(self.s.claim())
+
+    def test_resume_queues_existing_unanswered_message_once(self):
+        c=self.s.send('t','a',self.message(human=True))
+        with self.assertRaises(Invalid):self.s.resume_ai('other','a',c,{'verified':True})
+        self.s.resume_ai('t','a',c,{'verified':True})
+        self.s.resume_ai('t','a',c,{'verified':True})
+        self.assertEqual(1,len(self.s.messages(c)))
+        job=self.s.claim();self.assertTrue(self.s.job_context(job)['verified'])
+        self.s.finish(job,'Aquí está el CRM.','sales')
+        self.assertEqual(2,len(self.s.messages(c)))
+
 if __name__=='__main__':unittest.main()
