@@ -13,12 +13,12 @@ from ..models.company_branding import DOCUMENT_LAYOUTS
 from odoo.addons.uno360x_quote_ui.models.bcrd_quote_rate import official_rate
 
 
-def _uploaded_company_logo(upload):
+def _uploaded_company_logo(upload, label='El logo'):
  if not upload or not upload.filename:
   return None
  content = upload.read(2 * 1024 * 1024 + 1)
  if len(content) > 2 * 1024 * 1024:
-  raise UserError('El logo debe pesar como máximo 2 MB.')
+  raise UserError(f'{label} debe pesar como máximo 2 MB.')
  try:
   with Image.open(BytesIO(content)) as image:
    if image.format not in ('PNG', 'JPEG') or max(image.size) > 4096:
@@ -103,6 +103,14 @@ class WorkspaceController(http.Controller):
       if logo:
        values['logo'] = logo
       company.sudo().write(values)
+     elif operation == 'signature_stamp':
+      image = _uploaded_company_logo(request.httprequest.files.get('signature_stamp'), 'Firma y sello')
+      if kw.get('remove_signature_stamp') == '1':
+       company.sudo().write({'uno360x_signature_stamp': False})
+      elif image:
+       company.sudo().write({'uno360x_signature_stamp': image})
+      else:
+       raise UserError('Selecciona una imagen PNG o JPG para Firma y sello.')
      elif operation == 'usd':
       if company.currency_id.name != 'DOP' or company.parent_id:
        raise UserError('Esta opción está disponible para empresas con moneda base DOP.')
@@ -125,6 +133,7 @@ class WorkspaceController(http.Controller):
              document_layouts=DOCUMENT_LAYOUTS,
              company_document_layout=company.sudo().uno360x_document_layout,
              company_logo=company.sudo().logo,
+             company_signature_stamp=company.sudo().uno360x_signature_stamp,
              usd_reference=official_rate() if can_edit and company.currency_id.name == 'DOP' else None)
   return self._render('uno360x_workspace.my_company', ctx)
 

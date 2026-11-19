@@ -56,6 +56,19 @@
    </form>
   </section>
   <section t-if="can_edit_company" class="ux-card" style="max-width:640px;margin-bottom:18px">
+   <h2>Firma y sello</h2>
+   <p>Sube una imagen con la firma y el sello de tu empresa. Aparecerá en cotizaciones y facturas, al lado contrario del QR.</p>
+   <img t-if="company_signature_stamp" t-att-src="image_data_uri(company_signature_stamp)" alt="Firma y sello de la empresa" style="display:block;max-width:100%;width:auto;max-height:140px;object-fit:contain;margin:16px 0"/>
+   <form method="post" action="/uno360x-mi-empresa" enctype="multipart/form-data" style="display:grid;gap:12px">
+    <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+    <input type="hidden" name="operation" value="signature_stamp"/>
+    <label for="signature-stamp">Firma y sello</label>
+    <input class="form-control" type="file" id="signature-stamp" name="signature_stamp" accept="image/png,image/jpeg" aria-describedby="signature-stamp-help"/>
+    <small id="signature-stamp-help">PNG o JPG, hasta 2 MB. Recomendamos fondo transparente. Esta imagen no sustituye el certificado digital fiscal.</small>
+    <div style="display:flex;flex-wrap:wrap;gap:12px"><button class="ux-button" type="submit">Guardar firma y sello</button><button t-if="company_signature_stamp" class="ux-button secondary" name="remove_signature_stamp" value="1" type="submit">Quitar imagen</button></div>
+   </form>
+  </section>
+  <section t-if="can_edit_company" class="ux-card" style="max-width:640px;margin-bottom:18px">
    <h2>Facturación electrónica</h2>
    <p>Abre la postulación en la DGII y comprueba tu certificado digital.</p>
    <a class="ux-button" href="/uno360x-mi-empresa/facturacion-electronica">Abrir asistente</a>

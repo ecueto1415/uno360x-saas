@@ -6,9 +6,16 @@
   <t t-if="layout_key">
    <t t-set="company" t-value="layout_company"/>
    <t t-set="o" t-value="o or doc"/>
-   <t t-call="{{layout_key}}"><t t-out="0"/></t>
+   <t t-call="{{layout_key}}"><t t-out="0"/><t t-call="uno360x_workspace.document_signature_stamp"/></t>
   </t>
-  <t t-else="" t-call="web.external_layout"><t t-out="0"/></t>
+  <t t-else="" t-call="web.external_layout"><t t-out="0"/><t t-call="uno360x_workspace.document_signature_stamp"/></t>
+ </template>
+
+ <template id="document_signature_stamp">
+  <t t-set="signature_company" t-value="(o or doc).company_id.sudo()"/>
+  <div t-if="signature_company.uno360x_signature_stamp" class="ux-document-signature" style="page-break-inside:avoid;text-align:right;margin-top:24px">
+   <img t-att-src="image_data_uri(signature_company.uno360x_signature_stamp)" alt="Firma y sello" style="max-width:55mm;max-height:32mm;width:auto;height:auto"/>
+  </div>
  </template>
 
  <template id="sale_document_layout" inherit_id="sale.report_saleorder_document">
@@ -104,12 +111,17 @@
           </td>
         </tr>
       </table>
-      <div t-if="stamp" t-att-style="'page-break-inside:avoid;width:230px;text-align:center;margin-top:%spx' % (126 if len(o.invoice_line_ids) &lt;= 2 and sum(len(line.name or '') for line in o.invoice_line_ids) &lt;= 320 and is_html_empty(o.narration) else 30)">
+      <table t-if="stamp or issuer.sudo().uno360x_signature_stamp" class="table-borderless o_ignore_layout_styling ux-document-fiscal-signature" t-att-style="'page-break-inside:avoid;table-layout:fixed;margin-top:%spx' % (126 if stamp and len(o.invoice_line_ids) &lt;= 2 and sum(len(line.name or '') for line in o.invoice_line_ids) &lt;= 320 and is_html_empty(o.narration) else 30)"><tr>
+       <td style="width:50%;vertical-align:middle"><div t-if="stamp" style="width:230px;text-align:center">
         <img t-att-src="image_data_uri(stamp['qr'])" style="display:block;width:28mm;height:28mm;margin:0 auto 6px" alt="Consulta del comprobante en la DGII"/>
         <strong>Código de seguridad: <span t-out="stamp['code']"/></strong>
         <div class="muted" style="font-size:10px">Fecha de firma: <span t-out="stamp['signed_at']"/></div>
         <div class="muted" style="font-size:10px">Escanea el QR para consultar en la DGII.</div>
-      </div>
+      </div></td>
+       <td style="width:50%;text-align:right;vertical-align:middle">
+        <img t-if="issuer.sudo().uno360x_signature_stamp" t-att-src="image_data_uri(issuer.sudo().uno360x_signature_stamp)" alt="Firma y sello" style="max-width:55mm;max-height:32mm;width:auto;height:auto"/>
+       </td>
+      </tr></table>
       <div t-if="o.invoice_payment_term_id.display_on_invoice and o.invoice_payment_term_id.note" t-field="o.invoice_payment_term_id.note"/>
       <div class="muted" style="border-top:1px solid #d9e4df;margin-top:26px;padding-top:8px;font-size:10px">
         Importes expresados en <span t-out="o.currency_id.currency_unit_label or o.currency_id.name"/> (<span t-out="o.currency_id.name"/>).
