@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+ <template id="fiscal_sequences">
+  <t t-call="uno360x_workspace.shell">
+   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/fiscal_sequence.css"/>
+   <nav class="ux-sequence-breadcrumb" aria-label="Ubicación">
+    <a href="/uno360x-mi-empresa">Mi empresa</a> / Secuencias de comprobantes
+   </nav>
+   <section class="ux-intro">
+    <div><h1>Secuencias de comprobantes</h1><p>Consulta los rangos de e-NCF de tu empresa.</p></div>
+    <a t-if="not form_open" class="ux-button" href="/uno360x-mi-empresa/secuencias?add=1">+ Agregar secuencia</a>
+   </section>
+   <p t-if="range_saved" class="ux-card" role="status">Secuencia guardada. Pendiente de validación fiscal.</p>
+   <div t-att-class="'ux-sequence-grid' + (' ux-sequence-editing' if form_open else '')">
+    <section class="ux-card ux-sequence-list">
+     <h2>Rangos registrados</h2>
+     <p><t t-out="company.name"/><t t-if="company.vat"> · RNC o cédula <t t-out="company.vat"/></t></p>
+     <div t-if="ranges" class="ux-sequence-scroll">
+      <table>
+       <thead><tr><th>Tipo y autorización</th><th>Rango e-NCF</th><th>Próximo declarado</th><th>Vence</th><th>Estado</th></tr></thead>
+       <tbody>
+        <tr t-foreach="ranges" t-as="item">
+         <td><strong t-out="labels[item.document_type]"/><br/><span t-out="item.authorization"/></td>
+         <td><span t-out="item.first_encf"/><br/>a <span t-out="item.last_encf"/></td>
+         <td t-out="item.next_encf"/>
+         <td><span t-field="item.expires"/></td>
+         <td><span class="ux-sequence-status">Pendiente de validación</span></td>
+        </tr>
+       </tbody>
+      </table>
+     </div>
+     <p t-else="">Aún no has registrado secuencias.</p>
+    </section>
+    <section t-if="form_open" class="ux-card ux-sequence-form">
+     <h2>Agregar secuencia</h2>
+     <p>Copia los datos de la autorización de la DGII.</p>
+     <p t-if="form_error" class="ux-sequence-error" role="alert" t-out="form_error"/>
+     <form method="post" action="/uno360x-mi-empresa/secuencias">
+      <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+      <label>Tipo de comprobante
+       <select class="form-control" name="document_type" required="required">
+        <option value="">Selecciona un tipo</option>
+        <option t-foreach="document_types" t-as="kind" t-att-value="kind[0]" t-att-selected="form['document_type'] == kind[0]" t-out="kind[1]"/>
+       </select>
+      </label>
+      <label>Número de autorización
+       <input class="form-control" name="authorization" maxlength="60" required="required" t-att-value="form['authorization']"/>
+      </label>
+      <div class="ux-sequence-pair">
+       <label>e-NCF inicial
+        <input class="form-control" name="first_encf" maxlength="13" required="required" t-att-value="form['first_encf']"/>
+       </label>
+       <label>e-NCF final
+        <input class="form-control" name="last_encf" maxlength="13" required="required" t-att-value="form['last_encf']"/>
+       </label>
+      </div>
+      <label>Fecha de vencimiento
+       <input class="form-control" type="date" name="expires" required="required" t-att-value="form['expires']"/>
+      </label>
+      <label>Próximo e-NCF disponible
+       <input class="form-control" name="next_encf" maxlength="13" t-att-value="form['next_encf']" aria-describedby="ux-next-encf-help"/>
+      </label>
+      <small id="ux-next-encf-help">Si ya usaste parte del rango, escribe el primer número disponible. Si el rango es nuevo, deja este campo en blanco.</small>
+      <div class="ux-sequence-actions">
+       <a href="/uno360x-mi-empresa/secuencias">Cancelar</a>
+       <button class="ux-button" type="submit">Guardar secuencia</button>
+      </div>
+     </form>
+    </section>
+   </div>
+  </t>
+ </template>
+</odoo>

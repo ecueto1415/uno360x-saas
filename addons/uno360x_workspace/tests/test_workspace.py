@@ -121,7 +121,11 @@ class TestWorkspace(TransactionCase):
   for key in ('contacts','sales','billing','purchases','inventory'):
    values=self.service._area_values(key)
    for tool in values['area_tools']:
-    self.assertIn(int(tool['href'].split('action-')[1].split('?')[0]),allowed)
+    if tool['href']=='/uno360x/area/sales?selection=invoice':
+     self.assertEqual(key,'sales')
+     self.assertIn(self.env.ref('sale.menu_sale_order_invoice').id,ctx['allowed_menus'])
+    else:
+     self.assertIn(int(tool['href'].split('action-')[1].split('?')[0]),allowed)
 
  def test_project_card_does_not_require_optional_stage_field_permission(self):
   if 'project.project' not in self.env.registry:return

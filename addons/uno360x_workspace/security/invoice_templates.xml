@@ -1,0 +1,12 @@
+<odoo>
+  <record id="invoice_template_company_rule" model="ir.rule">
+    <field name="name">Plantillas de la empresa</field>
+    <field name="model_id" ref="model_uno360x_invoice_template"/>
+    <field name="domain_force">[('company_id', '=', company_id)]</field>
+  </record>
+  <record id="invoice_template_line_company_rule" model="ir.rule">
+    <field name="name">Líneas de plantillas de la empresa</field>
+    <field name="model_id" ref="model_uno360x_invoice_template_line"/>
+    <field name="domain_force">[('company_id', '=', company_id)]</field>
+  </record>
+</odoo>

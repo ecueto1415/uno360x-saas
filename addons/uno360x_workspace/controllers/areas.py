@@ -11,10 +11,20 @@ class AreaWorkspace(ReferenceWorkspace):
  def area(self,key,q='',page=1,selection='all',period=None,**kw):
   if key not in AREAS:raise NotFound()
   if key=='jenifer':return request.redirect('/uno360x-jenifer',code=303)
-  try:values=self._service()._area_values(key,q,page,selection,period)
+  try:values=self._service()._area_values(key,q,page,selection,period,detail=kw.get('detail'))
   except AccessError:raise Forbidden() from None
   values['area_back']=request.httprequest.full_path.rstrip('?')
+  values['inventory_product_saved'] = key == 'inventory' and kw.get('product_saved') == '1'
   return self._render('uno360x_workspace.area',values)
+ @http.route(['/uno360x/inventory/shortage-report', '/uno360x/inventory/replenish'],type='http',auth='user',methods=['GET'])
+ def inventory_shortage_report(self,**kw):
+  if not request.env.user.has_group('stock.group_stock_user'):
+   raise Forbidden()
+  service = self._service()
+  values = service._workspace_context()
+  values['rows'] = service._inventory_shortage_rows()
+  return self._render('uno360x_workspace.inventory_shortage_report',values)
+
  @http.route('/uno360x/area/<string:key>/record/<int:record_id>',type='http',auth='user',methods=['GET'])
  def area_record(self,key,record_id,**kw):
   service=self._service();ctx=service._workspace_context()
@@ -39,6 +49,12 @@ class AreaWorkspace(ReferenceWorkspace):
   service=self._service();ctx=service._workspace_context()
   if menu_id not in ctx['allowed_menus']:raise NotFound()
   menu=request.env['ir.ui.menu'].browse(menu_id)
+  reports=request.env.ref('spreadsheet_dashboard.spreadsheet_dashboard_menu_root',raise_if_not_found=False)
+  if reports and reports in (menu, menu.parent_id, menu.parent_id.parent_id):
+   return request.redirect('/uno360x/area/reports',code=303)
+  to_invoice=request.env.ref('sale.action_orders_to_invoice',raise_if_not_found=False)
+  if to_invoice and menu.action==to_invoice and service._area_available('sales',ctx):
+   return request.redirect('/uno360x/area/sales?selection=invoice',code=303)
   for key in AREAS:
    if key in ('jenifer','reports') or not service._area_available(key,ctx):continue
    action=service._area_action(key,ctx)

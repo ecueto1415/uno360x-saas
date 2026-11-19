@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+ <template id="fiscal_assistant">
+  <t t-call="uno360x_workspace.shell">
+   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/fiscal_sequence.css"/>
+   <nav class="ux-sequence-breadcrumb" aria-label="Ubicación">
+    <a href="/uno360x-mi-empresa">Mi empresa</a> / Facturación electrónica
+   </nav>
+   <section class="ux-intro">
+    <div><h1>Asistente de certificación DGII</h1><p><t t-out="company.name"/> · Preparación de la postulación</p></div>
+   </section>
+   <div class="ux-sequence-grid ux-sequence-editing">
+    <section class="ux-card">
+     <h2>Portal de Certificación</h2>
+     <p>Inicia sesión en la DGII con la cuenta del representante de la empresa.</p>
+     <a class="ux-button" target="_blank" rel="noopener noreferrer" href="https://ecf.dgii.gov.do/certecf/portalcertificacion/Login">Abrir portal de la DGII</a>
+    </section>
+    <section class="ux-card ux-sequence-form">
+     <h2>Certificado digital</h2>
+     <p>Carga el certificado y su archivo de credenciales para verificar que la clave funciona.</p>
+     <p t-if="certificate_error" class="ux-sequence-error" role="alert" t-out="certificate_error"/>
+     <div t-if="certificate_details" role="status">
+      <strong>Certificado comprobado</strong>
+      <p>Vence el <span t-out="certificate_details['expires']"/>. La autorización del representante se verifica por separado en la DGII.</p>
+     </div>
+     <form method="post" enctype="multipart/form-data" action="/uno360x-mi-empresa/facturacion-electronica">
+      <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+      <label>Certificado (.p12 o .pfx)
+       <input class="form-control" type="file" name="certificate" accept=".p12,.pfx" required="required"/>
+      </label>
+      <label>Archivo de credenciales (.txt)
+       <input class="form-control" type="file" name="credentials" accept=".txt,text/plain" required="required"/>
+      </label>
+      <div><button class="ux-button" type="submit">Verificar certificado</button></div>
+     </form>
+    </section>
+   </div>
+   <section class="ux-card ux-sequence-form" id="registro-rnc" style="margin-top:18px">
+    <h2>Registro y dirección fiscal</h2>
+    <p>Adjunta el PDF del registro del RNC y copia los datos tal como figuran en el documento.</p>
+    <p><strong>En UNO360X</strong> · <t t-out="company_legal_name"/> · <t t-out="company_tax_id or 'RNC pendiente'"/></p>
+    <p t-if="company.street"><strong>Dirección actual</strong> · <t t-out="company.street"/> <t t-out="company.street2"/> <t t-out="company.city"/></p>
+    <p t-if="registration" role="status"><strong>Dirección fiscal confirmada por tu empresa</strong> · <t t-out="registration.fiscal_address"/></p>
+    <p t-if="registration_saved and registration" role="status">Registro fiscal guardado.</p>
+    <p t-if="registration_error" class="ux-sequence-error" role="alert" t-out="registration_error"/>
+    <form method="post" enctype="multipart/form-data" action="/uno360x-mi-empresa/facturacion-electronica#registro-rnc">
+     <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+     <input type="hidden" name="operation" value="registry"/>
+     <label>Registro del RNC (.pdf)
+      <input class="form-control" type="file" name="rnc_document" accept=".pdf,application/pdf" required="required"/>
+     </label>
+     <div class="ux-sequence-pair">
+      <label>RNC o cédula del documento
+       <input class="form-control" name="registered_rnc" maxlength="20" required="required" t-att-value="registration.tax_id if registration else ''"/>
+      </label>
+      <label>Razón social del documento
+       <input class="form-control" name="legal_name" maxlength="200" required="required" t-att-value="registration.legal_name if registration else ''"/>
+      </label>
+     </div>
+     <label>Dirección fiscal del documento
+      <input class="form-control" name="fiscal_address" maxlength="500" required="required" t-att-value="registration.fiscal_address if registration else ''"/>
+     </label>
+     <div><label style="display:inline"><input type="checkbox" name="confirmed" value="1" required="required"/> Comparé estos datos con el registro del RNC.</label></div>
+     <div><button class="ux-button" type="submit">Confirmar dirección del RNC</button></div>
+    </form>
+   </section>
+  </t>
+ </template>
+</odoo>

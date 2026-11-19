@@ -1,0 +1,65 @@
+<odoo>
+ <record id="action_inventory_replenish" model="ir.actions.server">
+  <field name="name">Reponer en Compras</field>
+  <field name="model_id" ref="product.model_product_product"/>
+  <field name="groups_id" eval="[(4, ref('purchase.group_purchase_user'))]"/>
+  <field name="state">code</field>
+  <field name="code">action = {'type': 'ir.actions.act_url', 'url': '/uno360x/area/inventory', 'target': 'self'}</field>
+ </record>
+ <record id="purchase_form_inventory_replenishment" model="ir.ui.view">
+  <field name="name">purchase.order.form.uno360x.replenishment</field>
+  <field name="model">purchase.order</field>
+  <field name="inherit_id" ref="purchase.purchase_order_form"/>
+  <field name="arch" type="xml">
+   <xpath expr="//field[@name='order_line']/list/field[@name='product_id']" position="after">
+    <field name="orderpoint_id" column_invisible="True"/>
+    <field name="location_final_id" column_invisible="True"/>
+   </xpath>
+  </field>
+ </record>
+ <template id="inventory_shortage_report">
+  <html lang="es">
+   <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Informe de faltantes · UNO360X</title>
+    <style>
+     body { font: 15px system-ui, sans-serif; color: #153447; margin: 2rem; }
+     main { max-width: 1200px; margin: auto; }
+     h1 { margin-bottom: .3rem; }
+     .brand { color: #117d6d; font-weight: bold; }
+     .table-wrap { overflow-x: auto; }
+     table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; font-size: .9rem; }
+     th, td { padding: .55rem; text-align: left; border-bottom: 1px solid #d5e3e5; }
+     th { background: #edf4f2; }
+     .qty { text-align: right; }
+     .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+     button { border: 0; border-radius: .4rem; background: #117d6d; color: white; padding: .6rem .9rem; cursor: pointer; }
+     @media print { body { margin: 0; } .actions { display: none; } .table-wrap { overflow: visible; } tr { break-inside: avoid; } }
+    </style>
+   </head>
+   <body>
+    <main>
+     <p class="brand">UNO360X</p>
+     <h1>Informe de faltantes</h1>
+     <p><strong t-out="company.name"/> · Preparado por <span t-out="u.name"/></p>
+     <p>Incluye los productos bajo el mínimo o en el mínimo que siguen necesitando reposición después de descontar las unidades por recibir.</p>
+     <div class="actions"><button type="button" onclick="window.print()">Imprimir o guardar PDF</button><a href="/uno360x/area/inventory">Volver a Inventario</a></div>
+     <p t-if="not rows">No hay faltantes de reposición según las reglas activas.</p>
+     <div class="table-wrap" t-if="rows">
+      <table>
+       <thead><tr><th>Artículo</th><th>Almacén o ubicación</th><th>Unidad</th><th class="qty">Stock</th><th class="qty">Mínimo</th><th class="qty">Objetivo</th><th class="qty">Por recibir</th><th class="qty">Cantidad sugerida</th></tr></thead>
+       <tbody><tr t-foreach="rows" t-as="item">
+        <t t-set="rule" t-value="item['rule']"/>
+        <td t-out="rule.product_id.display_name"/>
+        <td t-out="rule.warehouse_id.name if rule.location_id == rule.warehouse_id.lot_stock_id else rule.location_id.display_name"/>
+        <td t-out="rule.product_id.uom_id.name"/>
+        <td class="qty" t-out="item['current']"/><td class="qty" t-out="rule.product_min_qty"/><td class="qty" t-out="rule.product_max_qty"/><td class="qty" t-out="item['pending']"/><td class="qty"><strong t-out="item['suggestion']"/></td>
+       </tr></tbody>
+      </table>
+     </div>
+    </main>
+   </body>
+  </html>
+ </template>
+</odoo>

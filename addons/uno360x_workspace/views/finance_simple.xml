@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+ <record id="finance_simple_account_form" model="ir.ui.view">
+  <field name="name">uno360x.account.account.simple</field>
+  <field name="model">account.account</field>
+  <field name="priority">99</field>
+  <field name="arch" type="xml">
+   <form string="Nueva cuenta contable">
+    <sheet>
+     <h1>Nueva cuenta contable</h1>
+     <group>
+      <field name="code" string="Código contable" required="True"/>
+      <field name="name" string="Nombre de la cuenta" placeholder="Ej. Gastos de oficina"/>
+      <field name="account_type" string="Tipo de cuenta" required="True"/>
+     </group>
+    </sheet>
+   </form>
+  </field>
+ </record>
+ <record id="finance_simple_account_action" model="ir.actions.act_window">
+  <field name="name">Nueva cuenta contable</field>
+  <field name="res_model">account.account</field>
+  <field name="view_mode">form</field>
+  <field name="view_id" ref="finance_simple_account_form"/>
+  <field name="groups_id" eval="[(4, ref('account.group_account_manager'))]"/>
+ </record>
+ <record id="finance_simple_bank_form" model="ir.ui.view">
+  <field name="name">uno360x.account.journal.bank.simple</field>
+  <field name="model">account.journal</field>
+  <field name="priority">99</field>
+  <field name="arch" type="xml">
+   <form string="Agregar banco">
+    <sheet>
+     <h1>Agregar banco</h1>
+     <field name="type" invisible="1"/>
+     <group>
+      <field name="name" string="Nombre para identificar la cuenta" placeholder="Ej. Banco principal DOP"/>
+      <field name="bank_acc_number" string="Número de cuenta" required="True"/>
+      <field name="bank_id" string="Banco (opcional)" options="{'no_open': True}"/>
+      <field name="currency_id" string="Moneda" options="{'no_create': True, 'no_open': True}"/>
+     </group>
+     <p class="text-muted">Si dejas la moneda vacía, se utiliza la moneda de la empresa.</p>
+    </sheet>
+   </form>
+  </field>
+ </record>
+ <record id="finance_simple_bank_action" model="ir.actions.act_window">
+  <field name="name">Agregar banco</field>
+  <field name="res_model">account.journal</field>
+  <field name="view_mode">form</field>
+  <field name="view_id" ref="finance_simple_bank_form"/>
+  <field name="context">{'default_type': 'bank'}</field>
+  <field name="groups_id" eval="[(4, ref('account.group_account_manager'))]"/>
+ </record>
+</odoo>

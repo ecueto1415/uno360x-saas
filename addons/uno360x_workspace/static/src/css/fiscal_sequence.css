@@ -1,0 +1,22 @@
+.ux-sequence-breadcrumb { margin: 0 0 14px; font-size: 13px; }
+.ux-sequence-grid { display: grid; gap: 18px; align-items: start; }
+.ux-sequence-editing { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+.ux-sequence-list, .ux-sequence-form { min-width: 0; }
+.ux-sequence-scroll { overflow-x: auto; }
+.ux-sequence-list table { border-collapse: collapse; width: 100%; }
+.ux-sequence-list th, .ux-sequence-list td {
+    text-align: left; padding: 12px 8px; border-bottom: 1px solid #dce8e5;
+    font-size: 12px; white-space: nowrap;
+}
+.ux-sequence-list th { background: #f1f6f5; }
+.ux-sequence-status { display: inline-block; padding: 4px 8px; border-radius: 10px; background: #fff1d5; color: #76510d; }
+.ux-sequence-form form, .ux-sequence-form label { display: grid; gap: 8px; }
+.ux-sequence-form form { gap: 14px; }
+.ux-sequence-form .form-control { min-width: 0; width: 100%; }
+.ux-sequence-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ux-sequence-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ux-sequence-error { color: #8c211c; padding: 8px; background: #ffefeb; }
+@media (max-width: 1120px) {
+    .ux-sequence-editing { grid-template-columns: minmax(0, 1fr); }
+    .ux-sequence-form { grid-row: 1; }
+}

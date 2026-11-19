@@ -2266,7 +2266,7 @@ var budget=document.getElementById('ux-budget-form');if(budget){budget.addEventL
                 <tbody>
                   <tr t-foreach="invoices" t-as="inv">
                     <td>
-                      <a class="ux-billing-doc" t-att-href="'/odoo/account.move/%s' % inv.id" t-out="inv.name if inv.name and inv.name != '/' else (('Draft' if en else 'Borrador') if inv.state == 'draft' else ('Unnumbered' if en else 'Sin número'))" />
+                      <a class="ux-billing-doc" t-att-href="'/odoo/account.move/%s' % inv.id" t-out="inv._ux_accepted_ecf_number() or (inv.name if inv.name and inv.name != '/' else (('Draft' if en else 'Borrador') if inv.state == 'draft' else ('Unnumbered' if en else 'Sin número')))" />
                     </td>
                     <td class="ux-billing-client" t-att-title="inv.partner_id.display_name" t-out="inv.partner_id.display_name or '—'" />
                     <td class="ux-billing-date">
@@ -2285,7 +2285,7 @@ var budget=document.getElementById('ux-budget-form');if(budget){budget.addEventL
                     <td>
                       <div class="ux-billing-tools">
                         <a t-att-href="'/odoo/account.move/%s' % inv.id" t-out="'Open' if en else 'Abrir'" />
-                        <a t-att-href="'/report/pdf/account.report_invoice/%s' % inv.id" target="_blank" rel="noopener">PDF</a>
+                        <a t-att-href="'/report/pdf/account.report_invoice/%s' % inv.id" t-att-download="inv._get_invoice_report_filename()" t-out="'Download PDF' if en else 'Descargar PDF'"/>
                       </div>
                     </td>
                   </tr>

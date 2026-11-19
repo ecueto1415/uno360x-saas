@@ -1,0 +1,186 @@
+<odoo>
+ <record id="crm_to_quote" model="ir.actions.server">
+  <field name="name">Nueva cotización desde CRM</field>
+  <field name="model_id" ref="crm.model_crm_lead"/>
+  <field name="state">code</field>
+  <field name="code">action = model.browse(env.context.get('active_id')).action_uno360x_new_quotation()</field>
+ </record>
+ <record id="crm_new_opportunity" model="ir.actions.act_window">
+  <field name="name">Nueva oportunidad</field><field name="res_model">crm.lead</field>
+  <field name="view_mode">form</field><field name="context">{'default_type': 'opportunity'}</field>
+ </record>
+ <template id="crm_board">
+  <t t-call="uno360x_workspace.shell">
+   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/crm_board.css"/>
+   <main class="ua-area uc-crm">
+    <header class="ua-heading">
+     <div><p class="ux-eyebrow">Comercial / CRM</p><h1>Oportunidades</h1></div>
+     <div class="uc-actions">
+      <a t-if="crm_manager" class="uc-button" t-att-href="'/uno360x/area/crm/manage' + ('?flow=%s' % crm_team.id if crm_team else '')">Gestionar flujos y etapas</a>
+      <a t-if="crm_can_create" class="ua-primary" t-att-href="crm_create">+ Oportunidad</a>
+     </div>
+    </header>
+    <p t-if="crm_saved" class="uc-saved" role="status">Oportunidad creada.</p>
+    <form class="uc-filters" method="get" action="/uno360x/area/crm">
+     <input type="search" name="q" aria-label="Buscar oportunidades" placeholder="Buscar oportunidades…" maxlength="100" t-att-value="crm_query"/>
+     <select name="flow" aria-label="Flujo de ventas">
+      <option value="">Todos los flujos</option>
+      <option t-foreach="crm_teams" t-as="team" t-att-value="team.id" t-att-selected="team == crm_team" t-out="team.name"/>
+     </select>
+     <t t-if="not crm_list">
+      <label class="uc-mobile-stage"><span>Etapa</span>
+       <select name="stage" aria-label="Etapa" t-att-disabled="not crm_columns">
+        <option t-foreach="crm_columns" t-as="column" t-att-value="column['id']" t-att-selected="column['id'] == crm_stage" t-out="column['title']"/>
+       </select>
+      </label>
+     </t>
+     <input t-if="crm_list" type="hidden" name="view" value="list"/>
+     <button class="uc-button" type="submit">Aplicar</button>
+     <nav class="uc-views" aria-label="Vista del CRM">
+      <a t-att-class="'uc-button active' if not crm_list else 'uc-button'" t-att-href="crm_view_board">Tablero</a>
+      <a t-att-class="'uc-button active' if crm_list else 'uc-button'" t-att-href="crm_view_list">Lista</a>
+      <a t-if="crm_native" class="uc-button" t-att-href="crm_native">Vista completa</a>
+     </nav>
+    </form>
+    <t t-if="crm_list">
+     <section class="ua-table-panel">
+      <table class="ua-table"><thead><tr><th>Oportunidad</th><th>Cliente</th><th>Etapa</th><th>Importe</th></tr></thead>
+       <tbody><tr t-foreach="crm_rows" t-as="row">
+        <td data-label="Oportunidad"><a t-att-href="'/uno360x/area/crm/record/%s' % row['id']" t-out="row['title']"/></td>
+        <td data-label="Cliente" t-out="row['client'] or '—'"/>
+        <td data-label="Etapa" t-out="row['stage']"/>
+        <td data-label="Importe" t-out="row['amount']"/>
+       </tr></tbody>
+      </table>
+     </section>
+     <p t-if="not crm_rows" class="uc-empty">No hay oportunidades para esta selección.</p>
+     <nav class="ua-pagination" t-if="crm_previous or crm_next" aria-label="Páginas de oportunidades">
+      <a t-if="crm_previous" t-att-href="crm_previous">← Anterior</a>
+      <a t-if="crm_next" t-att-href="crm_next">Siguiente →</a>
+     </nav>
+    </t>
+    <section t-else="" class="uc-board" aria-label="Tablero por etapas">
+     <article t-foreach="crm_columns" t-as="column" t-att-class="'uc-column is-current' if column['id'] == crm_stage else 'uc-column'">
+      <header><h2 t-out="column['title']"/><span class="uc-count" t-out="column['count']"/><p t-out="column['total']"/></header>
+      <a class="uc-card" t-foreach="column['leads']" t-as="lead" t-att-href="'/uno360x/area/crm/record/%s' % lead['id']">
+       <strong t-out="lead['client'] or lead['title']"/>
+       <span t-if="lead['client']" t-out="lead['title']"/>
+       <b t-out="lead['amount']"/>
+       <small><t t-out="lead['activity'] or 'Sin próxima actividad'"/><t t-if="lead['deadline']"> · <t t-out="lead['deadline']" t-options="{'widget': 'date'}"/></t></small>
+      </a>
+      <p class="uc-empty" t-if="not column['count']">Sin oportunidades</p>
+      <a class="uc-more" t-if="column['more']" t-att-href="column['more']">Ver todas en esta etapa</a>
+     </article>
+     <p t-if="not crm_columns" class="uc-empty">No hay etapas disponibles para este flujo.</p>
+    </section>
+   </main>
+  </t>
+ </template>
+ <template id="crm_manage">
+  <t t-call="uno360x_workspace.shell">
+   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/crm_board.css"/>
+   <main class="ua-area uc-crm">
+    <header class="ua-heading"><div><p class="ux-eyebrow">Comercial / CRM</p><h1>Gestionar flujos y etapas</h1></div><a class="uc-button" t-att-href="crm_back">Volver al tablero</a></header>
+    <div class="uc-manage">
+     <aside class="uc-form">
+      <a class="ua-primary" href="/uno360x/area/crm/manage?mode=flow">+ Nuevo flujo</a>
+      <h2>Flujos de ventas</h2>
+      <a t-foreach="crm_teams" t-as="team" t-att-class="'uc-button active' if team == crm_team else 'uc-button'" t-att-href="'?flow=%s' % team.id" t-out="team.name"/>
+     </aside>
+     <section class="uc-form">
+      <h2 t-out="'Nuevo flujo' if crm_mode == 'flow' else ('Editar etapa' if crm_edit else 'Nueva etapa')"/>
+      <p t-if="crm_error" class="uc-error" role="alert" t-out="crm_error"/>
+      <form method="post" action="/uno360x/area/crm/manage">
+       <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+       <input type="hidden" name="mode" t-att-value="crm_mode"/>
+       <label t-if="crm_mode == 'stage'">Flujo de ventas
+        <select name="flow" required="required" t-att-disabled="bool(crm_team)">
+         <option t-foreach="crm_teams" t-as="team" t-att-value="team.id" t-att-selected="team == crm_team" t-out="team.name"/>
+        </select>
+       </label>
+       <input t-if="crm_mode == 'stage' and crm_team" type="hidden" name="flow" t-att-value="crm_team.id"/>
+       <input t-if="crm_edit" type="hidden" name="edit" t-att-value="crm_edit.id"/>
+       <label><t t-out="'Nombre del flujo' if crm_mode == 'flow' else 'Nombre de la etapa'"/>
+        <input name="name" required="required" maxlength="100" t-att-value="crm_name or crm_edit.name"/>
+       </label>
+       <label t-if="crm_mode == 'flow'">Etapas, una por línea y en orden
+        <textarea name="stages" required="required" maxlength="2200" rows="5" t-out="crm_stages or 'Nueva\nEn evaluación\nPropuesta enviada'"/>
+       </label>
+       <label t-else="">Colocar después de
+        <select name="after"><option value="0">Al principio</option>
+         <option t-foreach="crm_specific - crm_edit" t-as="stage" t-att-value="stage.id" t-att-selected="stage == crm_after" t-out="stage.name"/>
+        </select>
+       </label>
+       <div class="uc-actions uc-form-actions"><a class="uc-button" t-att-href="crm_back">Cancelar</a><button class="ua-primary" type="submit" t-out="'Crear flujo' if crm_mode == 'flow' else ('Guardar etapa' if crm_edit else 'Crear etapa')"/></div>
+      </form>
+      <div t-if="crm_specific and crm_mode == 'stage'" class="uc-stage-list"><h3>Etapas de este flujo</h3>
+       <a t-foreach="crm_specific" t-as="stage" class="uc-button" t-att-href="'?flow=%s&amp;edit=%s' % (crm_team.id, stage.id)" t-out="stage.name"/>
+      </div>
+     </section>
+    </div>
+   </main>
+  </t>
+ </template>
+ <template id="crm_new">
+  <t t-call="uno360x_workspace.shell">
+   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/crm_board.css"/>
+   <main class="ua-area uc-crm"><header class="ua-heading"><div><p class="ux-eyebrow">Comercial / CRM</p><h1>Nueva oportunidad</h1></div></header>
+    <section class="uc-form uc-opportunity">
+     <p t-if="crm_error" class="uc-error" role="alert" t-out="crm_error"/>
+     <form method="post" action="/uno360x/area/crm/opportunity">
+      <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+      <label>Nombre de la oportunidad <input name="name" maxlength="160" required="required" t-att-value="crm_entry.get('name')"/></label>
+      <label t-if="crm_teams">Flujo de ventas
+       <select name="flow"><option value="">Asignación predeterminada</option>
+        <option t-foreach="crm_teams" t-as="team" t-att-value="team.id" t-att-selected="team == crm_team" t-out="team.name"/>
+       </select>
+      </label>
+      <label>Cliente o empresa <input name="partner_name" maxlength="120" t-att-value="crm_entry.get('partner_name')"/></label>
+      <label>Correo <input name="email_from" type="email" maxlength="160" t-att-value="crm_entry.get('email_from')"/></label>
+      <label>Teléfono <input name="phone" type="tel" maxlength="60" t-att-value="crm_entry.get('phone')"/></label>
+     <div class="uc-actions uc-form-actions"><a class="uc-button" t-att-href="crm_back">Cancelar</a><button class="ua-primary" type="submit">Crear oportunidad</button></div>
+    </form></section>
+   </main>
+  </t>
+ </template>
+ <template id="crm_record">
+  <t t-call="uno360x_workspace.shell">
+   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/crm_board.css"/>
+   <main class="ua-area uc-crm">
+    <header class="ua-heading">
+     <div><p class="ux-eyebrow">Comercial / CRM</p><h1 t-out="'Editar oportunidad' if crm_editing else crm_record.name"/></div>
+     <div class="uc-actions"><a class="uc-button" t-att-href="crm_back">Volver al tablero</a>
+      <a t-if="crm_quote_url and not crm_editing" class="ua-primary" t-att-href="crm_quote_url">Nueva cotización</a>
+      <a t-if="crm_can_edit and not crm_editing" class="ua-primary" t-att-href="crm_record_url + '?edit=1'">Editar</a>
+     </div>
+    </header>
+    <section class="uc-form uc-opportunity">
+     <p t-if="crm_saved" class="uc-saved" role="status">Cambios guardados.</p>
+     <p t-if="crm_error" class="uc-error" role="alert" t-out="crm_error"/>
+     <form t-if="crm_editing" method="post" t-att-action="crm_record_url">
+      <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+      <label>Nombre de la oportunidad <input name="name" maxlength="160" required="required" t-att-value="crm_entry['name']"/></label>
+      <label>Etapa <select name="stage_id">
+       <option t-if="not crm_selected_stage" value="0">Sin etapa</option>
+       <option t-foreach="crm_stages" t-as="stage" t-att-value="stage.id" t-att-selected="stage.id == crm_selected_stage" t-out="stage.name"/>
+      </select></label>
+      <label>Cliente o empresa <input name="partner_name" maxlength="120" t-att-value="crm_entry['partner_name']"/></label>
+      <label>Correo <input name="email_from" maxlength="160" t-att-value="crm_entry['email_from']"/></label>
+      <label>Teléfono <input name="phone" type="tel" maxlength="60" t-att-value="crm_entry['phone']"/></label>
+      <div class="uc-actions uc-form-actions"><a class="uc-button" t-att-href="crm_record_url">Cancelar</a><button class="ua-primary" type="submit">Guardar cambios</button></div>
+     </form>
+     <dl t-else="" class="uc-opportunity-details">
+      <div><dt>Flujo de ventas</dt><dd t-out="crm_record.team_id.name or 'Sin flujo asignado'"/></div>
+      <div><dt>Etapa</dt><dd t-out="crm_record.stage_id.name or 'Sin etapa'"/></div>
+      <div><dt>Cliente o empresa</dt><dd t-out="crm_record.partner_id.name or crm_record.partner_name or '—'"/></div>
+      <div><dt>Importe esperado</dt><dd t-out="crm_detail_amount"/></div>
+      <div><dt>Correo</dt><dd t-out="crm_record.email_from or '—'"/></div>
+      <div><dt>Teléfono</dt><dd t-out="crm_record.phone or '—'"/></div>
+      <div><dt>Responsable</dt><dd t-out="crm_record.user_id.name or 'Sin asignar'"/></div>
+      <div><dt>Próxima actividad</dt><dd t-out="crm_record.activity_summary or crm_record.activity_type_id.name or 'Sin próxima actividad'"/></div>
+     </dl>
+    </section>
+   </main>
+  </t>
+ </template>
+</odoo>

@@ -1,0 +1,122 @@
+<odoo>
+  <record id="invoice_template_form" model="ir.ui.view">
+    <field name="name">uno360x.invoice.template.form</field>
+    <field name="model">uno360x.invoice.template</field>
+    <field name="arch" type="xml">
+      <form duplicate="false" string="Editar plantilla">
+        <header>
+          <button name="action_open_invoice_wizard" type="object" string="Crear factura" class="oe_highlight" invisible="not active"/>
+        </header>
+        <sheet>
+          <field name="currency_id" invisible="1"/>
+          <div class="oe_title"><label for="name"/><h1><field name="name" placeholder="Cirugía de cataratas"/></h1></div>
+          <field name="active" invisible="1"/>
+          <separator string="Productos y servicios"/>
+          <field name="line_ids">
+            <list editable="bottom">
+              <field name="sequence" widget="handle"/>
+              <field name="currency_id" column_invisible="True"/>
+              <field name="product_id" options="{'no_create': True}"/>
+              <field name="name"/>
+              <field name="quantity"/>
+              <field name="price_unit"/>
+            </list>
+          </field>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="invoice_template_action" model="ir.actions.act_window">
+    <field name="name">Plantilla de facturación</field>
+    <field name="res_model">uno360x.invoice.template</field>
+    <field name="view_mode">form</field>
+    <field name="view_id" ref="invoice_template_form"/>
+  </record>
+  <record id="invoice_template_wizard_form" model="ir.ui.view">
+    <field name="name">uno360x.invoice.template.wizard.form</field>
+    <field name="model">uno360x.invoice.template.wizard</field>
+    <field name="arch" type="xml">
+      <form>
+        <group><field name="template_id" readonly="1"/><field name="partner_id" options="{'no_create': True}"/></group>
+        <footer><button name="action_create_invoice" type="object" string="Crear borrador" class="btn-primary"/><button string="Cancelar" special="cancel" class="btn-secondary"/></footer>
+      </form>
+    </field>
+  </record>
+  <template id="invoice_templates">
+    <t t-call="uno360x_workspace.shell">
+      <link rel="stylesheet" href="/uno360x_workspace/static/src/css/invoice_template_actions.css"/>
+      <script src="/uno360x_workspace/static/src/js/invoice_template_actions.js" defer="defer"/>
+      <main class="ua-area">
+        <header class="ua-heading">
+          <div><p class="ux-eyebrow">Comercial / Ventas</p><h1>Plantillas de facturación</h1></div>
+          <a class="ua-primary" t-att-href="form_url + '/new'">+ Nueva plantilla</a>
+        </header>
+        <nav class="ua-tabs" aria-label="Vistas de Ventas">
+          <a t-foreach="area_tabs" t-as="tab" t-att-href="tab['href']" t-out="tab['name']"/>
+          <a class="active" href="/uno360x/ventas/plantillas" aria-current="page">Plantillas de facturación</a>
+        </nav>
+        <div class="ua-invoice-templates">
+          <aside class="ua-panel">
+            <h2>Mis plantillas</h2>
+            <p t-if="not templates">Todavía no hay plantillas.</p>
+            <a t-foreach="templates" t-as="item" class="ua-invoice-template-link"
+               t-att-href="'/uno360x/ventas/plantillas?plantilla=%s' % item.id"
+               t-att-aria-current="'true' if item == selected else None">
+              <strong t-out="item.name"/>
+              <span><t t-out="len(item.line_ids)"/> líneas</span>
+            </a>
+          </aside>
+          <section t-if="selected" class="ua-panel">
+            <h2 t-out="selected.name"/>
+            <div class="ua-invoice-template-lines">
+              <table class="table">
+                <thead><tr><th>Producto o servicio</th><th>Cant.</th><th>Precio unit.</th><th>Importe</th></tr></thead>
+                <tbody><tr t-foreach="selected.line_ids" t-as="line">
+                  <td t-out="line.name or line.product_id.display_name"/>
+                  <td t-out="line.quantity"/>
+                  <td t-out="amount(line.price_unit)"/>
+                  <td t-out="amount(line.quantity * line.price_unit)"/>
+                </tr></tbody>
+              </table>
+            </div>
+            <p class="ua-invoice-template-total">Subtotal <strong t-out="amount(sum(line.quantity * line.price_unit for line in selected.line_ids))"/></p>
+            <div class="ua-invoice-template-actions">
+              <a t-if="selected.line_ids" class="ua-primary" t-att-href="'/uno360x/ventas/plantillas?plantilla=%s&amp;factura=1' % selected.id">Crear factura</a>
+              <a class="ua-template-button" t-att-href="form_url + '/' + str(selected.id)">Editar plantilla</a>
+              <button type="button" class="ua-template-button ua-template-danger-text" data-template-delete-open="">Eliminar plantilla</button>
+              <dialog class="ua-template-dialog" aria-labelledby="template-delete-title">
+                <h2 id="template-delete-title">¿Eliminar plantilla?</h2>
+                <p>Se eliminará <strong t-out="selected.name"/>. Las facturas ya creadas se conservarán.</p>
+                <div class="ua-template-dialog-actions">
+                  <form method="dialog"><button class="ua-template-button" autofocus="autofocus">Cancelar</button></form>
+                  <form method="post" t-att-action="'/uno360x/ventas/plantillas/%s/eliminar' % selected.id">
+                    <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+                    <button type="submit" class="ua-template-button ua-template-danger">Aceptar</button>
+                  </form>
+                </div>
+              </dialog>
+            </div>
+            <div t-if="show_invoice" class="ua-invoice-template-customer">
+              <h3>Cliente para el borrador</h3>
+              <form method="get" action="/uno360x/ventas/plantillas">
+                <input type="hidden" name="plantilla" t-att-value="selected.id"/>
+                <input type="hidden" name="factura" value="1"/>
+                <input type="search" name="cliente" aria-label="Nombre o RNC del cliente" placeholder="Nombre o RNC" t-att-value="customer_query" required="required"/>
+                <button type="submit" class="ua-link">Buscar</button>
+              </form>
+              <p t-if="customer_query and not partners">No se encontraron clientes.</p>
+              <form t-if="partners" method="post" t-att-action="'/uno360x/ventas/plantillas/%s/factura' % selected.id">
+                <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+                <select name="partner_id" aria-label="Cliente" required="required">
+                  <option value="">Selecciona un cliente</option>
+                  <option t-foreach="partners" t-as="partner" t-att-value="partner.id" t-out="partner.display_name"/>
+                </select>
+                <button type="submit" class="ua-primary">Crear borrador</button>
+              </form>
+            </div>
+          </section>
+        </div>
+      </main>
+    </t>
+  </template>
+</odoo>

@@ -1,0 +1,120 @@
+<odoo><record id="cheque_company_rule" model="ir.rule"><field name="name">Cheques de la empresa activa</field><field name="model_id" ref="model_uno360x_bank_cheque"/><field name="domain_force">[('company_id', '=', company_id)]</field></record>
+<template id="cheque_list">
+ <t t-call="uno360x_workspace.shell">
+  <main class="ua-area ux-cheques">
+   <header class="ua-heading"><div><p class="ux-eyebrow">Finanzas / Cheques</p><h1>Cheques</h1></div><a class="ua-primary" t-att-href="cheque_url + '/nuevo'">+ Nuevo cheque</a></header>
+   <form method="get" class="uq-fields ua-panel" t-att-action="cheque_url">
+    <label>Cuenta bancaria<select name="journal"><option value="">Todas</option><option t-foreach="journals" t-as="bank" t-att-value="bank.id" t-att-selected="journal == str(bank.id)" t-out="bank.name"/></select></label>
+    <label>Estado<select name="status"><option value="">Todos</option><option value="draft" t-att-selected="status == 'draft'">Borrador</option><option value="issued" t-att-selected="status == 'issued'">Emitido</option><option value="void" t-att-selected="status == 'void'">Anulado</option></select></label>
+    <label>Buscar<input name="q" t-att-value="q" maxlength="100" placeholder="Número o beneficiario"/></label>
+    <button class="ua-primary" type="submit">Buscar</button>
+   </form>
+   <div class="ua-panel uq-scroll">
+    <table class="uq-table">
+     <thead><tr><th>N.º cheque</th><th>Fecha</th><th>Beneficiario</th><th>Concepto</th><th>Monto</th><th>Estado</th><th>Acción</th></tr></thead>
+     <tbody><tr t-foreach="cheques" t-as="item">
+      <td t-out="item.number or 'Sin asignar'"/><td t-out="item.date.strftime('%d/%m/%Y')"/><td t-out="item.beneficiary"/><td t-out="item.memo or '—'"/><td t-out="amount_display(item)"/>
+      <td><span class="uq-status" t-att-data-state="item.state" t-field="item.state"/></td>
+      <td><a t-att-href="cheque_url + '/' + str(item.id) + ('/vista' if item.state == 'issued' else '')" t-out="'Ver / Imprimir' if item.state == 'issued' else 'Abrir'"/></td>
+     </tr></tbody>
+    </table>
+    <p t-if="not cheques">No hay cheques con estos filtros.</p>
+    <div class="uq-actions" t-if="page &gt; 1 or has_more">
+     <a t-if="page &gt; 1" t-att-href="filter_url + '&amp;page=' + str(page - 1)">Anterior</a>
+     <span t-out="page"/>
+     <a t-if="has_more" t-att-href="filter_url + '&amp;page=' + str(page + 1)">Siguiente</a>
+    </div>
+   </div>
+  </main>
+ </t>
+</template>
+<template id="cheque_form">
+ <t t-call="uno360x_workspace.shell">
+  <main class="ua-area ux-cheques">
+   <header class="ua-heading"><div><p class="ux-eyebrow"><a t-att-href="cheque_url">Finanzas / Cheques</a></p><h1 t-out="'Cheque ' + (cheque.number or 'en borrador') if cheque else 'Nuevo cheque'"/></div></header>
+   <form method="post" class="ua-panel">
+    <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+    <p t-if="error" class="uq-alert" role="alert" t-out="error"/>
+    <p t-if="not journals">Agrega una cuenta bancaria en Finanzas para crear el cheque.</p>
+    <fieldset t-att-disabled="cheque and cheque.state != 'draft'">
+     <div class="uq-fields">
+      <label>Cuenta bancaria<select name="journal_id" required="required">
+       <option value="">Selecciona una cuenta</option>
+       <option t-foreach="journals" t-as="bank" t-att-value="bank.id" t-att-selected="data.get('journal_id', str(cheque.journal_id.id)) == str(bank.id)"><t t-out="bank.name"/> · <t t-out="bank.uno_cheque_currency_id.name"/></option>
+      </select></label>
+      <label>Factura de proveedor (opcional)<select name="bill_id">
+       <option value="">Selecciona una factura</option>
+       <option t-foreach="bills | cheque.bill_id" t-as="bill" t-att-value="bill.id" t-att-selected="data.get('bill_id', str(cheque.bill_id.id)) == str(bill.id)"><t t-out="bill.ref or bill.name"/> · <t t-out="bill.partner_id.name"/></option>
+      </select></label>
+     </div>
+     <section class="uq-paper">
+      <div class="uq-paper-header"><h2 t-out="company.name"/><span t-out="cheque.number or 'Número por confirmar'"/></div>
+      <div class="uq-fields">
+       <label>Páguese a la orden de<input name="beneficiary" required="required" maxlength="120" t-att-value="data.get('beneficiary', cheque.beneficiary)"/></label>
+       <label>Fecha<input name="date" type="date" required="required" t-att-value="data.get('date', cheque.date or today)"/></label>
+       <label>Monto<input name="amount" type="number" step="0.01" min="0.01" required="required" t-att-value="data.get('amount', cheque.amount or '')"/></label>
+      </div>
+      <p>Monto en letras · automático <strong t-if="cheque" t-out="cheque._amount_words()"/></p>
+      <label>Concepto<input name="memo" maxlength="150" t-att-value="data.get('memo', cheque.memo)"/></label>
+      <p t-if="cheque.void_reason">Motivo de anulación · <t t-out="cheque.void_reason"/></p>
+     </section>
+    </fieldset>
+    <div class="uq-actions"><a class="ua-link" t-att-href="cheque_url">Volver a Cheques</a>
+     <t t-if="journals and (not cheque or cheque.state == 'draft')"><button type="submit" class="ua-link" name="step" value="save">Guardar borrador</button><button type="submit" class="ua-primary" name="step" value="preview">Revisar e imprimir</button></t>
+     <a t-if="cheque.state == 'issued'" class="ua-primary" t-att-href="cheque_url + '/' + str(cheque.id) + '/vista'">Ver impresión</a>
+    </div>
+   </form>
+  </main>
+ </t>
+</template>
+<template id="cheque_preview">
+ <t t-call="uno360x_workspace.shell">
+  <main class="ua-area ux-cheques">
+   <header class="ua-heading"><div><p class="ux-eyebrow"><a t-att-href="cheque_url">Finanzas / Cheques</a></p><h1>Vista previa de impresión</h1></div></header>
+   <div class="uq-preview">
+    <section class="ua-panel">
+     <h2>Cheque preimpreso</h2>
+     <div class="uq-paper">
+      <div class="uq-paper-header"><strong t-out="cheque.journal_id.name"/><span><t t-out="cheque.number or 'Número por confirmar'"/> · <t t-out="cheque.date.strftime('%d/%m/%Y')"/></span></div>
+      <p>Páguese a la orden de</p><div class="uq-paper-header"><strong t-out="cheque.beneficiary"/><strong t-out="amount_display(cheque)"/></div>
+      <hr/><p t-out="amount_words"/>
+     </div>
+     <p t-if="just_issued" role="status">Cheque emitido. Abre el PDF para imprimirlo.</p>
+     <p t-if="error" class="uq-alert" role="alert" t-out="error"/>
+     <div class="uq-actions">
+      <a class="ua-link" t-att-href="cheque_url + '/' + str(cheque.id)">Volver al cheque</a>
+      <a t-if="cheque.state != 'void'" class="ua-link" target="_blank" rel="noopener" t-att-href="cheque_url + '/' + str(cheque.id) + '/impresion.pdf?prueba=1'">Imprimir prueba</a>
+      <a t-if="cheque.state == 'issued'" class="ua-primary" target="_blank" rel="noopener" t-att-href="cheque_url + '/' + str(cheque.id) + '/impresion.pdf'">Imprimir cheque</a>
+     </div>
+    </section>
+    <aside class="ua-panel">
+     <h2>Ajustes de impresión</h2>
+     <p t-out="cheque.journal_id.name"/>
+     <p>Horizontal <t t-out="cheque.journal_id.uno_cheque_x"/> mm · Vertical <t t-out="cheque.journal_id.uno_cheque_y"/> mm</p>
+     <p>Imprime al 100 %. Prueba primero en papel común.</p>
+     <a t-att-href="'/odoo/action-%s/%s' % (bank_action, cheque.journal_id.id)">Ajustar formato del banco</a>
+     <form t-if="cheque.state == 'draft'" method="post" class="uq-issue">
+      <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+      <label>Número de la hoja de la chequera<input name="number" required="required" pattern="[0-9]{1,16}" maxlength="16" inputmode="numeric" t-att-value="number"/></label>
+      <button class="ua-primary" type="submit">Confirmar e imprimir</button>
+     </form>
+     <details t-if="cheque.state == 'issued'"><summary>Anular cheque</summary><form method="post" class="uq-issue">
+      <input type="hidden" name="csrf_token" t-att-value="csrf"/>
+      <label>Motivo<input name="reason" maxlength="250" required="required"/></label>
+      <button class="ua-link" type="submit" name="step" value="void">Confirmar anulación</button>
+     </form></details>
+    </aside>
+   </div>
+  </main>
+ </t>
+</template>
+<record id="cheque_bank_form" model="ir.ui.view">
+ <field name="name">uno360x.bank.cheque.layout</field><field name="model">account.journal</field><field name="priority">99</field>
+ <field name="arch" type="xml"><form string="Formato del banco" create="false" delete="false"><sheet><h1>Formato de impresión de cheques</h1>
+ <p>Mide en milímetros desde el borde superior izquierdo. Fecha y monto numérico se alinean a la derecha de su posición.</p>
+ <group><group><field name="name" readonly="1"/> <field name="uno_cheque_width" string="Ancho del papel (mm)"/><field name="uno_cheque_height" string="Alto del papel (mm)"/><field name="uno_cheque_date_x" string="Fecha X"/><field name="uno_cheque_date_y" string="Fecha Y"/><field name="uno_cheque_beneficiary_x" string="Beneficiario X"/><field name="uno_cheque_beneficiary_y" string="Beneficiario Y"/></group>
+ <group><field name="uno_cheque_x"/><field name="uno_cheque_y"/><field name="uno_cheque_amount_x" string="Monto X"/><field name="uno_cheque_amount_y" string="Monto Y"/><field name="uno_cheque_words_x" string="Monto en letras X"/><field name="uno_cheque_words_y" string="Monto en letras Y"/></group></group>
+ </sheet></form></field>
+</record>
+<record id="cheque_bank_action" model="ir.actions.act_window"><field name="name">Formato del banco</field><field name="res_model">account.journal</field><field name="view_mode">form</field><field name="view_id" ref="cheque_bank_form"/><field name="groups_id" eval="[(4, ref('account.group_account_manager'))]"/></record>
+</odoo>

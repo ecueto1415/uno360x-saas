@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+ <template id="company_document_layout">
+  <t t-set="layout_company" t-value="(o or doc).company_id.sudo()"/>
+  <t t-set="layout_key" t-value="layout_company._uno360x_document_layout_key()"/>
+  <t t-if="layout_key">
+   <t t-set="company" t-value="layout_company"/>
+   <t t-set="o" t-value="o or doc"/>
+   <t t-call="{{layout_key}}"><t t-out="0"/></t>
+  </t>
+  <t t-else="" t-call="web.external_layout"><t t-out="0"/></t>
+ </template>
+
+ <template id="sale_document_layout" inherit_id="sale.report_saleorder_document">
+  <xpath expr="//t[@t-call='web.external_layout']" position="attributes">
+   <attribute name="t-call">uno360x_workspace.company_document_layout</attribute>
+  </xpath>
+ </template>
+
+<template id="modern_invoice">
+  <div class="article" t-att-data-oe-model="o._name" t-att-data-oe-id="o.id" t-att-data-oe-lang="o.env.lang">
+    <div class="page ux-modern">
+      <style>
+        .ux-modern {font: 13px Arial,sans-serif; color:#24312e; line-height:1.4;}
+        .ux-modern table {width:100%; border-collapse:collapse;}
+        .ux-modern table, .ux-modern tr, .ux-modern th, .ux-modern td {border:0 !important; box-shadow:none !important; outline:0 !important;}
+        .ux-modern td {vertical-align:top;}
+        .ux-modern .issuer {border-bottom:2px solid #568875 !important; margin-bottom:21px;}
+        .ux-modern .issuer td {padding:0 12px 20px 0;}
+        .ux-modern .buyer {background:#f1f5f3; margin:20px 0 22px;}
+        .ux-modern .buyer td {padding:14px;}
+        .ux-modern .label {font-weight:bold; color:#518371; font-size:11px;}
+        .ux-modern .items th {background:#568875; color:white; padding:11px 7px;font-size:12px;}
+        .ux-modern .items td {border-bottom:1px solid #dde5e0 !important; padding:16px 7px;}
+        .ux-modern .items thead {display:table-header-group;}
+        .ux-modern tr {page-break-inside:avoid;}
+        .ux-modern .amounts {width:42%; margin:12px 0 0 auto; page-break-inside:avoid;}
+        .ux-modern .amounts td {padding:6px 10px;}
+        .ux-modern .amounts tr.o_total {background:#f1f5f3; color:#568875;}
+        .ux-modern .muted {color:#65746e;}
+      </style>
+      <t t-set="issuer" t-value="o.company_id"/>
+      <t t-set="customer" t-value="o.partner_id"/>
+      <t t-set="stamp" t-value="o._uno360x_modern_stamp()"/>
+      <t t-set="encf" t-value="stamp.get('encf')"/>
+      <t t-set="fiscal_titles" t-value="{'31':'Factura de crédito fiscal electrónica','32':'Factura de consumo electrónica','33':'Nota de débito electrónica','34':'Nota de crédito electrónica','41':'Comprobante electrónico de compras','43':'Comprobante electrónico para gastos menores','44':'Comprobante para regímenes especiales electrónico','45':'Comprobante gubernamental electrónico','46':'Comprobante electrónico para exportaciones','47':'Comprobante electrónico para pagos al exterior'}"/>
+      <table class="issuer table-borderless o_ignore_layout_styling"><tr>
+        <td style="width:36%"><img t-if="issuer.logo" t-att-src="image_data_uri(issuer.logo)" style="max-width:210px;max-height:100px" alt="Logo de la empresa"/></td>
+        <td><strong style="font-size:16px" t-out="issuer.name"/>
+          <div t-if="issuer.vat">RNC: <span t-out="issuer.vat"/></div>
+          <div class="muted" t-out="', '.join(v for v in (issuer.street,issuer.street2,issuer.city,issuer.state_id.name,issuer.country_id.name) if v)"/>
+          <div class="muted" t-if="issuer.email" t-out="issuer.email"/>
+        </td>
+      </tr></table>
+      <h2 style="color:#518371;font-size:22px;font-weight:bold;text-transform:uppercase;margin:0 0 10px" t-out="fiscal_titles.get(encf[1:3], 'Comprobante fiscal electrónico') if encf else ('Nota de crédito' if o.move_type == 'out_refund' else 'Factura de cliente')"/>
+      <div style="font-size:27px;font-weight:bold;margin-bottom:8px">
+        <t t-if="encf">e-NCF: <span t-out="encf"/></t>
+        <t t-elif="o.state == 'draft'">Borrador</t>
+        <span t-else="" t-out="o.name"/>
+      </div>
+      <div t-if="stamp.get('valid_until')" class="muted" style="margin-bottom:22px">Vencimiento de secuencia: <span t-out="stamp['valid_until']"/></div>
+      <div t-if="stamp and not stamp.get('production')" class="label">COMPROBANTE DE CERTIFICACIÓN DGII</div>
+      <div t-if="o.state == 'cancel'" class="muted">Cancelada</div>
+      <table class="buyer table-borderless o_ignore_layout_styling"><tr>
+        <td style="width:67%"><div class="label">CLIENTE</div><strong t-out="customer.name"/>
+          <div t-if="customer.vat">RNC: <span t-out="customer.vat"/></div>
+          <div class="muted" t-out="', '.join(v for v in (customer.street,customer.street2,customer.city,customer.state_id.name,customer.country_id.name) if v)"/>
+        </td>
+        <td><div class="label">FECHA DE EMISIÓN</div><div t-field="o.invoice_date"/>
+          <t t-if="o.invoice_date_due"><div class="label" style="margin-top:8px">FECHA DE VENCIMIENTO</div><div t-field="o.invoice_date_due"/></t>
+        </td>
+      </tr></table>
+      <table class="items table-borderless o_ignore_layout_styling">
+        <thead><tr><th style="width:54%;text-align:left">Descripción</th><th class="text-end">Cant.</th><th class="text-end">Precio unit.</th><th class="text-end">Importe</th></tr></thead>
+        <tbody>
+          <tr t-foreach="o.invoice_line_ids" t-as="line">
+            <t t-if="line.display_type == 'product'">
+              <td>
+                <t t-set="parts" t-value="(line.name or '').split('\n', 1)"/>
+                <strong t-out="parts[0]"/>
+                <div t-if="len(parts) > 1" class="muted" style="white-space:pre-line;margin-top:6px" t-out="parts[1]"/>
+                <div class="muted" style="font-size:10px" t-if="line.tax_ids and all(t.amount == 0 for t in line.tax_ids)">Exento</div>
+                <div t-if="line.discount" class="muted">Descuento: <span t-field="line.discount"/>%</div>
+              </td>
+              <td class="text-end"><span t-out="'{:,.2f}'.format(line.quantity)"/></td>
+              <td class="text-end"><span t-field="line.price_unit" t-options="{'widget':'monetary','display_currency':o.currency_id}"/></td>
+              <td class="text-end"><span t-field="line.price_subtotal" t-options="{'widget':'monetary','display_currency':o.currency_id}"/></td>
+            </t>
+            <td t-elif="line.display_type in ('line_section', 'line_note')" colspan="4" t-att-class="'fw-bold' if line.display_type == 'line_section' else 'muted'" style="white-space:pre-line"><span t-field="line.name"/></td>
+          </tr>
+        </tbody>
+      </table>
+      <table class="table-borderless o_ignore_layout_styling" style="table-layout:fixed;margin-top:12px;page-break-inside:avoid">
+        <tr>
+          <td style="width:58%;padding:5px 14px 0 0;font-size:10px;line-height:1.25;word-wrap:break-word;" class="muted">
+            <div t-if="not is_html_empty(o.narration)" t-field="o.narration"/>
+          </td>
+          <td style="width:42%">
+<table class="amounts table-borderless o_ignore_layout_styling" style="width:100%;margin:0" t-if="o.tax_totals">
+        <tr><td>Subtotal</td><td class="text-end"><span t-field="o.amount_untaxed" t-options="{'widget':'monetary','display_currency':o.currency_id}"/></td></tr>
+        <tr><td t-out="'ITBIS' if issuer.country_id.code == 'DO' else 'Impuestos'"/><td class="text-end"><span t-field="o.amount_tax" t-options="{'widget':'monetary','display_currency':o.currency_id}"/></td></tr>
+        <tr class="o_total" style="font-size:15px;font-weight:bold"><td>TOTAL</td><td class="text-end"><span t-field="o.amount_total" t-options="{'widget':'monetary','display_currency':o.currency_id}"/></td></tr>
+      </table>
+          </td>
+        </tr>
+      </table>
+      <div t-if="stamp" t-att-style="'page-break-inside:avoid;width:230px;text-align:center;margin-top:%spx' % (126 if len(o.invoice_line_ids) &lt;= 2 and sum(len(line.name or '') for line in o.invoice_line_ids) &lt;= 320 and is_html_empty(o.narration) else 30)">
+        <img t-att-src="image_data_uri(stamp['qr'])" style="display:block;width:28mm;height:28mm;margin:0 auto 6px" alt="Consulta del comprobante en la DGII"/>
+        <strong>Código de seguridad: <span t-out="stamp['code']"/></strong>
+        <div class="muted" style="font-size:10px">Fecha de firma: <span t-out="stamp['signed_at']"/></div>
+        <div class="muted" style="font-size:10px">Escanea el QR para consultar en la DGII.</div>
+      </div>
+      <div t-if="o.invoice_payment_term_id.display_on_invoice and o.invoice_payment_term_id.note" t-field="o.invoice_payment_term_id.note"/>
+      <div class="muted" style="border-top:1px solid #d9e4df;margin-top:26px;padding-top:8px;font-size:10px">
+        Importes expresados en <span t-out="o.currency_id.currency_unit_label or o.currency_id.name"/> (<span t-out="o.currency_id.name"/>).
+      </div>
+    </div>
+  </div>
+  <div class="footer" style="font:10px Arial,sans-serif;color:#65746e;text-align:right">
+    <t t-if="report_type == 'pdf'">Página <span class="page"/> de <span class="topage"/></t>
+  </div>
+ </template>
+
+ <template id="invoice_document_layout" inherit_id="account.report_invoice_document">
+  <xpath expr="//t[@t-call='web.external_layout']" position="attributes">
+   <attribute name="t-call">{{'uno360x_workspace.modern_invoice' if o.move_type in ('out_invoice', 'out_refund') and (o._uno360x_invoice_accepted_issue() or (not o._ux_accepted_ecf_number() and o.company_id.sudo().uno360x_document_layout in (False, 'bold'))) else 'uno360x_workspace.company_document_layout' if o.move_type in ('out_invoice', 'out_refund') else 'web.external_layout'}}</attribute>
+  </xpath>
+ </template>
+ <record id="invoice_fiscal_title" model="ir.ui.view">
+  <field name="name">UNO360X número fiscal en el encabezado de factura</field>
+  <field name="model">account.move</field>
+  <field name="inherit_id" ref="account.view_move_form"/>
+  <field name="arch" type="xml">
+   <xpath expr="//group[contains(concat(' ', normalize-space(@class), ' '), ' oe_subtotal_footer ')]/field[@name='amount_residual']" position="replace">
+    <div colspan="2" class="ux-invoice-amount-due" style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;min-width:0;width:100%;padding-top:7px;border-top:1px solid var(--border-color,#dce3e5);">
+     <label for="amount_residual" style="padding:0;white-space:normal;overflow-wrap:anywhere;min-width:0;flex:1 1 8rem;"/>
+     <span style="min-width:0;max-width:100%;margin-inline-start:auto;text-align:end;overflow-wrap:anywhere;font-weight:700;">
+      <field name="amount_residual" readonly="1" nolabel="1"/>
+     </span>
+    </div>
+   </xpath>
+   <xpath expr="//h1/field[@name='name']" position="attributes">
+    <attribute name="invisible" add="(state == 'posted' and ux_invoice_number and ux_invoice_number != name)" separator=" or "/>
+   </xpath>
+   <xpath expr="//h1/field[@name='name']" position="after">
+    <field name="ux_invoice_number" readonly="1" invisible="state != 'posted' or not ux_invoice_number or ux_invoice_number == name"/>
+   </xpath>
+  </field>
+ </record>
+</odoo>

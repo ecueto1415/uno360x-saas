@@ -1,0 +1,37 @@
+.ua-template-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #cbdcda;
+    border-radius: 8px;
+    background: #fff;
+    color: #136657;
+    font: inherit;
+    font-weight: 650;
+    text-decoration: none;
+    cursor: pointer;
+}
+.ua-template-button:hover { background: #edf5f2; }
+.ua-template-danger-text { color: #8e2424; }
+.ua-template-danger-text:hover { background: #fff2f2; }
+.ua-template-danger, .ua-template-danger:hover {
+    background: #a12626;
+    color: #fff;
+    border-color: #a12626;
+}
+.ua-template-dialog {
+    width: min(440px, calc(100% - 28px));
+    padding: 22px;
+    border: 1px solid #dfe7e8;
+    border-radius: 14px;
+    color: #102c39;
+    background: #fff;
+    box-shadow: 0 18px 60px #0e202e33;
+}
+.ua-template-dialog::backdrop { background: #0e202e90; }
+.ua-template-dialog h2 { margin: 0 0 8px; font-size: 22px; }
+.ua-template-dialog p { margin: 0; line-height: 1.55; }
+.ua-template-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.ua-template-dialog-actions form { margin: 0; }

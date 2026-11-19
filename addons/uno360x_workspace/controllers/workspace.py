@@ -1,7 +1,43 @@
+import base64
+import re
+from io import BytesIO
+
+from PIL import Image, UnidentifiedImageError
+
 from odoo import http
 from odoo.http import request
 from odoo.exceptions import AccessError,UserError
 from werkzeug.exceptions import NotFound,Forbidden
+
+from ..models.company_branding import DOCUMENT_LAYOUTS
+from odoo.addons.uno360x_quote_ui.models.bcrd_quote_rate import official_rate
+
+
+def _uploaded_company_logo(upload):
+ if not upload or not upload.filename:
+  return None
+ content = upload.read(2 * 1024 * 1024 + 1)
+ if len(content) > 2 * 1024 * 1024:
+  raise UserError('El logo debe pesar como máximo 2 MB.')
+ try:
+  with Image.open(BytesIO(content)) as image:
+   if image.format not in ('PNG', 'JPEG') or max(image.size) > 4096:
+    raise ValueError('Invalid logo format or dimensions')
+   image.verify()
+  with Image.open(BytesIO(content)) as image:
+   image.load()
+ except (UnidentifiedImageError, Image.DecompressionBombError, OSError, SyntaxError, ValueError):
+  raise UserError('Sube una imagen PNG o JPG válida de hasta 4096 × 4096 píxeles.') from None
+ return base64.b64encode(content)
+
+
+def can_manage_company(user):
+ return user.has_group('base.group_system') or all(
+  user.has_group(group) for group in (
+   'sales_team.group_sale_manager', 'account.group_account_manager', 'stock.group_stock_manager',
+  )
+ )
+
 
 class WorkspaceController(http.Controller):
  def _pos_values(self,error=''):
@@ -38,6 +74,60 @@ class WorkspaceController(http.Controller):
   response=request.render(template,values)
   response.headers['Cache-Control']='no-store'
   return response
+ @http.route('/uno360x-mi-empresa', type='http', auth='user', methods=['GET', 'POST'], csrf=True)
+ def my_company(self, name='', rnc='', operation='', saved='', document_layout='', **kw):
+  ctx = self._service()._workspace_context()
+  user = request.env.user
+  can_edit = can_manage_company(user)
+  company = request.env.company
+  error = ''
+  if request.httprequest.method == 'POST':
+   if not can_edit:
+    raise Forbidden()
+   try:
+    with request.env.cr.savepoint():
+     if operation == 'profile':
+      if not isinstance(name, str) or not 1 <= len(name.strip()) <= 150:
+       raise UserError('Indica la razón social de la empresa (hasta 150 caracteres).')
+      if not isinstance(rnc, str) or not re.fullmatch(r'[0-9 -]{9,20}', rnc.strip()):
+       raise UserError('Escribe un RNC de 9 dígitos o una cédula de 11 dígitos.')
+      tax_id = re.sub(r'[ -]', '', rnc.strip())
+      if len(tax_id) not in (9, 11) or not int(tax_id):
+       raise UserError('Escribe un RNC de 9 dígitos o una cédula de 11 dígitos.')
+      company.sudo().write({'name': name.strip(), 'vat': tax_id, 'uno360x_fiscal_legal_name': name.strip()})
+     elif operation == 'branding':
+      if document_layout and document_layout not in dict(DOCUMENT_LAYOUTS):
+       raise UserError('Elige una de las cuatro plantillas.')
+      values = {'uno360x_document_layout': document_layout or False}
+      logo = _uploaded_company_logo(request.httprequest.files.get('company_logo'))
+      if logo:
+       values['logo'] = logo
+      company.sudo().write(values)
+     elif operation == 'usd':
+      if company.currency_id.name != 'DOP' or company.parent_id:
+       raise UserError('Esta opción está disponible para empresas con moneda base DOP.')
+      if not official_rate():
+       raise UserError('La tasa oficial del Banco Central todavía no está disponible.')
+      usd = request.env.ref('base.USD').sudo()
+      usd.active = True
+      lists = request.env['product.pricelist'].sudo().with_company(company)
+      if not lists.search_count([('company_id', '=', company.id), ('currency_id', '=', usd.id)]):
+       lists.create({'name': 'USD - Dólares estadounidenses', 'currency_id': usd.id, 'company_id': company.id})
+     else:
+      raise NotFound()
+   except UserError as exc:
+    error = str(exc)
+   else:
+    return request.redirect('/uno360x-mi-empresa?saved=1', code=303)
+  ctx.update(page_key='my_company', can_edit_company=can_edit, company_error=error,
+             company_saved=saved == '1', profile_name=name if error and operation == 'profile' else company.uno360x_fiscal_legal_name or company.name,
+             profile_rnc=rnc if error and operation == 'profile' else company.vat or '',
+             document_layouts=DOCUMENT_LAYOUTS,
+             company_document_layout=company.sudo().uno360x_document_layout,
+             company_logo=company.sudo().logo,
+             usd_reference=official_rate() if can_edit and company.currency_id.name == 'DOP' else None)
+  return self._render('uno360x_workspace.my_company', ctx)
+
  @http.route('/uno360x-resumen',type='http',auth='user',methods=['GET'])
  def overview(self,period=None,**kw):
   return self._render('uno360x_workspace.dashboard',self._service()._dashboard(period))

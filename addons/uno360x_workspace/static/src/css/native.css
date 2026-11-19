@@ -56,3 +56,110 @@ body.o_web_client .ux-native-shell .ux-side-bottom a.ux-current{color:#64d5af!im
  body.o_web_client .o_main_navbar .o_menu_systray{min-width:0}
  body.o_web_client .o_control_panel{padding-left:12px!important;padding-right:12px!important}
 }
+
+/* Empty kanban views should present help without layering it over sample cards. */
+body.o_web_client .o_view_sample_data .o_kanban_renderer:has(> .o_view_nocontent) {
+    opacity: 1;
+    filter: none;
+    min-width: 0;
+}
+
+body.o_web_client .o_view_sample_data .o_kanban_renderer:has(> .o_view_nocontent) > .o_kanban_record {
+    display: none !important;
+}
+
+body.o_web_client .o_view_sample_data .o_kanban_renderer > .o_view_nocontent {
+    position: static;
+    inset: auto;
+    transform: none;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 24px 12px;
+    opacity: 1;
+}
+
+@media (max-width: 700px) {
+    body.o_web_client .o_kanban_renderer.o_kanban_ungrouped > .o_kanban_record {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+}
+
+
+/* Allow form fields to shrink within the sheet; keep wide tables scrollable. */
+@media (max-width: 700px) {
+    body.o_web_client .o_form_view :is(.o_form_sheet, .o_notebook_content, .tab-pane, .o_group, .o_inner_group, .o_wrap_field, .o_field_widget) {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    body.o_web_client .o_form_view .o_inner_group > * {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    body.o_web_client .o_form_view .o_field_x2many .o_list_renderer {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    body.o_web_client .o_form_view .o_notebook_headers .nav {
+        flex-wrap: wrap;
+    }
+}
+
+
+/* Keep filter choices reachable when the search panel is taller than the screen. */
+body.o_web_client .o_search_bar_menu {
+    max-height: min(60dvh, 32rem);
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+@media (max-width: 700px) {
+    body.o_web_client .o_search_bar_menu {
+        position: fixed !important;
+        inset: auto 8px 8px !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: calc(100% - 16px);
+        margin: 0 !important;
+    }
+}
+
+
+/* Keep supplier tables inside the product form at every viewport width. */
+body.o_web_client .o_form_view .o_field_one2many:has(.o_field_x2many_list) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+body.o_web_client .o_form_view .o_field_x2many_list .o_list_renderer {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+body.o_web_client .o_form_view .o_notebook_content .o_group.row > .o_group.row {
+    margin-inline: 0;
+}
+
+/* Keep the workspace identity to the right of native Odoo controls. */
+body.o_web_client #ux-native-profile {display:none}
+body.o_web_client .o_main_navbar #ux-native-profile {display:flex;align-items:center;flex:none}
+body.o_web_client .o_main_navbar #ux-native-profile .ux-profile {gap:8px;padding-left:10px}
+body.o_web_client .o_main_navbar .o_switch_company_menu .oe_topbar_name {
+ max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+body.o_web_client #ux-native-profile .ux-team-settings[open] {z-index:1065}
+@media(max-width:700px){
+ body.o_web_client .o_main_navbar #ux-native-profile .ux-profile {display:flex;padding-left:4px;gap:5px}
+ body.o_web_client .o_main_navbar #ux-native-profile .ux-avatar {display:none}
+ body.o_web_client .o_main_navbar #ux-native-profile .ux-profile strong {
+  display:block;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+ }
+}
