@@ -11,7 +11,7 @@ import urllib.request
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
 
-from control.identity import IdentityService, IdentityError, email_key, digest
+from control.identity import IdentityService, IdentityError, LoginThrottled, SESSION_COOKIE_TTL, email_key, digest
 from control.identity_http import csrf_for
 from control.trials import Trials
 
@@ -21,11 +21,16 @@ OP_ID = '__operational__'
 ERP_ORIGIN = 'https://erp.uno360x.com'
 ENTRY = '/__operational/enter'
 DATABASE = 'Outsolutech_prueba'
+LOGIN_CODE_COOKIE = '__Host-uno360x_login_code'
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
+
+
+class NativeMFARequired(Exception):
+    pass
 
 
 class NativeAccess:
@@ -61,7 +66,7 @@ class NativeAccess:
         self.sessions = {k: v for k, v in self.sessions.items() if v['expires'] > now}
         self.grants = {k: v for k, v in self.grants.items() if v[1] > now and v[0] in self.sessions}
 
-    def authenticate(self, email, password, client_ip=''):
+    def authenticate(self, email, password, client_ip='', *, redirect_mfa=False):
         if self.directory:
             directory = json.loads(self.directory.read_text())
             if not self.clock() - 300 <= directory['updated'] <= self.clock() + 30:
@@ -71,6 +76,8 @@ class NativeAccess:
                 return None
         result, sid = self.rpc('/web/session/authenticate',
             {'db': DATABASE, 'login': email, 'password': password}, client_ip=client_ip)
+        if redirect_mfa and result == {'uid': None}:
+            raise NativeMFARequired()
         # Pending MFA has no authenticated uid. Never create or bypass a native identity.
         if not result.get('uid') or result.get('db') != DATABASE or not sid:
             return None
@@ -151,6 +158,8 @@ class UnifiedAccessMixin:
 
     @staticmethod
     def _secure_cookie(name, token='', seconds=0):
+        if name == SAAS_COOKIE and token and seconds:
+            seconds = SESSION_COOKIE_TTL
         return f'{name}={token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age={seconds}'
 
     def _unified_accounts(self, service):
@@ -180,7 +189,10 @@ class UnifiedAccessMixin:
         service = IdentityService(self.server.database, self.server.deliver)
         try:
             saas, native, token = self._unified_accounts(service)
-            self._unified_reply(200, {'email': (saas or native)['email'], 'csrf_token': csrf_for(token)})
+            if saas:
+                service._account(token,renew=True)
+            cookies = [self._secure_cookie(SAAS_COOKIE,token,SESSION_COOKIE_TTL)] if saas else []
+            self._unified_reply(200, {'email': (saas or native)['email'], 'csrf_token': csrf_for(token)},cookies)
         except IdentityError:
             self._unified_reply(401, {'error': 'Sesión vencida.'})
         finally:
@@ -211,12 +223,58 @@ class UnifiedAccessMixin:
         except Exception:
             self._unified_reply(400, {'error': 'El acceso venció. Vuelve a iniciar sesión en cuenta.uno360x.com.'})
 
+    def _start_email_login(self, service, challenges, email, password):
+        cookies = SimpleCookie(self.headers.get('Cookie', ''))
+        token = cookies[LOGIN_CODE_COOKIE].value if LOGIN_CODE_COOKIE in cookies else ''
+        pending = challenges.current(token)
+        try:
+            verified = service.login(email, password, require_email_code=True, pending_email_code=pending)
+        except LoginThrottled as error:
+            self._unified_reply(429, {'error':str(error)})
+            return
+        except IdentityError:
+            native = self.server.operational
+            if native:
+                try:
+                    token = native.authenticate(email, password,
+                        self.headers.get('X-UNO360X-Client-IP', self.client_address[0]), redirect_mfa=True)
+                    if token:
+                        row = native.remove(token)
+                        if row:
+                            native.rpc('/web/session/destroy', {}, row['sid'])
+                        raise NativeMFARequired()
+                except NativeMFARequired:
+                    self._unified_reply(200, {'operational_login':True}, [self._secure_cookie(LOGIN_CODE_COOKIE)])
+                    return
+                except Exception:
+                    self._unified_reply(503, {'error':'El acceso operativo no responde. Intenta de nuevo.'})
+                    return
+            self._unified_reply(400, {'error':'Contraseña incorrecta.'})
+            return
+        if pending == verified:
+            if challenges.current(token) == verified:
+                self._unified_reply(200, {'email_code_required':True})
+            else:
+                self._unified_reply(409, {'error':'El código ya no está disponible. Vuelve a iniciar sesión.'})
+            return
+        try:
+            token = challenges.issue(verified, self.server.deliver)
+        except Exception:
+            self._unified_reply(503, {'error':'No pudimos enviar el código. Intenta de nuevo en unos minutos.'})
+            return
+        if self._session():
+            service.logout(self._session())
+        if self._op_token() and self.server.operational:
+            self.server.operational.remove(self._op_token())
+        self._unified_reply(200, {'email_code_required':True}, [self._secure_cookie(LOGIN_CODE_COOKIE, token, 600),
+            self._secure_cookie(SAAS_COOKIE), self._secure_cookie(OP_COOKIE)])
+
     def unified_post(self):
         if self.path == ENTRY:
             self.unified_entry(); return True
-        if self.path not in ('/login', '/companies', '/spaces/open', '/logout'):
+        if self.path not in ('/login', '/login/code', '/companies', '/spaces/open', '/logout'):
             return False
-        if self.path != '/login' and not self._op_token():
+        if self.path not in ('/login', '/login/code') and not self._op_token():
             return False
         if not self._origin_ok():
             self._unified_reply(403, {'error': 'Origen no autorizado.'}); return True
@@ -234,6 +292,19 @@ class UnifiedAccessMixin:
             self._unified_reply(400, {'error': 'Solicitud inválida.'}); return True
         service = IdentityService(self.server.database, self.server.deliver)
         try:
+            challenges = getattr(self.server, 'email_challenges', None)
+            if self.path == '/login/code':
+                if challenges is None:
+                    self._unified_reply(404, {'error':'Ruta no disponible.'}); return True
+                cookies = SimpleCookie(self.headers.get('Cookie', ''))
+                challenge = cookies[LOGIN_CODE_COOKIE].value if LOGIN_CODE_COOKIE in cookies else ''
+                verified = challenges.consume(challenge, data.get('code'))
+                result = service.finish_email_login(verified)
+                session = result['session']
+                self._unified_reply(200, {'email':verified['email'], 'csrf_token':csrf_for(session)}, [
+                    self._secure_cookie(SAAS_COOKIE,session,result['expires_in']),
+                    self._secure_cookie(LOGIN_CODE_COOKIE),self._secure_cookie(OP_COOKIE)])
+                return True
             if self.path == '/login':
                 email, password = email_key(data['email']), data['password']
                 if not isinstance(password, str) or not 1 <= len(password) <= 4096:
@@ -244,6 +315,9 @@ class UnifiedAccessMixin:
                     transport = service._allow('unified-transport', self.client_address[0], maximum=60, window=60)
                 if not allowed or not transport:
                     self._unified_reply(429, {'error': 'Espera unos minutos antes de volver a intentarlo.'}); return True
+                if challenges is not None:
+                    self._start_email_login(service, challenges, email, password)
+                    return True
                 saas, native, unavailable = None, None, False
                 try:
                     saas = service.login(email, password)
@@ -297,8 +371,9 @@ class UnifiedAccessMixin:
                         pass
                 self._unified_reply(200, {'logged_out': True}, [self._secure_cookie(SAAS_COOKIE), self._secure_cookie(OP_COOKIE)])
                 return True
-        except IdentityError:
-            self._unified_reply(401, {'error': 'Vuelve a iniciar sesión.'})
+        except IdentityError as error:
+            message = str(error) if self.path == '/login/code' else 'Vuelve a iniciar sesión.'
+            self._unified_reply(401, {'error': message})
         except (ValueError, KeyError, TypeError):
             self._unified_reply(400, {'error': 'Solicitud inválida.'})
         except Exception:

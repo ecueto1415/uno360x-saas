@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import json
 import time
 
-from .identity import IdentityService,IdentityError
+from .identity import IdentityService,IdentityError,SESSION_COOKIE_TTL
 from .onboarding import Onboarding,PreparationError
 from .setup import Setup
 from .trials import Trials,TrialCompanyExists
@@ -84,8 +84,9 @@ class Handler(BaseHTTPRequestHandler):
         service=IdentityService(self.server.database,self.server.deliver)
         try:
             token=self._session()
-            account=service._account(token)
-            self._reply(200,{'email':account['email'],'csrf_token':csrf_for(token)})
+            account=service._account(token,renew=True)
+            self._reply(200,{'email':account['email'],'csrf_token':csrf_for(token)},
+                        cookie=f'{COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_COOKIE_TTL}')
         except IdentityError:
             self._reply(401,{'error':'Sesión inválida o vencida.'})
         finally:service.close()
@@ -117,6 +118,7 @@ class Handler(BaseHTTPRequestHandler):
             public={
                 '/trial/register':lambda:Trials(service).register(data['email'],data['name'],data['modules'],data['consent'],consent_version=getattr(self.server,'consent_version','lab-review-v1')),
                 '/register':lambda:service.register(data['email']),
+                '/invitations/activate':lambda:service.activate_employee_invitation(data['token'],data['password']),
                 '/verify':lambda:service.complete_registration(data['token'],data['password']),
                 '/verify/resend':lambda:service.request_verification(data['email']),
                 '/reset/request':lambda:service.request_reset(data['email']),
