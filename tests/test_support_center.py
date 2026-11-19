@@ -107,6 +107,8 @@ class SupportTest(unittest.TestCase):
         headers=[('Content-Type','text/html')]
         status,h,body=decorate('/uno360x-resumen',200,headers,b'<html><body></body></html>')
         self.assertIn(b'chat.js',body)
+        self.assertIn(b'chat.js',decorate('/uno360x/finanzas/cheques',200,headers,b'<html><body></body></html>')[2])
+        self.assertIn(b'chat.js',decorate('/uno360x/area/inventory',200,headers,b'<html><body></body></html>')[2])
         self.assertEqual(body,decorate('/uno360x-resumen',200,h,body)[2])
         self.assertEqual(b'{}',decorate('/web/dataset',200,headers,b'{}')[2])
 

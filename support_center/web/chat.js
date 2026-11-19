@@ -59,7 +59,7 @@
     }
     const pending = messages.some(m => ['pending','working'].includes(m.state));
     const human = selected ? value.selected?.human : humanNew;
-    status.textContent = pending ? (en ? 'Jenifer is preparing a response…' : 'Jenifer está preparando una respuesta…') : human ? (en ? 'Sent to the team. Your conversation is saved; you can close this window.' : 'Enviado al equipo. La conversación queda guardada; puedes cerrar esta ventana.') : value.selected?.status === 'resolved' && selected ? (en ? 'Resolved by the team.' : 'Marcada como resuelta por el equipo.') : '';
+    status.textContent = pending ? (en ? 'Jenifer is preparing a response…' : 'Jenifer está preparando una respuesta…') : value.selected?.status === 'resolved' && selected ? (en ? 'Resolved by the team.' : 'Marcada como resuelta por el equipo.') : human ? (en ? 'Sent to the team. Your conversation is saved; you can close this window.' : 'Enviado al equipo. La conversación queda guardada; puedes cerrar esta ventana.') : '';
     $('.us-send').disabled = loading || pending;
     schedule();
   }
@@ -97,7 +97,7 @@
     if (!selected) { humanNew = true; status.textContent = en ? 'Write your message to send it to the team.' : 'Escribe tu mensaje para enviarlo al equipo.'; $('#us-text').focus(); return; }
     loading = true; generation++; clearTimeout(poll);
     try { render(await api({case_id:selected,handoff:true})); } catch (error) { status.textContent = error.message; }
-    finally { loading = false; }
+    finally { loading = false; $('.us-send').disabled = data?.messages.some(m => ['pending','working'].includes(m.state)) || false; }
   };
   root.addEventListener('keydown', event => { if (event.key === 'Escape' && !panel.hidden) $('.us-close').click(); });
   document.addEventListener('visibilitychange', schedule);

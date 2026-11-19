@@ -31,3 +31,19 @@ test('human first sends the next message directly to the team; English labels',a
  const {d}=setup(t,null,'en_US');d.querySelector('.us-launch').click();await wait();d.querySelector('.us-human').click();assert.match(d.querySelector('.us-status').textContent,/Write your message/);assert.equal(d.querySelector('.us-send').textContent,'Send');
 });
 test('loader is idempotent across partial navigation',t=>{const {w,d}=setup(t);w.eval(source);assert.equal(d.querySelectorAll('#uno-support').length,1);});
+test('handoff keeps sending available without waiting for a refresh',async t=>{
+ const selected={id:'a'.repeat(32),title:'Consulta',human:0,status:'open'};
+ const messages=[{id:1,role:'user',body:'Consulta de prueba',state:'done'},{id:2,role:'assistant',body:'Respuesta de prueba',state:'done'}];
+ const {d,calls}=setup(t,(url,options)=>({cases:[{...selected,human:options.method==='POST'?1:0}],selected:{...selected,human:options.method==='POST'?1:0},messages,csrf_token:'safe-token'}));
+ d.querySelector('.us-launch').click();await wait();d.querySelector('.us-human').click();await wait();
+ assert.equal(d.querySelector('.us-send').disabled,false);
+ assert.match(d.querySelector('.us-status').textContent,/Enviado al equipo/);
+ assert.equal(JSON.parse(calls[1].options.body).handoff,true);
+});
+test('resolved human conversation displays its resolved state',async t=>{
+ const selected={id:'a'.repeat(32),title:'Consulta',human:1,status:'resolved'};
+ const {d}=setup(t,()=>({cases:[selected],selected,messages:[],csrf_token:'safe-token'}));
+ d.querySelector('.us-launch').click();await wait();
+ assert.match(d.querySelector('.us-status').textContent,/resuelta/);
+ assert.doesNotMatch(d.querySelector('.us-status').textContent,/Enviado al equipo/);
+});

@@ -24,7 +24,20 @@ Jenifer debe usar la evidencia en lugar de decir que carece de herramientas. Las
 - Empresa SaaS con todos los módulos: guía disponible de 25 opciones y menús autorizados. Usuario de RR. HH. temporal, eliminado por rollback: acceso de empleados y sin acceso de Nómina o contratos. No quedó un usuario nuevo ni se enviaron invitaciones.
 - Ocho combinaciones de módulos reconstruidas desde plantillas limpias y verificadas; una reserva preparada según el objetivo de desarrollo de un espacio. Perfiles de las dos empresas actuales sincronizados. Worker de preparación y timer de reservas restaurados.
 
-La comprobación visual final en las sesiones reales de cliente y propietario sigue pendiente de que el usuario inicie sesión en el navegador integrado. No se sustituyó esa comprobación por sesiones fabricadas ni se afirma que esté terminada.
+## Recorrido visual completado en INCIVI
+
+El 19 de noviembre se completó la prueba en las sesiones reales de INCIVI y del propietario del panel, después de que el usuario iniciara sesión personalmente. Conversación identificada como **Prueba QA de soporte INCIVI**, referencia `f05ebbb8f061d272af31fc20155f70bb`:
+
+1. Desde Cheques se abrió el soporte y se preguntó dónde cargar rangos aprobados y si el RNC estaba configurado.
+2. Jenifer confirmó el RNC configurado y señaló Mi empresa → Secuencias de comprobantes usando un diagnóstico real vinculado al mensaje.
+3. Hablar con el equipo dejó la consulta como pendiente del equipo en el administrador.
+4. El propietario envió una respuesta identificada como QA y apareció en el mismo chat de INCIVI sin recargarlo.
+5. El cliente confirmó recepción. El panel incorporó el nuevo mensaje automáticamente mientras conservaba intacto un borrador de respuesta.
+6. Se limpió únicamente ese borrador QA y se marcó la conversación de prueba como resuelta. INCIVI mostró el mensaje de cierre y el estado resuelto. La conversación original del cliente permaneció abierta y sin modificar.
+
+La auditoría verificó dos mensajes de cliente, una respuesta de Jenifer, una respuesta humana y un aviso de resolución; un evento de respuesta y uno de resolución, sin duplicados ni trabajo de IA pendiente tras la derivación. No se emitieron documentos ni se modificó la configuración fiscal.
+
+Se corrigieron durante la prueba la ausencia del chat en rutas `/uno360x/…`, la demora en habilitar Enviar después de derivar, el aviso de conversación resuelta y la actualización de bandeja e historial cada 15 segundos sin reemplazar el formulario ni perder lo escrito. Pasaron siete pruebas DOM de esos comportamientos y catorce de almacenamiento y rutas. Las correcciones de interfaz no requirieron reconstruir plantillas ni reiniciar Odoo.
 
 ## Publicación y reversión
 

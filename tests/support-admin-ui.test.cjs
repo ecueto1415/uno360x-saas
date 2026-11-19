@@ -1,0 +1,33 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {JSDOM}=require('jsdom');
+const fs=require('node:fs'),path=require('node:path');
+const source=fs.readFileSync(path.join(__dirname,'../admin_console/web/admin.js'),'utf8');
+const wait=()=>new Promise(r=>setTimeout(r,25));
+test('new cases and status refresh without replacing an open reply draft',async t=>{
+ const dom=new JSDOM('<div id="app"></div>',{url:'https://admin.uno360x.com/#soporte',runScripts:'outside-only',pretendToBeVisual:true});
+ const w=dom.window;w.HTMLElement.prototype.scrollIntoView=function(){};
+ t.after(()=>w.close());
+ let cases=[{id:'a'.repeat(32),tenant:'t',title:'Primera consulta',topic:'inventory',human:1,status:'open',updated:2000000000}];
+ w.fetch=async url=>({ok:true,status:200,json:async()=>{
+  if(url==='/api/auth-config')return {factor:'email'};
+  if(url==='/api/session')return {email:'owner@example.test',csrf_token:'safe-token',factor:'email'};
+  if(url==='/api/overview')return {snapshot:{generated:2000000000,clients:[{id:'t',name:'Empresa QA'}],events:[]},stale:false};
+  if(url.startsWith('/api/support?'))return {selected:cases[0],messages:[{role:'user',body:cases.length===1?'Consulta de prueba':'Respuesta nueva del cliente',created:2000000000}]};
+  if(url==='/api/support')return {cases,reports:[]};
+  throw Error('Unexpected endpoint '+url);
+ }});
+ w.eval(source+'\nwindow.qaPoll=poll;');await wait();await wait();
+ assert(w.document.querySelector('#support-inbox'));
+ w.document.querySelector('[data-case]').click();await wait();
+ const form=w.document.querySelector('#support-reply'),field=form.querySelector('textarea');
+ field.value='Borrador que debe conservarse';
+ cases=[{...cases[0],status:'resolved',updated:2000000020},{id:'b'.repeat(32),tenant:'t',title:'Nueva consulta',topic:'sales',human:1,status:'open',updated:2000000021}];
+ await w.qaPoll();
+ assert.equal(w.document.querySelector('#support-reply'),form);
+ assert.equal(field.value,'Borrador que debe conservarse');
+ assert.equal(w.document.querySelectorAll('#support-inbox [data-case]').length,2);
+ assert.match(w.document.querySelector('#support-inbox').textContent,/Nueva consulta/);
+ assert.match(w.document.querySelector('#support-inbox').textContent,/Resuelta/);
+ assert.match(w.document.querySelector('.support-log').textContent,/Respuesta nueva del cliente/);
+});

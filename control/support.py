@@ -68,7 +68,7 @@ def dispatch(handler,handle,url):
 
 def decorate(path,status,headers,body):
     route=path.split('?',1)[0]
-    if (status==200 and (route.startswith('/uno360x-') or route in ('/web','/odoo') or route.startswith('/odoo/'))
+    if (status==200 and (route.startswith(('/uno360x-','/uno360x/')) or route in ('/web','/odoo') or route.startswith('/odoo/'))
         and any(k.lower()=='content-type' and v.startswith('text/html') for k,v in headers)
         and b'</body>' in body and b'id="uno-support-loader"' not in body):
         addition=b'<link rel="stylesheet" href="/__support/chat.css?v=1"><script id="uno-support-loader" defer src="/__support/chat.js?v=1"></script>'
