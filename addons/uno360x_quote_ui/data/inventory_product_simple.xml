@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="inventory_product_simple_form" model="ir.ui.view">
+        <field name="name">uno360x.inventory.product.simple</field>
+        <field name="model">product.template</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <form string="Nuevo producto" duplicate="false" js_class="uno360x_inventory_product">
+                <header>
+                    <button name="action_open_label_layout" type="object" string="Imprimir etiquetas" invisible="not id"/>
+                    <button name="action_uno_open_full_product" type="object" string="Ver ficha completa" invisible="not id"/>
+                </header>
+                <sheet>
+                    <field name="type" invisible="1"/>
+                    <field name="is_storable" invisible="1"/>
+                    <field name="product_variant_count" invisible="1"/>
+                    <div class="uno-inventory-layout">
+                        <div class="uno-inventory-title">
+                            <span>Operaciones / Inventario / Productos</span>
+                            <h1 invisible="id">Nuevo producto</h1>
+                            <h1 invisible="not id">Datos del producto</h1>
+                            <p invisible="id">Completa el nombre. Puedes cargar existencias y configurar avisos en esta misma pantalla.</p>
+                        </div>
+                        <div class="uno-inventory-card">
+                            <h3>Datos del producto</h3>
+                            <div class="uno-inventory-grid uno-inventory-product-grid">
+                                <div class="uno-inventory-field">
+                                    <label for="name" string="Nombre del producto"/>
+                                    <field name="name" required="1"/>
+                                </div>
+                                <div class="uno-inventory-field">
+                                    <label for="default_code" string="Código interno (opcional)"/>
+                                    <field name="default_code"/>
+                                    <div class="uno-inventory-convert" invisible="id or barcode">
+                                        <field name="uno_generate_barcode" widget="boolean_toggle" options="{'autosave': False}"/>
+                                        <label for="uno_generate_barcode" string="Convertir en código de barras"/>
+                                    </div>
+                                    <button name="action_uno360x_convert_barcode" type="object" string="Convertir en código de barras"
+                                            class="btn-link" invisible="not id or barcode or product_variant_count != 1 or not is_storable"/>
+                                    <div class="uno-inventory-manual" invisible="uno_generate_barcode and not id">
+                                        <label for="barcode" string="Código de barras (opcional)"/>
+                                        <field name="barcode"/>
+                                    </div>
+                                </div>
+                                <div class="uno-inventory-field">
+                                    <label for="product_tag_ids" string="Etiquetas (opcional)"/>
+                                    <field name="product_tag_ids" widget="many2many_tags" placeholder="+ Agregar"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="uno-inventory-card" invisible="id">
+                            <h3>Existencias iniciales</h3>
+                            <div class="uno-inventory-grid uno-inventory-stock-grid">
+                                <div class="uno-inventory-field" groups="stock.group_stock_manager">
+                                    <label for="uno_initial_qty" string="Cantidad actual"/>
+                                    <field name="uno_initial_qty"/>
+                                </div>
+                                <div class="uno-inventory-field">
+                                    <label for="uom_id" string="Unidad"/>
+                                    <field name="uom_id" options="{'no_create': True}"/>
+                                </div>
+                                <div class="uno-inventory-field" groups="stock.group_stock_manager">
+                                    <label for="uno_warehouse_id" string="Almacén"/>
+                                    <field name="uno_warehouse_id" domain="[('company_id', 'in', allowed_company_ids)]"
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                </div>
+                            </div>
+                            <p class="uno-inventory-help" groups="stock.group_stock_manager">Escribe 0 si todavía no tienes unidades en el almacén.</p>
+                        </div>
+                        <div class="uno-inventory-card" invisible="id" groups="stock.group_stock_manager">
+                            <h3>Reposición</h3>
+                            <div class="uno-inventory-convert">
+                                <field name="uno_reorder" widget="boolean_toggle" options="{'autosave': False}"/>
+                                <label for="uno_reorder" string="Avisarme cuando falte stock"/>
+                            </div>
+                            <div class="uno-inventory-grid uno-inventory-reorder-grid" invisible="not uno_reorder">
+                                <div class="uno-inventory-field">
+                                    <label for="uno_min_qty" string="Stock mínimo"/>
+                                    <field name="uno_min_qty"/>
+                                </div>
+                                <div class="uno-inventory-field">
+                                    <label for="uno_target_qty" string="Stock objetivo"/>
+                                    <field name="uno_target_qty"/>
+                                </div>
+                            </div>
+                            <p class="uno-inventory-help" invisible="not uno_reorder">Si baja del mínimo, verás cuánto reponer para alcanzar el objetivo.</p>
+                        </div>
+                        <div class="uno-inventory-card" invisible="not id">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                <h3 class="mb-0">Existencias</h3>
+                                <button name="action_uno_correct_stock" type="object" string="Corregir stock"
+                                        class="btn uno-inventory-save" groups="stock.group_stock_manager"
+                                        invisible="not id or not is_storable or product_variant_count != 1"/>
+                            </div>
+                            <div class="uno-inventory-grid uno-inventory-stock-grid">
+                                <div class="uno-inventory-field">
+                                    <span class="fw-bold d-block">Maneja inventario</span>
+                                    <span invisible="not is_storable">Sí</span>
+                                    <span invisible="is_storable">No</span>
+                                </div>
+                                <div class="uno-inventory-field" invisible="not is_storable or product_variant_count == 1" groups="stock.group_stock_user">
+                                    <label for="qty_available" string="Stock actual"/>
+                                    <field name="qty_available" readonly="1"/>
+                                </div>
+                                <div class="uno-inventory-field" invisible="not is_storable or product_variant_count != 1" groups="stock.group_stock_user">
+                                    <label for="uno_adjustment_stock_qty" string="Stock actual"/>
+                                    <field name="uno_adjustment_stock_qty" readonly="1"/>
+                                    <field name="uno_saved_reorder_warehouse_id" readonly="1" nolabel="1"
+                                           options="{'no_open': True}"/>
+                                </div>
+                                <div class="uno-inventory-field" invisible="not is_storable">
+                                    <label for="uom_id" string="Unidad"/>
+                                    <field name="uom_id" id="uno_saved_stock_unit" readonly="1"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="uno-inventory-card" invisible="not id or not is_storable or product_variant_count != 1"
+                             groups="stock.group_stock_manager">
+                            <h3>Reposición</h3>
+                            <field name="uno_saved_reorder_multiple" invisible="1"/>
+                            <button name="action_view_orderpoints" type="object" string="Ver reglas por almacén"
+                                    class="btn btn-secondary" invisible="not uno_saved_reorder_multiple"/>
+                            <div invisible="uno_saved_reorder_multiple">
+                                <div class="uno-inventory-convert">
+                                    <field name="uno_saved_reorder" widget="boolean_toggle" options="{'autosave': False}"/>
+                                    <label for="uno_saved_reorder" string="Avisarme cuando falte stock"/>
+                                </div>
+                                <div class="uno-inventory-grid uno-inventory-reorder-grid" invisible="not uno_saved_reorder">
+                                    <div class="uno-inventory-field">
+                                        <label for="uno_saved_min_qty" string="Stock mínimo"/>
+                                        <field name="uno_saved_min_qty"/>
+                                    </div>
+                                    <div class="uno-inventory-field">
+                                        <label for="uno_saved_target_qty" string="Stock objetivo (máximo)"/>
+                                        <field name="uno_saved_target_qty"/>
+                                    </div>
+                                </div>
+                                <p class="uno-inventory-help" invisible="not uno_saved_reorder">
+                                    Almacén: <field name="uno_saved_reorder_warehouse_id" readonly="1" nolabel="1"/>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="uno-inventory-card" groups="stock.group_stock_user"
+                             invisible="not id or not is_storable or not uno_adjustment_history_ids">
+                            <h3>Historial de ajustes</h3>
+                            <field name="uno_adjustment_history_ids" nolabel="1" readonly="1">
+                                <list create="0" edit="0" delete="0" no_open="1">
+                                    <field name="adjusted_at"/>
+                                    <field name="user_id"/>
+                                    <field name="warehouse_id" string="Almacén"/>
+                                    <field name="before_qty"/>
+                                    <field name="delta_qty"/>
+                                    <field name="after_qty"/>
+                                    <field name="reason"/>
+                                </list>
+                            </field>
+                        </div>
+                        <section class="uno-inventory-preview" invisible="not id or not barcode">
+                            <h3>Vista previa de la etiqueta</h3>
+                            <div class="uno-inventory-label">
+                                <field name="uno_barcode_preview" widget="image" readonly="1" nolabel="1"
+                                       invisible="not uno_barcode_preview"/>
+                                <p class="text-muted" invisible="uno_barcode_preview">Vista previa no disponible para este código.</p>
+                                <field name="barcode" id="uno_preview_barcode_text" readonly="1" nolabel="1"/>
+                                <field name="name" id="uno_preview_product_name" readonly="1" nolabel="1"/>
+                            </div>
+                            <button name="action_open_label_layout" type="object"
+                                    string="Imprimir etiqueta" class="btn uno-inventory-save"/>
+                        </section>
+                    <div class="uno-inventory-actions">
+                            <button special="cancel" string="Cancelar" class="btn uno-inventory-cancel"/>
+                            <button special="save" string="Guardar producto" class="btn uno-inventory-save"/>
+                        </div>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="inventory_product_simple_kanban_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="10"/>
+        <field name="view_mode">kanban</field>
+        <field name="act_window_id" ref="stock.product_template_action_product"/>
+    </record>
+    <record id="inventory_product_simple_list_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="20"/>
+        <field name="view_mode">list</field>
+        <field name="act_window_id" ref="stock.product_template_action_product"/>
+    </record>
+    <record id="inventory_product_simple_action_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="90"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="inventory_product_simple_form"/>
+        <field name="act_window_id" ref="stock.product_template_action_product"/>
+    </record>
+</odoo>

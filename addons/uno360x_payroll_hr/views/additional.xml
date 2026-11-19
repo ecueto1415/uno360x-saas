@@ -1,0 +1,158 @@
+<odoo>
+  <record id="additional_company_rule" model="ir.rule">
+    <field name="name">Adicionales de las empresas autorizadas</field>
+    <field name="model_id" ref="model_uno360x_payroll_additional"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+  </record>
+  <record id="additional_employee_form" model="ir.ui.view">
+    <field name="name">uno360x.payroll.additional.employee</field>
+    <field name="model">hr.employee</field>
+    <field name="inherit_id" ref="hr.view_employee_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group string="Adicionales de nómina" groups="hr.group_hr_user">
+          <field name="ux_weekend_eligible" invisible="employee_type != 'employee'"/>
+        </group>
+        <group string="Contratistas por jornada" invisible="employee_type != 'contractor'" groups="hr.group_hr_user">
+          <field name="ux_daypay_eligible"/>
+          <field name="ux_daypay_currency_id" invisible="1"/>
+          <field name="ux_daypay_net" invisible="not ux_daypay_eligible"/>
+          <field name="ux_daypay_rate" invisible="not ux_daypay_eligible"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+  <record id="additional_company_form" model="ir.ui.view">
+    <field name="name">uno360x.payroll.additional.company</field>
+    <field name="model">res.company</field>
+    <field name="inherit_id" ref="base.view_company_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//notebook" position="inside">
+        <page string="Adicionales de nómina" groups="uno360x_payroll_hr.group_payroll">
+          <group><field name="ux_weekend_rate"/></group>
+        </page>
+      </xpath>
+    </field>
+  </record>
+  <record id="additional_list" model="ir.ui.view">
+    <field name="name">uno360x.payroll.additional.list</field>
+    <field name="model">uno360x.payroll.additional</field>
+    <field name="arch" type="xml">
+      <list decoration-muted="state == 'cancelled'" decoration-success="state == 'approved'">
+        <field name="kind"/><field name="employee_id"/><field name="work_date"/><field name="payroll_date"/>
+        <field name="currency_id" column_invisible="True"/>
+        <field name="approved_amount" sum="Total aprobado"/>
+        <field name="state" widget="badge"/><field name="notes"/>
+      </list>
+    </field>
+  </record>
+  <record id="additional_form" model="ir.ui.view">
+    <field name="name">uno360x.payroll.additional.form</field>
+    <field name="model">uno360x.payroll.additional</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_approve" type="object" string="Aprobar" class="oe_highlight" invisible="state != 'draft'" groups="uno360x_payroll_hr.group_payroll"/>
+          <button name="action_reset" type="object" string="Volver a pendiente" invisible="state != 'approved'" groups="uno360x_payroll_hr.group_payroll"/>
+          <button name="action_cancel" type="object" string="Cancelar" invisible="state == 'cancelled'" groups="uno360x_payroll_hr.group_payroll" confirm="¿Cancelar este adicional?"/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <group>
+            <group>
+              <field name="kind" readonly="state != 'draft'"/>
+              <field name="employee_id" readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
+              <field name="work_date" readonly="state != 'draft'"/>
+              <field name="payroll_date"/>
+            </group>
+            <group><field name="currency_id" invisible="1"/><field name="approved_net" invisible="kind != 'day'"/><field name="approved_retention" invisible="kind != 'day'"/><field name="approved_amount"/><field name="approved_by"/></group>
+          </group>
+          <group><field name="notes" readonly="state != 'draft'" placeholder="Ejemplo: instalación de cámaras en la sucursal principal."/></group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="additional_search" model="ir.ui.view">
+    <field name="name">uno360x.payroll.additional.search</field>
+    <field name="model">uno360x.payroll.additional</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="employee_id"/><field name="payroll_date"/><field name="kind"/><field name="notes"/>
+        <filter name="pending" string="Pendientes" domain="[('state','=','draft')]"/>
+        <filter name="approved" string="Aprobados" domain="[('state','=','approved')]"/>
+        <filter name="cancelled" string="Cancelados" domain="[('state','=','cancelled')]"/>
+        <group>
+          <filter name="by_cutoff" string="Corte de pago" context="{'group_by':'payroll_date:day'}"/>
+          <filter name="by_employee" string="Empleado" context="{'group_by':'employee_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="additional_pivot" model="ir.ui.view">
+    <field name="name">uno360x.payroll.additional.pivot</field>
+    <field name="model">uno360x.payroll.additional</field>
+    <field name="arch" type="xml">
+      <pivot string="Adicionales aprobados por corte">
+        <field name="employee_id" type="row"/>
+        <field name="payroll_date" type="col" interval="day"/>
+        <field name="approved_amount" type="measure"/>
+        <field name="approved_net" type="measure"/>
+        <field name="approved_retention" type="measure"/>
+      </pivot>
+    </field>
+  </record>
+  <record id="additional_register" model="ir.actions.act_window">
+    <field name="name">Sábados y domingos</field>
+    <field name="res_model">uno360x.payroll.additional</field>
+    <field name="view_mode">list,form</field>
+    <field name="domain">[('kind','=','weekend')]</field>
+  </record>
+  <record id="additional_daypay" model="ir.actions.act_window">
+    <field name="name">Contratistas por jornada</field>
+    <field name="res_model">uno360x.payroll.additional</field>
+    <field name="view_mode">list,form</field>
+    <field name="domain">[('kind','=','day')]</field>
+    <field name="context">{'default_kind':'day'}</field>
+  </record>
+  <record id="additional_approved" model="ir.actions.act_window">
+    <field name="name">Reporte por corte de pago</field>
+    <field name="res_model">uno360x.payroll.additional</field>
+    <field name="view_mode">pivot,list,form</field>
+    <field name="domain">[('state','=','approved')]</field>
+  </record>
+  <menuitem id="menu_additionals" name="Adicionales de nómina" sequence="46"
+            groups="hr.group_hr_user,uno360x_payroll_hr.group_payroll"/>
+  <menuitem id="menu_additional_register" name="Sábados y domingos" parent="menu_additionals"
+            action="additional_register" sequence="10" groups="hr.group_hr_user,uno360x_payroll_hr.group_payroll"/>
+  <menuitem id="menu_additional_daypay" name="Contratistas por jornada" parent="menu_additionals"
+            action="additional_daypay" sequence="15" groups="hr.group_hr_user,uno360x_payroll_hr.group_payroll"/>
+  <menuitem id="menu_additional_approved" name="Reporte por corte de pago" parent="menu_additionals"
+            action="additional_approved" sequence="20" groups="uno360x_payroll_hr.group_payroll"/>
+  <record id="additional_pdf" model="ir.actions.report">
+    <field name="name">Adicionales aprobados de nómina</field>
+    <field name="model">uno360x.payroll.additional</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">uno360x_payroll_hr.additional_document</field>
+    <field name="binding_model_id" ref="model_uno360x_payroll_additional"/>
+    <field name="groups_id" eval="[(4, ref('uno360x_payroll_hr.group_payroll'))]"/>
+  </record>
+  <template id="additional_document">
+    <t t-call="web.html_container">
+      <t t-call="web.external_layout">
+        <div class="page">
+          <h2>Adicionales aprobados de nómina</h2>
+          <table class="table table-sm">
+            <thead><tr><th>Empleado o contratista</th><th>Modalidad</th><th>Fecha</th><th>Corte</th><th>Trabajo realizado</th><th class="text-end">Importe</th></tr></thead>
+            <tbody>
+              <tr t-foreach="docs.filtered(lambda day: day.state == 'approved')" t-as="day">
+                <td><span t-field="day.employee_id"/></td><td><span t-field="day.kind"/></td><td><span t-field="day.work_date"/></td>
+                <td><span t-field="day.payroll_date"/></td><td><span t-field="day.notes"/></td>
+                <td class="text-end"><span t-field="day.approved_amount"/></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </t>
+    </t>
+  </template>
+</odoo>

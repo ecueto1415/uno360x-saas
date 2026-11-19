@@ -4,10 +4,26 @@ Root is used only for existing SaaS service/source-link management. Tenant
 database work and tests run as uno360x-saas. Native Odoo is never managed.
 Default: read-only plan. --apply publishes this immutable candidate source.
 """
-import argparse,fcntl,hashlib,json,os,pathlib,sqlite3,subprocess,time
+import argparse,fcntl,hashlib,itertools,json,os,pathlib,sqlite3,subprocess,sys,time
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 BASE=pathlib.Path('/srv/uno360x-saas')
 LINKS=('master-current','worker-current','https-pilot-current')
+sys.path.insert(0,str(ROOT))
+from control.catalog import installation_profile
+from deployment.publish_visual_assets import carry_forward
+
+def provisioned_profiles_changed(previous):
+ options=set()
+ for source in (previous,ROOT):
+  options.update(json.loads((source/'product/catalog.json').read_text())['options'])
+ combinations=(combo for size in range(len(options)+1)
+               for combo in itertools.combinations(sorted(options),size))
+ try:
+  return any(installation_profile(combo,previous)['fingerprint'] !=
+             installation_profile(combo,ROOT)['fingerprint'] for combo in combinations)
+ except ValueError:
+  return True
+
 
 def saas(command,**kwargs):
  return subprocess.run(['runuser','-u','uno360x-saas','--','env','XDG_RUNTIME_DIR=/run/user/996','DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/996/bus',*command],cwd='/var/lib/uno360x-saas',**kwargs)
@@ -29,7 +45,9 @@ def main():
   if db.execute("SELECT 1 FROM preparation_jobs WHERE status='running'").fetchone():raise RuntimeError('Wait for the current creation to finish')
   db.close()
   pool_config=pathlib.Path('/etc/uno360x-saas/shared-postgres.json')
-  if pool_config.exists() and json.loads(pool_config.read_text()).get('enabled') is True and (ROOT/'deployment/prepare_reserve_version.py').exists():
+  if (pool_config.exists() and json.loads(pool_config.read_text()).get('enabled') is True
+      and (ROOT/'deployment/prepare_reserve_version.py').exists()
+      and provisioned_profiles_changed(pathlib.Path(old['master-current']))):
    saas(['python3',str(ROOT/'deployment/prepare_reserve_version.py')],check=True)
   # Keep identity and customer applications available during sequential staging.
   subprocess.run(['systemctl','stop','uno360x-saas-worker'],check=True)
@@ -38,6 +56,7 @@ def main():
   subprocess.run(['systemctl','stop','uno360x-saas-pilot'],check=True)
   if saas(command+['--finalize']).returncode:
    raise RuntimeError('Atomic publication needs review; do not start the old gateway against partially published profiles')
+  carry_forward(pathlib.Path(old['master-current']), ROOT)
   for name in LINKS:
    temporary=BASE/(name+'.next');temporary.unlink(missing_ok=True);temporary.symlink_to(ROOT);temporary.replace(BASE/name)
   subprocess.run(['systemctl','start','uno360x-saas-pilot','uno360x-saas-worker'],check=True)

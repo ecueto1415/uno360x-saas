@@ -1,1 +1,28 @@
-<odoo><record id="invoice_list_fiscal_number" model="ir.ui.view"><field name="name">UNO360X numero de comprobante</field><field name="model">account.move</field><field name="inherit_id" ref="account.view_invoice_tree"/><field name="arch" type="xml"><xpath expr="//field[@name='name']" position="before"><field name="ux_invoice_number" string="Comprobante" decoration-bf="1" readonly="1"/></xpath><xpath expr="//field[@name='name']" position="attributes"><attribute name="string">Referencia interna</attribute><attribute name="optional">hide</attribute></xpath></field></record></odoo>
+<odoo><record id="invoice_list_fiscal_number" model="ir.ui.view"><field name="name">UNO360X numero de comprobante</field><field name="model">account.move</field><field name="inherit_id" ref="account.view_invoice_tree"/><field name="arch" type="xml"><xpath expr="//field[@name='name']" position="before"><field name="ux_invoice_number" string="Comprobante" decoration-bf="1" readonly="1"/></xpath><xpath expr="//field[@name='name']" position="attributes"><attribute name="string">Referencia interna</attribute><attribute name="optional">hide</attribute></xpath></field></record>
+    <record id="invoice_draft_heading" model="ir.ui.view">
+        <field name="name">UNO360X borrador de factura de cliente</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@class='oe_title']//h1/field[@name='name']" position="attributes">
+                <attribute name="readonly" add="move_type in ('out_invoice','out_refund')" separator=" or "/>
+                <attribute name="invisible" add="state == 'draft' and move_type in ('out_invoice','out_refund')" separator=" or "/>
+            </xpath>
+            <xpath expr="//div[@class='oe_title']//h1/span" position="attributes">
+                <attribute name="invisible" add="state == 'draft' and move_type in ('out_invoice','out_refund')" separator=" or "/>
+            </xpath>
+            <xpath expr="//div[@class='oe_title']//div[field[@name='highest_name']]" position="attributes">
+                <attribute name="invisible" add="move_type in ('out_invoice','out_refund')" separator=" or "/>
+            </xpath>
+            <xpath expr="//div[@class='oe_title']//h1/field[@name='name']" position="after">
+                <span class="text-muted" invisible="state != 'draft' or move_type not in ('out_invoice','out_refund')">Borrador</span>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_ux_discard_invoice_draft" type="object" string="Descartar borrador"
+                        invisible="state != 'draft' or posted_before or move_type not in ('out_invoice','out_refund')"
+                        groups="account.group_account_invoice"
+                        confirm="Se eliminará el borrador. Esta acción no se puede deshacer."/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

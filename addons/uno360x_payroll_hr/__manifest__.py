@@ -1,1 +1,2 @@
-{'name': 'UNO360X - Nómina y RR HH', 'version': '18.0.0.2.0', 'license': 'LGPL-3', 'author': 'OUTSOLUTECH', 'depends': ['uno360x_business_base', 'hr', 'hr_contract', 'hr_attendance', 'hr_holidays'], 'data': ['views/employee_brand.xml'], 'installable': True, 'application': False}
+{'name': 'UNO360X - Nómina y RR HH', 'version': '18.0.0.4.2', 'license': 'LGPL-3', 'author': 'OUTSOLUTECH', 'depends': ['uno360x_business_base', 'uno360x_workspace', 'hr', 'hr_contract', 'hr_attendance', 'hr_holidays'], 'data': ['security/payroll.xml', 'security/ir.model.access.csv', 'views/employee_brand.xml', 'views/payroll.xml', 'views/additional.xml', 'views/biweekly.xml'], 'installable': True, 'application': False}
+

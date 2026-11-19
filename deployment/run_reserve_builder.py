@@ -1,4 +1,4 @@
-"""Replenish at <=40 ready, in batches of at most five, until 50 ready."""
+"""Replenish at <=40 or when creation is idle, up to five per pass and 50 ready."""
 import pathlib,sys,json
 ROOT=pathlib.Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from deployment.shared_adapter import SharedHostAdapter

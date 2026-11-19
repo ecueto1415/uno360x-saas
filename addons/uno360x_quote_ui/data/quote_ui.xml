@@ -271,7 +271,9 @@ action = {'type': 'ir.actions.act_window', 'name': 'Versiones del presupuesto %s
 <div class="ux_quote_subtitle"><field name="x_ux_quote_subject" placeholder="Descripción de la propuesta"/></div></div>
 <div class="ux_quote_customer_card">
 <div class="ux_meta_column"><label for="partner_id" string="Cliente"/><div name="ux_customer_slot"/><label for="x_ux_quote_contact_id" string="Contacto"/><field name="x_ux_quote_contact_id" placeholder="Seleccionar contacto" domain="['|',('id','=',partner_id),('parent_id','=',partner_id)]" context="{'default_parent_id': partner_id}"/><label for="date_order" string="Fecha"/><field name="date_order" readonly="state in ['cancel','sale']"/></div>
-<div class="ux_meta_column"><label for="validity_date" string="Validez"/><div name="ux_validity_slot"/><label for="currency_id" string="Moneda"/><field name="currency_id" readonly="1"/><label for="payment_term_id" string="Condiciones de pago"/><div name="ux_payment_slot"/></div>
+<div class="ux_meta_column"><label for="validity_date" string="Validez"/><div name="ux_validity_slot"/><label for="ux_quote_pricelist" string="Moneda de la cotización"/>
+<field name="pricelist_id" id="ux_quote_pricelist" options="{'no_open': True, 'no_create': True}" readonly="state != 'draft' or order_line" placeholder="Pesos (DOP) o dólares (USD)"/>
+<label for="currency_id" string="Moneda aplicada"/><field name="currency_id" readonly="1"/><label for="payment_term_id" string="Condiciones de pago"/><div name="ux_payment_slot"/></div>
 </div>
 </xpath>
 <xpath expr="//div[@name='ux_customer_slot']" position="inside"><xpath expr="//group[@name='partner_details']/field[@name='partner_id']" position="move"/></xpath>

@@ -1,0 +1,180 @@
+<odoo>
+  <record id="payroll_batch_company_rule" model="ir.rule">
+    <field name="name">Nóminas quincenales de empresas autorizadas</field>
+    <field name="model_id" ref="model_uno360x_payroll_batch"/>
+    <field name="domain_force">[('company_id','in',company_ids)]</field>
+  </record>
+  <record id="payroll_line_company_rule" model="ir.rule">
+    <field name="name">Comprobantes de empresas autorizadas</field>
+    <field name="model_id" ref="model_uno360x_payroll_line"/>
+    <field name="domain_force">[('company_id','in',company_ids)]</field>
+  </record>
+  <record id="payroll_company_mail_form" model="ir.ui.view">
+    <field name="name">uno360x.payroll.company.mail</field>
+    <field name="model">res.company</field>
+    <field name="inherit_id" ref="base.view_company_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//notebook" position="inside">
+        <page string="Correo de nómina" groups="base.group_system">
+          <group><field name="ux_payroll_mail_server_id" options="{'no_create': True}"/><field name="ux_payroll_sender" widget="email"/></group>
+        </page>
+      </xpath>
+    </field>
+  </record>
+  <record id="payroll_profile_form" model="ir.ui.view">
+    <field name="name">uno360x.employee.biweekly</field>
+    <field name="model">hr.employee</field>
+    <field name="inherit_id" ref="hr.view_employee_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group string="Nómina quincenal" groups="uno360x_payroll_hr.group_payroll" invisible="employee_type != 'employee'">
+          <field name="ux_daypay_currency_id" invisible="1"/>
+          <field name="ux_payroll_enabled"/>
+          <field name="ux_payroll_base" invisible="not ux_payroll_enabled"/>
+          <field name="ux_payroll_deductions" invisible="not ux_payroll_enabled"/>
+          <field name="ux_payroll_email" widget="email" invisible="not ux_payroll_enabled"/>
+          <field name="ux_payroll_email_verified" invisible="not ux_payroll_enabled"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+  <record id="payroll_batch_list" model="ir.ui.view">
+    <field name="name">uno360x.payroll.batch.list</field>
+    <field name="model">uno360x.payroll.batch</field>
+    <field name="arch" type="xml">
+      <list><field name="payroll_date"/><field name="company_id" groups="base.group_multi_company"/>
+        <field name="currency_id" column_invisible="True"/><field name="total"/><field name="state" widget="badge"/></list>
+    </field>
+  </record>
+  <record id="payroll_batch_form" model="ir.ui.view">
+    <field name="name">uno360x.payroll.batch.form</field>
+    <field name="model">uno360x.payroll.batch</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_prepare" type="object" string="Preparar empleados y adicionales" invisible="state != 'draft'"/>
+          <button name="action_approve" type="object" string="Aprobar nómina" class="oe_highlight" invisible="state != 'draft'"
+                  confirm="Se cerrará el corte y se protegerán los importes y los días incluidos."/>
+          <button name="action_send_receipts" type="object" string="Enviar comprobantes"
+                  invisible="state != 'approved'" confirm="Se enviará un comprobante individual a cada correo verificado."/>
+          <button name="action_cancel" type="object" string="Cancelar corte" invisible="state != 'draft'" confirm="¿Cancelar este corte?"/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <group>
+            <field name="company_id" groups="base.group_multi_company"/>
+            <field name="payroll_date" readonly="state != 'draft' or line_ids"/>
+            <field name="currency_id" invisible="1"/><field name="total"/>
+            <field name="approved_by"/><field name="approved_at"/>
+          </group>
+          <field name="line_ids">
+            <list create="0" delete="0">
+              <field name="employee_id"/><field name="currency_id" column_invisible="True"/>
+              <field name="salary_base"/><field name="weekend_total"/><field name="incentive"/>
+              <field name="deductions"/><field name="net"/><field name="reviewed"/>
+            </list>
+          </field>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="payroll_line_list" model="ir.ui.view">
+    <field name="name">uno360x.payroll.line.list</field>
+    <field name="model">uno360x.payroll.line</field>
+    <field name="arch" type="xml">
+      <list create="0"><field name="employee_id"/><field name="payroll_date"/>
+        <field name="currency_id" column_invisible="True"/><field name="net"/>
+        <field name="reviewed"/><field name="state" widget="badge"/></list>
+    </field>
+  </record>
+  <record id="payroll_line_form" model="ir.ui.view">
+    <field name="name">uno360x.payroll.line.form</field>
+    <field name="model">uno360x.payroll.line</field>
+    <field name="arch" type="xml">
+      <form create="0">
+        <header><field name="state" widget="statusbar"/></header>
+        <sheet>
+          <group>
+            <group>
+              <field name="employee_id" readonly="1"/><field name="batch_id" readonly="1"/>
+              <field name="currency_id" invisible="1"/>
+              <field name="salary_base" readonly="state != 'draft'"/>
+              <field name="weekend_total"/>
+              <field name="other" readonly="state != 'draft'"/>
+              <field name="incentive" readonly="state != 'draft'"/>
+              <field name="incentive_reason" readonly="state != 'draft'" required="incentive &gt; 0"/>
+            </group>
+            <group>
+              <field name="deductions" readonly="state != 'draft'"/>
+              <field name="net"/><field name="reviewed" readonly="state != 'draft'"/><field name="delivery_state"/>
+            </group>
+          </group>
+          <field name="additional_ids">
+            <list create="0" delete="0"><field name="work_date"/><field name="notes"/>
+              <field name="currency_id" column_invisible="True"/><field name="approved_amount"/></list>
+          </field>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="payroll_batches" model="ir.actions.act_window">
+    <field name="name">Nóminas quincenales</field>
+    <field name="res_model">uno360x.payroll.batch</field><field name="view_mode">list,form</field>
+  </record>
+  <record id="payroll_lines" model="ir.actions.act_window">
+    <field name="name">Comprobantes individuales</field>
+    <field name="res_model">uno360x.payroll.line</field><field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_payroll_batches" name="Nóminas quincenales" parent="menu_payroll_root"
+            action="payroll_batches" groups="uno360x_payroll_hr.group_payroll" sequence="1"/>
+  <menuitem id="menu_payroll_lines" name="Comprobantes individuales" parent="menu_payroll_root"
+            action="payroll_lines" groups="uno360x_payroll_hr.group_payroll" sequence="2"/>
+  <record id="biweekly_summary_pdf" model="ir.actions.report">
+    <field name="name">Nómina consolidada</field><field name="model">uno360x.payroll.batch</field>
+    <field name="report_type">qweb-pdf</field><field name="report_name">uno360x_payroll_hr.biweekly_summary</field>
+    <field name="binding_model_id" ref="model_uno360x_payroll_batch"/>
+    <field name="groups_id" eval="[(4, ref('uno360x_payroll_hr.group_payroll'))]"/>
+  </record>
+  <record id="biweekly_receipt_pdf" model="ir.actions.report">
+    <field name="name">Comprobante individual de nómina</field><field name="model">uno360x.payroll.line</field>
+    <field name="report_type">qweb-pdf</field><field name="report_name">uno360x_payroll_hr.biweekly_receipt</field>
+    <field name="binding_model_id" ref="model_uno360x_payroll_line"/>
+    <field name="groups_id" eval="[(4, ref('uno360x_payroll_hr.group_payroll'))]"/>
+  </record>
+  <template id="biweekly_summary">
+    <t t-call="web.html_container"><t t-foreach="docs" t-as="o"><t t-call="web.external_layout">
+      <div class="page">
+        <h2>Nómina consolidada</h2><p>Corte <span t-field="o.payroll_date"/> · <span t-field="o.state"/></p>
+        <table class="table table-sm">
+          <thead><tr><th>Empleado</th><th>Base</th><th>Fin de semana</th><th>Otros</th><th>Incentivo</th><th>Descuentos</th><th>Neto</th></tr></thead>
+          <tbody><tr t-foreach="o.line_ids" t-as="line">
+            <td><span t-field="line.employee_id"/></td><td><span t-field="line.salary_base"/></td>
+            <td><span t-field="line.weekend_total"/></td><td><span t-field="line.other"/></td>
+            <td><span t-field="line.incentive"/></td><td><span t-field="line.deductions"/></td><td><span t-field="line.net"/></td>
+          </tr></tbody>
+        </table>
+        <p class="text-end"><strong>Total neto </strong><span t-field="o.total"/></p>
+      </div>
+    </t></t></t>
+  </template>
+  <template id="biweekly_receipt">
+    <t t-call="web.html_container"><t t-foreach="docs" t-as="o"><t t-call="web.external_layout">
+      <div class="page">
+        <h2>Comprobante individual de nómina</h2>
+        <p><strong t-field="o.employee_id"/> · Corte <span t-field="o.payroll_date"/> · <span t-field="o.state"/></p>
+        <table class="table table-sm"><tbody>
+          <tr><th>Sueldo base</th><td><span t-field="o.salary_base"/></td></tr>
+          <tr><th>Adicionales de fin de semana</th><td><span t-field="o.weekend_total"/></td></tr>
+          <tr><th>Otros ingresos</th><td><span t-field="o.other"/></td></tr>
+          <tr><th>Incentivo por proyecto</th><td><span t-field="o.incentive"/> <span t-field="o.incentive_reason"/></td></tr>
+          <tr><th>Descuentos</th><td><span t-field="o.deductions"/></td></tr>
+          <tr><th>Neto a cobrar</th><td><strong t-field="o.net"/></td></tr>
+        </tbody></table>
+        <div t-if="o.additional_ids">
+          <h3>Días incluidos</h3>
+          <p t-foreach="o.additional_ids" t-as="day"><span t-field="day.work_date"/> · <span t-field="day.notes"/></p>
+        </div>
+      </div>
+    </t></t></t>
+  </template>
+</odoo>

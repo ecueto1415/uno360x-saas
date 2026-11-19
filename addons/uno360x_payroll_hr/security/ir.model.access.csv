@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_uno_payroll_contract,uno.payroll.contract,hr_contract.model_hr_contract,group_payroll,1,1,1,0
+access_uno_payroll_receipt,uno.payroll.receipt,model_uno360x_payroll_receipt,group_payroll,1,1,1,0
+
+access_uno_additional_hr,uno.additional.hr,model_uno360x_payroll_additional,hr.group_hr_user,1,1,1,0
+access_uno_additional_payroll,uno.additional.payroll,model_uno360x_payroll_additional,group_payroll,1,1,1,0
+
+access_uno_payroll_batch,uno.payroll.batch,model_uno360x_payroll_batch,group_payroll,1,1,1,0
+access_uno_payroll_line,uno.payroll.line,model_uno360x_payroll_line,group_payroll,1,1,1,0

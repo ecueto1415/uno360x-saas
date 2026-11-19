@@ -1,0 +1,170 @@
+.uno-inventory-new {
+    --uno-ink: #153447;
+    --uno-green: #12816f;
+    --uno-line: #dbe5e6;
+    --uno-muted: #526c7b;
+}
+.uno-inventory-new .o_control_panel,
+.uno-inventory-new .o_form_statusbar {
+    display: none !important;
+}
+.uno-inventory-new .o_form_sheet_bg {
+    background: #f3f7f7;
+}
+.uno-inventory-new .o_form_sheet {
+    max-width: none;
+    margin: 0;
+    padding: 24px 32px 32px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+.uno-inventory-layout {
+    color: #153447;
+}
+.uno-inventory-title {
+    margin: 0 0 22px;
+}
+.uno-inventory-title > span {
+    color: #12816f;
+    font-weight: 700;
+}
+.uno-inventory-title h1 {
+    font-size: 34px;
+    font-weight: 700;
+    margin: 10px 0 6px;
+}
+.uno-inventory-title p,
+.uno-inventory-help {
+    color: #526c7b;
+    margin: 8px 0 0;
+}
+.uno-inventory-card {
+    padding: 16px 22px;
+    margin-bottom: 14px;
+    background: white;
+    border: 1px solid #dbe5e6;
+    border-radius: 11px;
+}
+.uno-inventory-card h3 {
+    margin: 0 0 12px;
+    font-size: 18px;
+    font-weight: 700;
+}
+.uno-inventory-grid {
+    display: grid;
+    gap: 16px;
+    align-items: start;
+}
+.uno-inventory-product-grid {
+    grid-template-columns: 1.3fr 1fr 1.1fr;
+}
+.uno-inventory-stock-grid {
+    grid-template-columns: 1fr .85fr 1.3fr;
+    max-width: 810px;
+}
+.uno-inventory-reorder-grid {
+    grid-template-columns: repeat(2, minmax(0, 245px));
+    margin-top: 10px;
+}
+.uno-inventory-field {
+    min-width: 0;
+}
+.uno-inventory-field > label,
+.uno-inventory-manual > label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+.uno-inventory-field > .o_field_widget,
+.uno-inventory-manual > .o_field_widget {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 36px;
+    padding: 5px 10px;
+    margin-bottom: 0;
+    border: 1px solid #dbe5e6;
+    border-radius: 7px;
+    background: white;
+}
+.uno-inventory-field .o_input {
+    border: 0 !important;
+    box-shadow: none !important;
+}
+.uno-inventory-field > .o_field_widget:focus-within {
+    outline: 2px solid #12816f;
+    outline-offset: 1px;
+}
+.uno-inventory-convert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+}
+.uno-inventory-field > .uno-inventory-convert,
+.uno-inventory-manual {
+    margin-top: 8px;
+}
+.uno-inventory-convert .o_field_widget {
+    margin: 0;
+}
+.uno-inventory-actions {
+    display: flex;
+    justify-content: end;
+    gap: 10px;
+    margin-top: 18px;
+}
+.uno-inventory-actions .btn {
+    border-radius: 7px;
+    padding: 9px 16px;
+}
+.uno-inventory-save {
+    background: #12816f;
+    color: white;
+    font-weight: 700;
+}
+.uno-inventory-save:is(:hover,:focus-visible) {
+    background: #0e6c5e;
+    color: white;
+}
+.uno-inventory-cancel {
+    background: white;
+    border: 1px solid #dbe5e6;
+    color: #153447;
+}
+@media (max-width: 767px) {
+    .uno-inventory-new .o_form_sheet { padding: 16px; }
+    .uno-inventory-card { padding: 14px; }
+    .uno-inventory-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.uno-inventory-preview {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #dbe5e6;
+}
+.uno-inventory-label {
+    display: grid;
+    justify-items: start;
+    gap: 3px;
+    width: min(100%, 300px);
+    background: white;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border: 1px solid #dbe5e6;
+    border-radius: 7px;
+    color: #151515;
+}
+.uno-inventory-label .o_field_widget {
+    max-width: 100%;
+    margin: 0;
+}
+.uno-inventory-label .o_field_image {
+    width: 100%;
+}
+.uno-inventory-label .o_field_image img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}

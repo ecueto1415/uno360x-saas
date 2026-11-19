@@ -1,0 +1,16 @@
+<odoo>
+  <record id="group_payroll" model="res.groups">
+    <field name="name">UNO360X - Nómina</field>
+    <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+  </record>
+  <record id="contract_payroll_only" model="ir.rule">
+    <field name="name">UNO360X - Contratos con acceso de nómina</field>
+    <field name="model_id" ref="hr_contract.model_hr_contract"/>
+    <field name="domain_force">[('company_id','in',company_ids)] if user.has_group('uno360x_payroll_hr.group_payroll') else [('id','=',False)]</field>
+  </record>
+  <record id="receipt_company_rule" model="ir.rule">
+    <field name="name">UNO360X - Recibos de la empresa autorizada</field>
+    <field name="model_id" ref="model_uno360x_payroll_receipt"/>
+    <field name="domain_force">[('company_id','in',company_ids)] if user.has_group('uno360x_payroll_hr.group_payroll') else [('id','=',False)]</field>
+  </record>
+</odoo>

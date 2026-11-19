@@ -36,3 +36,7 @@ class CompanyFiscalSetup(models.Model):
        groups='base.group_system')
     # No active state or emission switch until a real adapter verifies the gates.
     # Never store certificates/passwords as ordinary fields or public attachments.
+    uno360x_fiscal_legal_name = fields.Char(
+        string='Razón social fiscal', size=150,
+        help='Nombre legal registrado ante la DGII. El nombre comercial se configura por separado.',
+    )
