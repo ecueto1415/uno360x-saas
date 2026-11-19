@@ -1,4 +1,5 @@
 <odoo>
+ <function model="ir.config_parameter" name="set_param" eval="('uno360x.workspace.release', '18.0.2.6.24-crm-20261119')"/>
  <record id="crm_to_quote" model="ir.actions.server">
   <field name="name">Nueva cotización desde CRM</field>
   <field name="model_id" ref="crm.model_crm_lead"/>
@@ -11,11 +12,12 @@
  </record>
  <template id="crm_board">
   <t t-call="uno360x_workspace.shell">
-   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/crm_board.css"/>
+   <link rel="stylesheet" t-att-href="'/uno360x_workspace/static/src/css/crm_board.css?v=' + asset_revision"/>
    <main class="ua-area uc-crm">
     <header class="ua-heading">
      <div><p class="ux-eyebrow">Comercial / CRM</p><h1>Oportunidades</h1></div>
      <div class="uc-actions">
+      <a t-if="crm_manager" class="uc-button" t-att-href="'/uno360x/area/crm/manage?mode=stage' + ('&amp;flow=%s' % crm_team.id if crm_team else '')">+ Nueva etapa</a>
       <a t-if="crm_manager" class="uc-button" t-att-href="'/uno360x/area/crm/manage' + ('?flow=%s' % crm_team.id if crm_team else '')">Gestionar flujos y etapas</a>
       <a t-if="crm_can_create" class="ua-primary" t-att-href="crm_create">+ Oportunidad</a>
      </div>
@@ -44,10 +46,11 @@
     </form>
     <t t-if="crm_list">
      <section class="ua-table-panel">
-      <table class="ua-table"><thead><tr><th>Oportunidad</th><th>Cliente</th><th>Etapa</th><th>Importe</th></tr></thead>
+      <table class="ua-table"><thead><tr><th>Oportunidad</th><th>Cliente</th><th>Responsable</th><th>Etapa</th><th>Importe</th></tr></thead>
        <tbody><tr t-foreach="crm_rows" t-as="row">
         <td data-label="Oportunidad"><a t-att-href="'/uno360x/area/crm/record/%s' % row['id']" t-out="row['title']"/></td>
         <td data-label="Cliente" t-out="row['client'] or '—'"/>
+        <td data-label="Responsable" t-out="row['owner']"/>
         <td data-label="Etapa" t-out="row['stage']"/>
         <td data-label="Importe" t-out="row['amount']"/>
        </tr></tbody>
@@ -66,6 +69,7 @@
        <strong t-out="lead['client'] or lead['title']"/>
        <span t-if="lead['client']" t-out="lead['title']"/>
        <b t-out="lead['amount']"/>
+       <span class="uc-owner"><span class="uc-owner-avatar" aria-hidden="true" t-out="lead['owner'][:1]"/><span><small>Responsable</small><strong t-out="lead['owner']"/></span></span>
        <small><t t-out="lead['activity'] or 'Sin próxima actividad'"/><t t-if="lead['deadline']"> · <t t-out="lead['deadline']" t-options="{'widget': 'date'}"/></t></small>
       </a>
       <p class="uc-empty" t-if="not column['count']">Sin oportunidades</p>
@@ -78,7 +82,7 @@
  </template>
  <template id="crm_manage">
   <t t-call="uno360x_workspace.shell">
-   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/crm_board.css"/>
+   <link rel="stylesheet" t-att-href="'/uno360x_workspace/static/src/css/crm_board.css?v=' + asset_revision"/>
    <main class="ua-area uc-crm">
     <header class="ua-heading"><div><p class="ux-eyebrow">Comercial / CRM</p><h1>Gestionar flujos y etapas</h1></div><a class="uc-button" t-att-href="crm_back">Volver al tablero</a></header>
     <div class="uc-manage">
@@ -95,6 +99,7 @@
        <input type="hidden" name="mode" t-att-value="crm_mode"/>
        <label t-if="crm_mode == 'stage'">Flujo de ventas
         <select name="flow" required="required" t-att-disabled="bool(crm_team)">
+         <option t-if="not crm_team" value="">Selecciona un flujo</option>
          <option t-foreach="crm_teams" t-as="team" t-att-value="team.id" t-att-selected="team == crm_team" t-out="team.name"/>
         </select>
        </label>
@@ -123,7 +128,7 @@
  </template>
  <template id="crm_new">
   <t t-call="uno360x_workspace.shell">
-   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/crm_board.css"/>
+   <link rel="stylesheet" t-att-href="'/uno360x_workspace/static/src/css/crm_board.css?v=' + asset_revision"/>
    <main class="ua-area uc-crm"><header class="ua-heading"><div><p class="ux-eyebrow">Comercial / CRM</p><h1>Nueva oportunidad</h1></div></header>
     <section class="uc-form uc-opportunity">
      <p t-if="crm_error" class="uc-error" role="alert" t-out="crm_error"/>
@@ -136,6 +141,10 @@
        </select>
       </label>
       <label>Cliente o empresa <input name="partner_name" maxlength="120" t-att-value="crm_entry.get('partner_name')"/></label>
+      <label>Responsable
+       <select t-if="crm_can_assign" name="user_id"><option value="0" t-att-selected="crm_owner_id == 0">Sin asignar</option><option t-foreach="crm_owners" t-as="owner" t-att-value="owner.id" t-att-selected="owner.id == crm_owner_id" t-out="owner.name"/></select>
+       <span t-else="" class="uc-owner-readonly" t-out="u.name"/>
+      </label>
       <label>Correo <input name="email_from" type="email" maxlength="160" t-att-value="crm_entry.get('email_from')"/></label>
       <label>Teléfono <input name="phone" type="tel" maxlength="60" t-att-value="crm_entry.get('phone')"/></label>
      <div class="uc-actions uc-form-actions"><a class="uc-button" t-att-href="crm_back">Cancelar</a><button class="ua-primary" type="submit">Crear oportunidad</button></div>
@@ -145,7 +154,7 @@
  </template>
  <template id="crm_record">
   <t t-call="uno360x_workspace.shell">
-   <link rel="stylesheet" href="/uno360x_workspace/static/src/css/crm_board.css"/>
+   <link rel="stylesheet" t-att-href="'/uno360x_workspace/static/src/css/crm_board.css?v=' + asset_revision"/>
    <main class="ua-area uc-crm">
     <header class="ua-heading">
      <div><p class="ux-eyebrow">Comercial / CRM</p><h1 t-out="'Editar oportunidad' if crm_editing else crm_record.name"/></div>
@@ -165,6 +174,10 @@
        <option t-foreach="crm_stages" t-as="stage" t-att-value="stage.id" t-att-selected="stage.id == crm_selected_stage" t-out="stage.name"/>
       </select></label>
       <label>Cliente o empresa <input name="partner_name" maxlength="120" t-att-value="crm_entry['partner_name']"/></label>
+      <label>Responsable
+       <select t-if="crm_can_assign" name="user_id"><option value="0" t-att-selected="crm_owner_id == 0">Sin asignar</option><option t-foreach="crm_owners" t-as="owner" t-att-value="owner.id" t-att-selected="owner.id == crm_owner_id" t-out="owner.name"/></select>
+       <span t-else="" class="uc-owner-readonly" t-out="crm_record.user_id.name or 'Sin asignar'"/>
+      </label>
       <label>Correo <input name="email_from" maxlength="160" t-att-value="crm_entry['email_from']"/></label>
       <label>Teléfono <input name="phone" type="tel" maxlength="60" t-att-value="crm_entry['phone']"/></label>
       <div class="uc-actions uc-form-actions"><a class="uc-button" t-att-href="crm_record_url">Cancelar</a><button class="ua-primary" type="submit">Guardar cambios</button></div>

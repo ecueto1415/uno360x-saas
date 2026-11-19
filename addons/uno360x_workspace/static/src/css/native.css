@@ -156,6 +156,13 @@ body.o_web_client .o_main_navbar .o_switch_company_menu .oe_topbar_name {
  max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 body.o_web_client #ux-native-profile .ux-team-settings[open] {z-index:1065}
+/* Hide native header shortcuts without disabling CRM activities. */
+body.o_web_client:has(.ux-native-shell) .o_main_navbar .o-mail-MessagingMenu,
+body.o_web_client:has(.ux-native-shell) .o_main_navbar .o_mail_systray_item,
+body.o_web_client:has(.ux-native-shell) .o_main_navbar .o-mail-ActivityMenu,
+body.o_web_client:has(.ux-native-shell) .o_main_navbar .o_activity_menu {display:none!important}
+body.o_web_client:has(.ux-native-shell) .o_main_navbar .o-mail-DiscussSystray-class,
+body.o_web_client:has(.ux-native-shell) .o_main_navbar .o_menu_systray > button:has(.fa-clock-o) {display:none!important}
 @media(max-width:700px){
  body.o_web_client .o_main_navbar #ux-native-profile .ux-profile {display:flex;padding-left:4px;gap:5px}
  body.o_web_client .o_main_navbar #ux-native-profile .ux-avatar {display:none}

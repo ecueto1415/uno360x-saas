@@ -37,6 +37,24 @@ class CrmWorkspace(AreaWorkspace):
         except (ValueError, TypeError):
             return teams[:0]
 
+    def _crm_owners(self):
+        env=request.env
+        if not env.user.has_group('sales_team.group_sale_manager'):
+            return env.user
+        return env['res.users'].search([
+            ('active','=',True),('share','=',False),('company_ids','in',env.company.id),
+            ('groups_id','in',env.ref('sales_team.group_sale_salesman').id),
+        ],order='name,id')
+
+    def _crm_owner(self, value, owners):
+        try:uid=int(value)
+        except (ValueError,TypeError):raise UserError(_('Selecciona un responsable válido.')) from None
+        if uid==0 and request.env.user.has_group('sales_team.group_sale_manager'):
+            return False
+        if uid not in owners.ids:
+            raise UserError(_('Selecciona un responsable de esta empresa.'))
+        return uid
+
     @http.route()
     def area(self, key, q='', **kw):
         if key != 'crm':
@@ -79,13 +97,16 @@ class CrmWorkspace(AreaWorkspace):
             values.update(crm_rows=[{
                 'id': lead.id, 'title': lead.name, 'client': lead.partner_id.name or lead.partner_name,
                 'stage': lead.stage_id.name or _('Sin etapa'),
+                'owner': lead.user_id.name or _('Sin asignar'),
                 'amount': format_amount(env, lead.expected_revenue, currency),
             } for lead in rows[:40]], crm_previous=self._crm_url(**params, view='list', page=page - 1) if page > 1 else '',
                 crm_next=self._crm_url(**params, view='list', page=page + 1) if len(rows) > 40 else '')
         groups = [] if list_mode else lead_model._read_group(domain, ['stage_id'], ['__count', 'expected_revenue:sum'])
         totals = {stage.id: (count, amount) for stage, count, amount in groups}
         stages = stage_model.search(stages_domain)
-        if team and any(stages.mapped('team_id')):
+        include_global = team and env['ir.config_parameter'].sudo().get_param(
+            'uno360x.crm.include_global.%s.%s' % (env.company.id,team.id)) == '1'
+        if team and any(stages.mapped('team_id')) and not include_global:
             stages = stages.filtered(lambda stage: stage.team_id or stage.id in totals)
         stages |= stage_model.browse([sid for sid in totals if sid])
         columns = []
@@ -112,6 +133,7 @@ class CrmWorkspace(AreaWorkspace):
                     'title': lead.name, 'amount': format_amount(env, lead.expected_revenue, currency),
                     'activity': lead.activity_summary or lead.activity_type_id.name,
                     'deadline': lead.activity_date_deadline,
+                    'owner': lead.user_id.name or _('Sin asignar'),
                 } for lead in leads],
             })
         create_url = self._crm_url(**params, new=1)
@@ -126,12 +148,14 @@ class CrmWorkspace(AreaWorkspace):
         if not request.env['crm.lead'].has_access('create'):
             raise Forbidden()
         values.update(crm_teams=teams, crm_team=team, crm_entry=entry or {},
+                      crm_owners=self._crm_owners(),crm_owner_id=int((entry or {}).get('user_id',request.env.uid)),
+                      crm_can_assign=request.env.user.has_group('sales_team.group_sale_manager'),
                       crm_error=error, crm_back=self._crm_url(**({'flow': team.id} if team else {})))
         return self._render('uno360x_workspace.crm_new', values)
 
     @http.route('/uno360x/area/crm/opportunity', type='http', auth='user', methods=['POST'], csrf=True)
     def crm_opportunity(self, flow=None, name='', **kw):
-        _, values = self._crm_context()
+        service, values = self._crm_context()
         teams = self._crm_teams()
         team = self._crm_team(teams, flow)
         env = request.env
@@ -145,6 +169,11 @@ class CrmWorkspace(AreaWorkspace):
             msg = _('Escribe el nombre de la oportunidad.') if not entry['name'] else _('Selecciona un flujo disponible.')
             return self._opportunity_form(values, teams, team, entry, msg)
         data = dict(entry, type='opportunity', company_id=env.company.id)
+        try:
+            data['user_id']=self._crm_owner(kw.get('user_id',env.uid),self._crm_owners())
+            entry['user_id']=data['user_id'] or 0
+        except UserError as exc:
+            return self._opportunity_form(values,teams,team,entry,str(exc))
         if team:
             data['team_id'] = team.id
             stage = env['crm.stage'].search([('team_id', '=', team.id)], limit=1)
@@ -162,7 +191,7 @@ class CrmWorkspace(AreaWorkspace):
     @http.route('/uno360x/area/crm/record/<int:record_id>', type='http', auth='user',
                 methods=['GET', 'POST'], csrf=True)
     def crm_record(self, record_id, edit='', saved='', **kw):
-        _, values = self._crm_context()
+        service, values = self._crm_context()
         env = request.env
         lead = env['crm.lead'].search([
             ('id', '=', record_id), ('type', '=', 'opportunity'),
@@ -181,6 +210,8 @@ class CrmWorkspace(AreaWorkspace):
         fields = {'name': 160, 'partner_name': 120, 'email_from': 160, 'phone': 60}
         entry = {field: lead[field] or '' for field in fields}
         stage_id = lead.stage_id.id or 0
+        owners=self._crm_owners()
+        owner_id=lead.user_id.id or 0
         error = ''
         if posting:
             entry = {field: str(kw.get(field, entry[field]) or '').strip()[:size]
@@ -195,6 +226,14 @@ class CrmWorkspace(AreaWorkspace):
                            if value != (lead[field] or '')}
                 if next_stage != stage_id:
                     changes['stage_id'] = next_stage
+                if 'user_id' in kw:
+                    next_owner=self._crm_owner(kw['user_id'],owners)
+                    if not env.user.has_group('sales_team.group_sale_manager') and next_owner != (lead.user_id.id or False):
+                        raise Forbidden()
+                    if next_owner != (lead.user_id.id or False):
+                        # Odoo may recompute company_id from an unassigned salesperson/global team.
+                        # Reassignment must never move the opportunity outside this tenant's company.
+                        changes.update(user_id=next_owner,company_id=env.company.id)
                 with env.cr.savepoint():
                     if changes:
                         lead.write(changes)
@@ -212,6 +251,8 @@ class CrmWorkspace(AreaWorkspace):
             crm_quote_url=quote_url, crm_record=lead, crm_can_edit=can_edit, crm_editing=editing,
             crm_saved=saved == '1' and not editing, crm_stages=stages,
             crm_entry=entry, crm_selected_stage=stage_id, crm_error=error,
+            crm_owners=owners,crm_owner_id=owner_id,
+            crm_can_assign=env.user.has_group('sales_team.group_sale_manager'),
             crm_detail_amount=format_amount(env, lead.expected_revenue, lead.company_currency),
             crm_record_url=url,
             crm_back=self._crm_url(**({'flow': lead.team_id.id} if lead.team_id else {})),
@@ -220,7 +261,7 @@ class CrmWorkspace(AreaWorkspace):
 
     @http.route('/uno360x/area/crm/manage', type='http', auth='user', methods=['GET', 'POST'], csrf=True)
     def crm_manage(self, flow=None, mode='', name='', stages='', after=None, edit=None, **kw):
-        _, values = self._crm_context()
+        service, values = self._crm_context()
         env = request.env
         if not env.user.has_group('sales_team.group_sale_manager'):
             raise Forbidden()
@@ -263,6 +304,9 @@ class CrmWorkspace(AreaWorkspace):
                         edit_stage.write({'name': clean_name})
                         stage = edit_stage
                     else:
+                        if not specific:
+                            env['ir.config_parameter'].sudo().set_param(
+                                'uno360x.crm.include_global.%s.%s' % (env.company.id,team.id),'1')
                         stage = stage_model.create({'name': clean_name, 'team_id': team.id})
                     order = list(remaining)
                     order.insert(order.index(preceding) + 1 if preceding else 0, stage)
