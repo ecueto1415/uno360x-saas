@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+connection_manager,WhatsApp configuración contabilidad,model_uno360x_wa_connection,account.group_account_manager,1,1,1,0
+connection_user,WhatsApp número visible para cobrador,model_uno360x_wa_connection,uno360x_whatsapp.group_collection_user,1,0,0,0
+consent_manager,WhatsApp contactos contabilidad,model_uno360x_wa_consent,account.group_account_manager,1,1,1,0
+consent_user,WhatsApp contactos cobrador,model_uno360x_wa_consent,uno360x_whatsapp.group_collection_user,1,0,0,0
+reminder_manager,WhatsApp avisos contabilidad,model_uno360x_wa_reminder,account.group_account_manager,1,1,1,0
+reminder_user,WhatsApp avisos cobrador,model_uno360x_wa_reminder,uno360x_whatsapp.group_collection_user,1,1,1,0

@@ -1,0 +1,52 @@
+<odoo>
+ <record id="collections_action" model="ir.actions.act_url"><field name="name">Cobros por WhatsApp</field><field name="url">/uno360x/cobros/whatsapp</field><field name="target">self</field></record>
+ <menuitem id="collections_menu" name="Cobros por WhatsApp" parent="account.menu_finance" action="collections_action" sequence="80" groups="account.group_account_manager,uno360x_whatsapp.group_collection_user"/>
+ <template id="company_shortcut" inherit_id="uno360x_workspace.my_company"><xpath expr="//t[@t-call='uno360x_workspace.shell']" position="inside"><section t-if="u.has_group('account.group_account_manager')" class="ux-card" style="max-width:640px;margin-bottom:18px"><h2>WhatsApp de tu empresa</h2><p>Prepara recordatorios de facturas usando el número de tu negocio. Disponible en laboratorio, sin envíos reales.</p><a class="ux-button" href="/uno360x/cobros/whatsapp/configuracion">Configurar WhatsApp</a></section></xpath></template>
+ <template id="notice">
+  <link rel="stylesheet" href="/uno360x_whatsapp/static/collections.css?v=1"/>
+  <div class="wa-notice" role="status"><strong>Laboratorio · No se envían mensajes</strong><span>La conexión con Meta y la aprobación de la plantilla siguen pendientes.</span></div>
+  <div t-if="wa_error" class="wa-error" role="alert" t-out="wa_error"/>
+ </template>
+ <template id="home"><t t-call="uno360x_workspace.shell"><main class="wa-page">
+  <header class="wa-heading"><div><p class="ux-eyebrow">FINANZAS</p><h1>Cobros por WhatsApp</h1><p>El número, los clientes y los avisos de tu empresa.</p></div><a t-if="wa_manager" class="ux-button" t-att-href="wa_path+'/configuracion'">Configurar mi número</a></header>
+  <t t-call="uno360x_whatsapp.notice"/>
+  <section class="ux-card wa-card"><h2>Facturas con saldo pendiente</h2><p>Revisa cada aviso antes de guardarlo. Mostramos hasta 50 facturas; no se mezclan empresas ni monedas.</p>
+   <div class="wa-scroll"><table><thead><tr><th>Comprobante / referencia</th><th>Cliente</th><th>Vencimiento</th><th>Saldo pendiente</th><th></th></tr></thead><tbody><tr t-foreach="wa_invoices" t-as="move"><td t-out="wa_number(move)"/><td t-out="move.partner_id.commercial_partner_id.name"/><td t-out="move.invoice_date_due.strftime('%d/%m/%Y') if move.invoice_date_due else 'Sin fecha'"/><td><span t-field="move.amount_residual" t-options="{'widget':'monetary','display_currency':move.currency_id}"/></td><td><a class="wa-link" t-att-href="wa_path+'/factura/'+str(move.id)">Revisar aviso</a></td></tr></tbody></table></div>
+   <p t-if="not wa_invoices">No hay facturas confirmadas con saldo pendiente.</p>
+  </section>
+  <section class="ux-card wa-card"><h2>Historial de recordatorios</h2><div class="wa-scroll"><table><thead><tr><th>Fecha</th><th>Comprobante / referencia</th><th>WhatsApp</th><th>Estado</th><th></th></tr></thead><tbody><tr t-foreach="wa_history" t-as="item"><td><span t-field="item.collection_day"/></td><td t-out="item.document_number"/><td t-out="item.recipient"/><td><span class="wa-status" t-field="item.state"/></td><td><a t-att-href="wa_path+'/aviso/'+str(item.id)">Ver aviso</a></td></tr></tbody></table></div><p t-if="not wa_history">Todavía no hay borradores ni simulaciones.</p></section>
+ </main></t></template>
+ <template id="review"><t t-call="uno360x_workspace.shell"><main class="wa-page">
+  <header class="wa-heading"><div><p class="ux-eyebrow">COBROS POR WHATSAPP</p><h1>Revisar recordatorio</h1><p t-out="wa_customer.name"/></div><a t-att-href="wa_path">Volver a cobros</a></header>
+  <t t-call="uno360x_whatsapp.notice"/>
+  <section class="ux-card wa-card"><h2>Vista previa del aviso</h2><t t-if="wa_preview"><p>Para: <strong t-out="wa_preview['recipient']"/></p><div class="wa-message" t-out="wa_preview['body']"/><p class="wa-muted">El saldo se vuelve a comprobar al simular. Una factura pagada, anulada o sin autorización queda bloqueada.</p><form method="post" t-att-action="wa_path+'/factura/'+str(wa_invoice.id)"><input type="hidden" name="csrf_token" t-att-value="csrf"/><button class="ux-button" type="submit">Guardar borrador</button></form></t>
+   <p t-else="">Completa el contacto de pagos y su autorización antes de preparar el aviso.</p>
+   <p t-if="wa_manager"><a t-att-href="wa_path+'/cliente/'+str(wa_customer.id)">Configurar contacto y autorización</a></p>
+  </section>
+ </main></t></template>
+ <template id="reminder"><t t-call="uno360x_workspace.shell"><main class="wa-page">
+  <header class="wa-heading"><div><p class="ux-eyebrow">COBROS POR WHATSAPP</p><h1 t-out="wa_reminder.document_number"/><p><span class="wa-status" t-field="wa_reminder.state"/></p></div><a t-att-href="wa_path">Volver a cobros</a></header>
+  <t t-call="uno360x_whatsapp.notice"/>
+  <section class="ux-card wa-card"><p>Para: <strong t-out="wa_reminder.recipient"/></p><div class="wa-message" t-out="wa_reminder.body"/><p t-if="wa_reminder.reason" class="wa-muted" t-out="wa_reminder.reason"/><p>Preparado por <span t-out="wa_reminder.prepared_by.name"/>.</p><p t-if="wa_reminder.simulated_at">Simulado por <span t-out="wa_reminder.simulated_by.name"/> · <span t-field="wa_reminder.simulated_at"/>.</p><form t-if="wa_reminder.state=='prepared'" method="post" t-att-action="wa_path+'/aviso/'+str(wa_reminder.id)"><input type="hidden" name="csrf_token" t-att-value="csrf"/><button class="ux-button" type="submit">Simular aviso · no enviar</button></form></section>
+ </main></t></template>
+ <template id="configuration"><t t-call="uno360x_workspace.shell"><main class="wa-page">
+  <header class="wa-heading"><div><p class="ux-eyebrow">MI EMPRESA</p><h1>Mi número de WhatsApp</h1></div><a t-att-href="wa_path">Volver a cobros</a></header>
+  <t t-call="uno360x_whatsapp.notice"/>
+  <section class="ux-card wa-card wa-narrow"><h2>Datos para preparar la conexión</h2><p>Cada empresa usará su propio número. Guardar estos datos no conecta el número ni activa envíos.</p><form method="post" t-att-action="wa_path+'/configuracion'" class="wa-form"><input type="hidden" name="csrf_token" t-att-value="csrf"/>
+   <label>Número de la empresa<input name="display_phone" placeholder="+18095550101" maxlength="25" t-att-value="wa_connection.display_phone or ''"/></label>
+   <label>Nombre de plantilla que se solicitará a Meta<input name="template_name" required="required" maxlength="512" t-att-value="wa_connection.template_name or 'uno360x_aviso_factura'"/></label>
+   <label>Idioma<select name="language"><option value="es" t-att-selected="not wa_connection or wa_connection.language=='es'">Español</option><option value="es_ES" t-att-selected="wa_connection.language=='es_ES'">Español ES</option><option value="es_MX" t-att-selected="wa_connection.language=='es_MX'">Español MX</option><option value="en_US" t-att-selected="wa_connection.language=='en_US'">English</option></select></label>
+   <p class="wa-muted">Estado real: sin conectar con Meta. El administrador autorizará la conexión y la plantilla en la siguiente etapa.</p><button class="ux-button" type="submit">Guardar configuración de prueba</button>
+  </form></section>
+ </main></t></template>
+ <template id="customer"><t t-call="uno360x_workspace.shell"><main class="wa-page">
+  <header class="wa-heading"><div><p class="ux-eyebrow">CONTACTO DE PAGOS</p><h1 t-out="wa_customer.name"/></div><a t-att-href="wa_path">Volver a cobros</a></header>
+  <t t-call="uno360x_whatsapp.notice"/>
+  <section class="ux-card wa-card wa-narrow"><h2>Autorización para esta empresa</h2><form method="post" t-att-action="wa_path+'/cliente/'+str(wa_customer.id)" class="wa-form"><input type="hidden" name="csrf_token" t-att-value="csrf"/>
+   <label>WhatsApp del contacto de pagos<input name="recipient" required="required" maxlength="25" placeholder="+18095550101" t-att-value="wa_consent.recipient or ''"/></label>
+   <label>Autorización<select name="state"><option value="unknown" t-att-selected="not wa_consent or wa_consent.state=='unknown'">Sin autorización</option><option value="granted" t-att-selected="wa_consent.state=='granted'">Cliente autorizó recordatorios</option><option value="revoked" t-att-selected="wa_consent.state=='revoked'">No contactar</option></select></label>
+   <label>Cómo y cuándo lo autorizó<input name="evidence" maxlength="500" placeholder="Fecha y referencia de la autorización" t-att-value="wa_consent.evidence or ''"/></label>
+   <p class="wa-muted">La autorización aplica solo a los avisos de esta empresa. Cambiar de número requiere verificar de nuevo el permiso del cliente.</p><button class="ux-button" type="submit">Guardar contacto</button>
+  </form></section>
+ </main></t></template>
+</odoo>

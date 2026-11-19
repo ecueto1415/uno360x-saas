@@ -1,0 +1,5 @@
+<odoo>
+ <record id="connection_company_rule" model="ir.rule"><field name="name">WhatsApp número de empresa activa</field><field name="model_id" ref="model_uno360x_wa_connection"/><field name="domain_force">[('company_id','=',company_id)]</field></record>
+ <record id="consent_company_rule" model="ir.rule"><field name="name">WhatsApp autorización por empresa activa</field><field name="model_id" ref="model_uno360x_wa_consent"/><field name="domain_force">[('company_id','=',company_id)]</field></record>
+ <record id="reminder_company_rule" model="ir.rule"><field name="name">WhatsApp avisos de empresa activa</field><field name="model_id" ref="model_uno360x_wa_reminder"/><field name="domain_force">[('company_id','=',company_id)]</field></record>
+</odoo>
