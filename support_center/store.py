@@ -1,4 +1,4 @@
-"""No business database access. Identity comes exclusively from the validated gateway."""
+"""No direct business DB access. User-scoped diagnostic snapshots come from the gateway."""
 import contextlib
 import hashlib
 import json
@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS messages (
  request_id TEXT, state TEXT NOT NULL DEFAULT 'done', lease REAL, attempts INTEGER NOT NULL DEFAULT 0,
  UNIQUE(case_id,request_id));
 CREATE INDEX IF NOT EXISTS pending ON messages(state,created);
+CREATE TABLE IF NOT EXISTS message_context (
+ message_id INTEGER PRIMARY KEY REFERENCES messages(id), tenant TEXT NOT NULL,
+ account TEXT NOT NULL, captured REAL NOT NULL, body TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS metrics (
  tenant TEXT NOT NULL, hour INTEGER NOT NULL, area TEXT NOT NULL,
  requests INTEGER NOT NULL, slow INTEGER NOT NULL, errors INTEGER NOT NULL,
@@ -39,6 +42,16 @@ class Invalid(ValueError):
 
 class Limited(Invalid):
     pass
+
+def submission(tenant, account, data):
+    if not isinstance(data,dict) or set(data)-{'case_id','body','request_id','human'}:
+        raise Invalid('Solicitud inválida.')
+    body,key,case_id,human=data.get('body',''),data.get('request_id',''),data.get('case_id'),data.get('human',False)
+    if (not isinstance(body,str) or not 1<=len(body.strip())<=3000 or not isinstance(key,str) or
+        not re.fullmatch('[a-f0-9-]{32,36}',key) or type(human) is not bool or
+        case_id is not None and (not isinstance(case_id,str) or not re.fullmatch('[a-f0-9]{32}',case_id))):
+        raise Invalid('Escribe un mensaje de hasta 3,000 caracteres.')
+    return body.strip(),key,case_id or hashlib.sha256((tenant+'\0'+account+'\0'+key).encode()).hexdigest()[:32],human
 
 class Store:
     def __init__(self, path=STATE, clock=time.time, timeout=3):
@@ -88,20 +101,8 @@ class Store:
         selected = self.case(tenant,account,case_id) if case_id else (cases[0] if cases else None)
         return {'cases':cases,'selected':selected,'messages':self.messages(selected['id']) if selected else []}
 
-    def send(self, tenant, account, data):
-        if set(data) - {'case_id','body','request_id','human'}:
-            raise Invalid('Solicitud inválida.')
-        body = data.get('body','')
-        key = data.get('request_id','')
-        case_id = data.get('case_id')
-        human = data.get('human',False)
-        if (not isinstance(body,str) or not 1 <= len(body.strip()) <= 3000 or
-            not isinstance(key,str) or not re.fullmatch('[a-f0-9-]{32,36}',key) or
-            (case_id is not None and (not isinstance(case_id,str) or not re.fullmatch('[a-f0-9]{32}',case_id))) or type(human) is not bool):
-            raise Invalid('Escribe un mensaje de hasta 3,000 caracteres.')
-        body = body.strip()
-        # Deterministic ID makes a retried first message idempotent too.
-        case_id = case_id or hashlib.sha256((tenant+'\0'+account+'\0'+key).encode()).hexdigest()[:32]
+    def send(self, tenant, account, data, *, context=None):
+        body,key,case_id,human=submission(tenant,account,data)
         now = self.clock()
         with self.transaction():
             existing = self.db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
@@ -121,9 +122,40 @@ class Store:
                     raise Invalid('Jenifer está preparando la respuesta anterior. Espera un momento.')
                 self.db.execute("UPDATE cases SET human=MAX(human,?),status='open',updated=? WHERE id=?",(int(human),now,case_id))
             row = self.case(tenant,account,case_id)
-            self.db.execute('INSERT INTO messages (case_id,role,body,created,request_id,state) VALUES (?,?,?,?,?,?)',
+            inserted=self.db.execute('INSERT INTO messages (case_id,role,body,created,request_id,state) VALUES (?,?,?,?,?,?)',
                             (case_id,'user',body,now,key,'done' if row['human'] else 'pending'))
+            if context is not None:
+                encoded=json.dumps(context,ensure_ascii=False)
+                if len(encoded)>60000:
+                    raise Invalid('El diagnóstico es demasiado extenso.')
+                self.db.execute('INSERT INTO message_context VALUES (?,?,?,?,?)',
+                    (inserted.lastrowid,tenant,account,now,encoded))
         return case_id
+
+    def needs_context(self, tenant, account, data):
+        body,key,case_id,human=submission(tenant,account,data)
+        row=self.db.execute('SELECT * FROM cases WHERE id=?',(case_id,)).fetchone()
+        if row:
+            self.case(tenant,account,case_id)
+            previous=self.db.execute('SELECT body FROM messages WHERE case_id=? AND request_id=?',(case_id,key)).fetchone()
+            if previous:
+                if previous['body']!=body:raise Invalid('El identificador del mensaje ya fue utilizado.')
+                return False
+            if self.db.execute("SELECT 1 FROM messages WHERE case_id=? AND state IN ('pending','working')",(case_id,)).fetchone():
+                raise Invalid('Jenifer está preparando la respuesta anterior. Espera un momento.')
+        for scope,maximum in [('message:'+tenant+':'+account,12),('tenant:'+tenant,60)]:
+            limit=self.db.execute('SELECT n FROM limits WHERE scope=? AND bucket=?',(scope,int(self.clock()//60))).fetchone()
+            if limit and limit['n']>=maximum:raise Limited('Hay varios mensajes seguidos. Espera un minuto e inténtalo otra vez.')
+        return not human and not (row and row['human'])
+
+    def job_context(self, job):
+        row=self.db.execute('''SELECT x.body,x.captured FROM message_context x
+            JOIN messages m ON m.id=x.message_id JOIN cases c ON c.id=m.case_id
+            WHERE m.id=? AND m.case_id=? AND x.tenant=c.tenant AND x.account=c.account''',
+            (job['id'],job['case_id'])).fetchone()
+        if not row or self.clock()-row['captured']>600:
+            return {'verified':False,'reason':'No hay un diagnóstico reciente. No afirmar haber comprobado la configuración.'}
+        return json.loads(row['body'])
 
     def handoff(self, tenant, account, case_id):
         with self.transaction():

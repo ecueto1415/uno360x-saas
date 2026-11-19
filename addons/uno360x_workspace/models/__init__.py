@@ -15,3 +15,4 @@ from . import bank_cheque
 from . import boards
 
 from . import crm_quote
+from . import support

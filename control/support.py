@@ -52,7 +52,10 @@ def dispatch(handler,handle,url):
         if set(data)=={'case_id','handoff'} and data['handoff'] is True:
             store.handoff(tenant,account,data['case_id']);case_id=data['case_id']
         else:
-            case_id=store.send(tenant,account,data)
+            from .support_context import capture
+            # Human-only messages need no AI context and do not perform an Odoo read.
+            context=capture(handler.server.manager,handle) if store.needs_context(tenant,account,data) else None
+            case_id=store.send(tenant,account,data,context=context)
         reply(200,dict(store.listing(tenant,account,case_id),csrf_token=token_for(handle)))
     except Limited as error:
         reply(429,{'error':str(error)})

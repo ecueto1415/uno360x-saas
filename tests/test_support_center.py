@@ -95,7 +95,7 @@ class SupportTest(unittest.TestCase):
         run({},self.path,lambda *args:calls.append(args),budget=.1)
         self.assertEqual([],calls)
         c=self.s.send('t','a',self.message());self.s.send('other','z',dict(self.message(),body='OTHER TENANT SECRET'))
-        def responder(settings,history):
+        def responder(settings,history,context):
             calls.append(history)
             self.assertNotIn('OTHER TENANT SECRET',json.dumps(history))
             return {'reply':'Consulta la ficha.','topic':'inventory','human':False}
@@ -109,5 +109,25 @@ class SupportTest(unittest.TestCase):
         self.assertIn(b'chat.js',body)
         self.assertEqual(body,decorate('/uno360x-resumen',200,h,body)[2])
         self.assertEqual(b'{}',decorate('/web/dataset',200,headers,b'{}')[2])
+
+    def test_context_only_for_new_ai_messages_and_scoped_to_owner(self):
+        self.assertTrue(self.s.needs_context('t','a',self.message()))
+        c=self.s.send('t','a',self.message(),context={'verified':True,'diagnostics':{'user_id':77}})
+        self.assertFalse(self.s.needs_context('t','a',self.message()))
+        job=self.s.claim();self.assertTrue(self.s.job_context(job)['verified'])
+        self.s.db.execute("UPDATE message_context SET account='another-user'");self.s.db.commit()
+        self.assertFalse(self.s.job_context(job)['verified'])
+        self.s.handoff('t','a',c)
+        self.assertFalse(self.s.needs_context('t','a',dict(self.message(case_id=c),request_id='b'*32)))
+
+    def test_expired_diagnostic_is_not_presented_as_current(self):
+        self.s.send('t','a',self.message(),context={'verified':True})
+        job=self.s.claim();self.now+=601
+        self.assertFalse(self.s.job_context(job)['verified'])
+
+    def test_preflight_rejects_invalid_and_foreign_messages_before_read(self):
+        c=self.s.send('t','a',self.message())
+        with self.assertRaises(Invalid):self.s.needs_context('other','a',self.message(case_id=c))
+        with self.assertRaises(Invalid):self.s.needs_context('t','a',dict(self.message(),model='res.users'))
 
 if __name__=='__main__':unittest.main()
