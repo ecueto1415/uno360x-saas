@@ -29,6 +29,11 @@ def capture(manager, handle):
             'steps':'El administrador puede invitar empleados y asignar áreas. No es necesario modificar los permisos técnicos de Odoo.'}
         if not result['features']['users']['available']:
             result['features']['users'].update(route=None,steps='Solicita al administrador de la empresa los cambios de usuarios y permisos.')
+        result['features']['subscription']={
+            'installed':True,'available':handle.backend.claims.get('role') in ('owner','admin'),
+            'path':'Engranaje junto a tu nombre → Suscripción',
+            'route':'/uno360x-suscripcion' if handle.backend.claims.get('role') in ('owner','admin') else None,
+            'steps':'Historial de facturas del servicio UNO360X, método de pago por transferencia y correo de facturación. Las tarjetas todavía requieren conectar un proveedor. Enviar un comprobante deja el pago pendiente de verificación y no confirma el cobro. Solo el administrador tiene acceso; no confundir con las facturas de clientes de la empresa.'}
         result['access']={'role':handle.backend.claims.get('role'),
                           'areas':list(handle.backend.claims.get('work_permissions',()))}
         return {'verified':True,'captured':time.time(),'diagnostics':result}

@@ -15,6 +15,7 @@ GEAR = b'''<details class="ux-team-settings" style="position:relative;flex:none"
  <div style="position:absolute;right:0;top:calc(100% + 8px);z-index:50;min-width:182px;padding:5px;border:1px solid #dce4ed;border-radius:9px;background:white;box-shadow:0 8px 24px #18283f24">
   <a href="/__team" style="display:block;padding:8px 10px;color:#18283f;white-space:nowrap">Usuarios y permisos</a>
   <a href="/__team?view=invite" style="display:block;padding:8px 10px;color:#11786f;white-space:nowrap">Invitar empleado</a>
+  <a href="/uno360x-suscripcion" style="display:block;padding:8px 10px;color:#11786f;white-space:nowrap">Suscripci&#243;n</a>
  </div></details>'''
 
 

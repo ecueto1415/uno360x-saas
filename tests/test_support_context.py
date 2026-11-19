@@ -41,5 +41,7 @@ class ContextTests(unittest.TestCase):
   result=capture(m,h)
   self.assertFalse(result['diagnostics']['features']['users']['available'])
   self.assertIsNone(result['diagnostics']['features']['users']['route'])
+  self.assertFalse(result['diagnostics']['features']['subscription']['available'])
+  self.assertIsNone(result['diagnostics']['features']['subscription']['route'])
 
 if __name__=='__main__':unittest.main()
