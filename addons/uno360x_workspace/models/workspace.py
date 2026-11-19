@@ -11,6 +11,11 @@ MENU_GROUPS=[
  ('Equipo','team',[('hr.menu_hr_root','Empleados'),('hr_attendance.menu_hr_attendance_root','Asistencias'),('hr_holidays.menu_hr_holidays_root','Ausencias')]),
  ('Jenifer IA','ai',[]),
  ('Reportes','reports',[('spreadsheet_dashboard.spreadsheet_dashboard_menu_root','Dashboards')])]
+AREA_ROOTS={
+ 'crm.crm_menu_root':'sales','sale.sale_menu_root':'sales','point_of_sale.menu_point_root':'pos',
+ 'account.menu_finance':'billing','stock.menu_stock_root':'inventory',
+}
+AREA_MODELS={'crm.lead':'sales','sale.order':'sales','account.move':'billing','pos.config':'pos','product.product':'inventory'}
 OPTIONS={'payroll_hr':'uno360x_payroll_hr','jenifer_ai':'uno360x_jenifer_core','projects_services':'uno360x_projects_services'}
 
 class Workspace(models.AbstractModel):
@@ -21,8 +26,14 @@ class Workspace(models.AbstractModel):
   installed=set(self.env['ir.module.module'].sudo().search([('name','in',list(OPTIONS.values())),('state','=','installed')]).mapped('name'))
   return {key for key,name in OPTIONS.items() if name in installed}
  @api.model
+ def _work_area_allowed(self, area):
+  user=self.env.user
+  return (not area or not user.has_group('uno360x_business_base.group_scoped_employee')
+          or user.has_group('uno360x_business_base.group_area_'+area))
+ @api.model
  def _can_read(self,name):
-  return name in self.env.registry.models and self.env[name].check_access_rights('read',raise_exception=False)
+  return (self._work_area_allowed(AREA_MODELS.get(name)) and name in self.env.registry.models
+          and self.env[name].check_access_rights('read',raise_exception=False))
  @api.model
  def _search_menu(self,model,xmlid,allowed):
   root=self.env.ref(xmlid,raise_if_not_found=False)
@@ -44,6 +55,7 @@ class Workspace(models.AbstractModel):
     continue
    nodes=[]
    for xmlid,label in specs:
+    if not self._work_area_allowed(AREA_ROOTS.get(xmlid)):continue
     if xmlid.startswith('project.') and 'projects_services' not in options:continue
     m=self.env.ref(xmlid,raise_if_not_found=False)
     if m and m.active and m.id in visible:nodes.append(node(m,label))
