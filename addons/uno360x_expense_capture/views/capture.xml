@@ -1,0 +1,18 @@
+<odoo>
+  <record id="expense_photo_review" model="ir.ui.view">
+    <field name="name">uno360x.expense.photo.review</field>
+    <field name="model">account.move</field>
+    <field name="inherit_id" ref="account.view_move_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group string="Gasto preparado por Jenifer" invisible="not uno_photo_hash" groups="account.group_account_user">
+          <field name="uno_photo_hash" invisible="1"/>
+          <field name="uno_photo_source_ncf"/>
+          <field name="uno_photo_expense_type" readonly="state != 'draft'"/>
+          <field name="uno_photo_pending"/>
+          <label for="uno_photo_source_ncf" string="Revisa la foto adjunta, los importes y los impuestos antes de confirmar."/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+</odoo>

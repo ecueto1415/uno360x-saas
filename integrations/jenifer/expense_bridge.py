@@ -1,4 +1,4 @@
-"""Opt-in adapter. Import/install only in an isolated Jenifer QA process.
+"""Opt-in adapter for the authenticated commercial chat.
 
 No API keys, network calls, environment mutation or global monkeypatch on import.
 The caller must already have checked access to current-message attachments.
@@ -63,3 +63,25 @@ def install(agent_module, commerce_class):
     commerce_class.execute = execute
     commerce_class._uno_expense_bridge = True
     agent_module.commerce_tools = lambda: prior_tools() + definitions()
+
+
+def execute(commerce, name, arguments):
+    """Production entry point without mutating global classes or API settings."""
+    from types import SimpleNamespace
+    # Reuse the tested dispatch contract with a per-call adapter class.
+    class Adapter:
+        def __init__(self):
+            self.env = commerce.env
+            self.attachments = commerce.attachments
+            self.lookups = commerce.lookups
+        def execute(self, name, args):
+            raise ValueError('Herramienta no disponible.')
+    agent = SimpleNamespace(commerce_tools=lambda: [])
+    install(agent, Adapter)
+    try:
+        return Adapter().execute(name, arguments)
+    except Exception as error:
+        if type(error).__name__ in {'UserError', 'ValidationError', 'ValueError'}:
+            # Known business errors are safe to explain; no technical traceback.
+            return {'status': 'needs_review', 'creado': False, 'error': str(error)}
+        raise

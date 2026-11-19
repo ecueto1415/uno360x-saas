@@ -1,6 +1,7 @@
 import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from psycopg2 import IntegrityError
 from odoo import api, fields, models, Command
 from odoo.exceptions import AccessError, UserError
 from .photo import inspect_photo, read_photo
@@ -20,10 +21,35 @@ def amount(value):
 
 class Move(models.Model):
     _inherit = 'account.move'
+    if hasattr(models, 'Constraint'):
+        _photo_hash_company_unique = models.Constraint(
+            'UNIQUE(company_id, uno_photo_hash)', 'Esta foto ya está registrada en la empresa.')
+        _photo_ncf_partner_unique = models.Constraint(
+            'UNIQUE(company_id, partner_id, uno_photo_source_ncf)', 'Este comprobante ya está registrado para el proveedor.')
+    else:
+        _sql_constraints = [
+            ('photo_hash_company_unique', 'UNIQUE(company_id, uno_photo_hash)', 'Esta foto ya está registrada en la empresa.'),
+            ('photo_ncf_partner_unique', 'UNIQUE(company_id, partner_id, uno_photo_source_ncf)', 'Este comprobante ya está registrado para el proveedor.'),
+        ]
     uno_photo_hash = fields.Char(copy=False, readonly=True, index=True,
                                   groups='account.group_account_user')
     uno_photo_pending = fields.Text(copy=False, readonly=True,
                                      groups='account.group_account_user')
+    uno_photo_expense_type = fields.Selection(
+        [(f'{i:02}', label) for i, label in enumerate([
+            'Gastos de personal', 'Trabajos, suministros y servicios', 'Arrendamientos',
+            'Activos fijos', 'Representación', 'Otras deducciones admitidas',
+            'Gastos financieros', 'Gastos extraordinarios', 'Costo de venta',
+            'Adquisiciones de activos', 'Seguros'], 1)],
+        string='Clasificación del gasto capturado', copy=False, groups='account.group_account_user')
+    uno_photo_source_ncf = fields.Char('Comprobante de la foto', copy=False, readonly=True,
+                                        groups='account.group_account_user')
+
+    def _uno_photo_number(self):
+        self.ensure_one()
+        if hasattr(self, '_uno606_number'):
+            return self._uno606_number()
+        return str(self.uno_photo_source_ncf or self.ref or '').strip().upper()
 
 
 class Capture(models.AbstractModel):
@@ -48,7 +74,8 @@ class Capture(models.AbstractModel):
         result['impuestos_disponibles'] = [{
             'id': t.id, 'nombre': t.name, 'importe': t.amount,
             'tipo': t.amount_type, 'incluido': t.price_include,
-            'rol_606': t.uno606_role or None} for t in taxes]
+            'rol_606': t.uno606_role if 'uno606_role' in t._fields else None} for t in taxes]
+        result['advertencia'] += ' El OCR puede confundir 0/O y 1/I. Si el NCF no es inequívoco, pide confirmar ese dato.'
         return result
 
     @api.model
@@ -88,7 +115,7 @@ class Capture(models.AbstractModel):
         # Compare through the shared 606 resolver, including legacy localization fields.
         candidates = moves.search([('company_id', '=', company.id),
             ('partner_id', 'child_of', partner.id), ('move_type', 'in', ['in_invoice', 'in_refund'])])
-        duplicate = candidates.filtered(lambda m: m._uno606_number() == ncf)
+        duplicate = candidates.filtered(lambda m: m._uno_photo_number() == ncf)
         if duplicate:
             return self._result(duplicate[:1], 'existing')
         try:
@@ -127,36 +154,47 @@ class Capture(models.AbstractModel):
             if len(taxes) != len(set(tax_ids)) or any(
                 t.company_id != company or t.type_tax_use != 'purchase' or not t.active or
                 t.amount_type != 'percent' or t.price_include or t.amount < 0 or
-                t.uno606_role not in ('vat', 'exempt') for t in taxes):
+                (t.uno606_role not in ('vat', 'exempt') if 'uno606_role' in t._fields
+                 else t.amount not in (0, 16, 18)) for t in taxes):
                 raise UserError('Impuesto no compatible con esta captura. Contabilidad debe revisar retenciones y otros impuestos.')
-            lines.append(Command.create({'name': name, 'quantity': float(qty),
-                'price_unit': float(price), 'tax_ids': [Command.set(taxes.ids)],
-                'uno606_nature': nature}))
+            values = {'name': name, 'quantity': float(qty),
+                'price_unit': float(price), 'tax_ids': [Command.set(taxes.ids)]}
+            if 'uno606_nature' in self.env['account.move.line']._fields:
+                values['uno606_nature'] = nature
+            lines.append(Command.create(values))
         expense = data.get('tipo_gasto') or False
-        if expense and expense not in dict(moves._fields['uno606_expense_type'].selection):
+        if expense and expense not in dict(moves._fields['uno_photo_expense_type'].selection):
             raise UserError('Tipo de gasto 606 inválido.')
         if not expense:
             pending.append('Seleccionar tipo de gasto 606.')
         # No payment form/date, retention or paid state is inferred from a photograph.
-        with self.env.cr.savepoint():
-            move = moves.with_context(default_move_type='in_invoice').create({
-                'company_id': company.id, 'move_type': 'in_invoice',
-                'partner_id': partner.id, 'ref': ncf, 'uno606_ncf': ncf,
-                'journal_id': journals.id, 'currency_id': currency.id,
-                'invoice_date': issued, 'invoice_line_ids': lines,
-                'uno606_expense_type': expense, 'uno606_reviewed': False,
-                'uno_photo_hash': checksum, 'uno_photo_pending': '\n'.join(dict.fromkeys(pending))})
-            if abs(Decimal(str(move.amount_total)) - amount(data['total'])) > Decimal('0.01') or abs(
-                Decimal(str(move.amount_tax)) - amount(data['itbis'])) > Decimal('0.01'):
-                raise UserError('Los totales/ITBIS no cuadran con la foto. No se creó el gasto.')
-            self.env['ir.attachment'].create({'name': Path(filename).name[:150],
-                'raw': raw, 'res_model': 'account.move', 'res_id': move.id})
-            return self._result(move, 'draft')
+        try:
+            with self.env.cr.savepoint():
+                values = {
+                    'company_id': company.id, 'move_type': 'in_invoice',
+                    'partner_id': partner.id, 'ref': ncf, 'uno_photo_source_ncf': ncf,
+                    'journal_id': journals.id, 'currency_id': currency.id,
+                    'invoice_date': issued, 'invoice_line_ids': lines,
+                    'uno_photo_expense_type': expense,
+                    'uno_photo_hash': checksum, 'uno_photo_pending': '\n'.join(dict.fromkeys(pending))}
+                if 'uno606_ncf' in moves._fields:
+                    values.update(uno606_ncf=ncf, uno606_expense_type=expense, uno606_reviewed=False)
+                move = moves.with_context(default_move_type='in_invoice').create(values)
+                if abs(Decimal(str(move.amount_total)) - amount(data['total'])) > Decimal('0.01') or abs(
+                    Decimal(str(move.amount_tax)) - amount(data['itbis'])) > Decimal('0.01'):
+                    raise UserError('Los totales/ITBIS no cuadran con la foto. No se creó el gasto.')
+                self.env['ir.attachment'].create({'name': Path(filename).name[:150],
+                    'raw': raw, 'res_model': 'account.move', 'res_id': move.id})
+                return self._result(move, 'draft')
+        except IntegrityError as error:
+            if error.pgcode == '23505' and 'photo_' in (error.diag.constraint_name or ''):
+                raise UserError('Otra solicitud ya está registrando esta foto o comprobante. No se duplicó; consulta el borrador existente antes de reintentar.') from None
+            raise
 
     def _result(self, move, status):
         move.check_access('read')
         return {'status': status, 'id': move.id, 'estado': move.state,
-                'comprobante': move._uno606_number(), 'total': move.amount_total,
+                'comprobante': move._uno_photo_number(), 'total': move.amount_total,
                 'moneda': move.currency_id.name, 'pendientes': move.uno_photo_pending or '',
                 'url': '/web#id=%s&model=account.move&view_type=form' % move.id,
                 'nota': 'Borrador pendiente de revisión; no equivale a gasto presentado en 606 ni a pago.'}
