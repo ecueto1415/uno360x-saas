@@ -1,0 +1,25 @@
+<odoo>
+ <record id="report_form" model="ir.ui.view">
+  <field name="name">uno360x.606.report.form</field><field name="model">uno360x.606.report</field>
+  <field name="arch" type="xml"><form string="Formato 606 · Pruebas">
+   <header><button name="action_preview" type="object" string="Revisar borrador" class="btn-primary"/><button name="action_download" type="object" string="Descargar TXT de prueba"/></header>
+   <sheet><div class="alert alert-warning" role="status">EN PRUEBAS. No presentar hasta que contabilidad confirme el resultado. La descarga se bloquea si faltan datos fiscales.</div>
+    <group><field name="company_id" groups="base.group_multi_company" options="{'no_create':True}"/><field name="month" string="Mes"/><field name="year" string="Año"/></group>
+    <field name="preview" nolabel="1"/><field name="file_data" invisible="1"/><field name="filename" invisible="1"/>
+   </sheet></form></field>
+ </record>
+ <record id="report_action" model="ir.actions.act_window"><field name="name">Formato 606</field><field name="res_model">uno360x.606.report</field><field name="view_mode">form</field></record>
+ <menuitem id="dgii_menu" name="DGII" parent="account.menu_finance" groups="account.group_account_user" sequence="85"/>
+ <menuitem id="report_menu" name="Formato 606" parent="dgii_menu" action="report_action" groups="account.group_account_user" sequence="10"/>
+ <record id="move_form_606" model="ir.ui.view"><field name="name">account.move.fiscal.606</field><field name="model">account.move</field><field name="inherit_id" ref="account.view_move_form"/>
+  <field name="arch" type="xml"><xpath expr="//notebook" position="inside"><page string="Datos fiscales 606" groups="account.group_account_user" invisible="move_type not in ('in_invoice','in_refund')">
+   <div class="alert alert-info">Completa aquí los datos que falten en facturas anteriores. El NCF registrado en la localización o en Referencia se reutiliza si es válido; no se utiliza el número interno de Odoo.</div>
+   <group><group><field name="uno606_ncf"/><field name="uno606_modified"/><field name="uno606_original_reported"/><field name="uno606_expense_type"/><field name="uno606_reviewed"/></group><group><field name="uno606_proportional"/><field name="uno606_cost_vat"/></group></group>
+   <field name="uno606_events" context="{'default_move_id':id}"><list editable="bottom"><field name="date"/><field name="payment_id" optional="show"/><field name="reference"/><field name="payment_form"/><field name="amount"/><field name="vat_amount"/><field name="isr_type"/><field name="isr_amount"/><field name="state"/></list></field>
+  </page></xpath>
+  <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='price_unit']" position="after"><field name="uno606_nature" groups="account.group_account_user" optional="hide"/></xpath>
+  </field>
+ </record>
+ <record id="tax_form_606" model="ir.ui.view"><field name="name">account.tax.classification.606</field><field name="model">account.tax</field><field name="inherit_id" ref="account.view_tax_form"/><field name="arch" type="xml"><xpath expr="//field[@name='type_tax_use']" position="after"><field name="uno606_role" groups="account.group_account_user"/></xpath></field></record>
+ <record id="journal_form_606" model="ir.ui.view"><field name="name">account.journal.payment.606</field><field name="model">account.journal</field><field name="inherit_id" ref="account.view_account_journal_form"/><field name="arch" type="xml"><xpath expr="//field[@name='type']" position="after"><field name="uno606_payment_form" groups="account.group_account_user" invisible="type not in ('bank','cash')"/></xpath></field></record>
+</odoo>

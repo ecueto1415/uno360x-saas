@@ -1,0 +1,4 @@
+/* Match the orbit/cylinder mark already used by OUTSOLUTECH. */
+.ux-app-shell .ux-sidebar .ux-logo{position:relative!important;display:inline-block!important;width:max-content!important;max-width:100%!important;white-space:nowrap!important;line-height:1.25!important;overflow:visible!important;vertical-align:middle}
+.ux-app-shell .ux-sidebar .ux-logo::after{content:''!important;display:inline-block!important;width:.92em!important;height:.92em!important;border:2px solid currentColor!important;border-radius:50%!important;margin-left:.43em!important;vertical-align:-.06em!important;box-sizing:border-box!important;background:none!important}
+.ux-app-shell .ux-sidebar .ux-logo::before{content:''!important;position:absolute!important;right:.015em!important;top:calc(50% - .43em)!important;width:.22em!important;height:.22em!important;border-radius:50%!important;background:#abdf2e!important;z-index:1!important}

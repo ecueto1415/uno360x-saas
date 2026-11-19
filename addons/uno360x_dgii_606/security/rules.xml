@@ -1,0 +1,4 @@
+<odoo>
+ <record id="report_company_rule" model="ir.rule"><field name="name">606 empresas autorizadas</field><field name="model_id" ref="model_uno360x_606_report"/><field name="domain_force">[('company_id', 'in', company_ids)]</field></record>
+ <record id="payment_company_rule" model="ir.rule"><field name="name">606 pagos de empresas autorizadas</field><field name="model_id" ref="model_uno360x_606_payment"/><field name="domain_force">[('company_id', 'in', company_ids)]</field></record>
+</odoo>

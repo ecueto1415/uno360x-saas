@@ -91,4 +91,6 @@
   </section>
  </t>
 </template>
+<template id="brand_orbit_shell" inherit_id="uno360x_workspace.shell"><xpath expr="//head" position="inside"><link rel="stylesheet" href="/uno360x_workspace/static/src/css/brand_orbit.css?v=20261119"/></xpath></template>
+<template id="brand_orbit_native" inherit_id="web.layout" priority="101"><xpath expr="//head" position="inside"><link rel="stylesheet" href="/uno360x_workspace/static/src/css/brand_orbit.css?v=20261119"/></xpath></template>
 </odoo>
