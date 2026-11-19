@@ -20,9 +20,10 @@ import urllib.parse
 import urllib.request
 
 from .access_broker import open_space, resume_space
-from .identity import IdentityService, IdentityError, digest
+from .identity import IdentityService, IdentityError, SESSION_COOKIE_TTL, digest
 from .onboarding import Onboarding
 from .trials import check_trial_access
+from .visual_assets import visual_asset
 
 MAX_BODY = 16 * 1024 * 1024
 MAX_RESPONSE = 32 * 1024 * 1024
@@ -34,17 +35,44 @@ SAFE_REQUEST_HEADERS = {'content-type', 'accept', 'accept-language', 'range', 'i
 
 def checked_path(path):
     if not isinstance(path, str) or len(path) > 8192 or any(ord(c) < 32 for c in path):
-        raise IdentityError('Ruta inválida.')
+        raise IdentityError('Ruta invÃ¡lida.')
     url = urllib.parse.urlsplit(path)
     decoded = urllib.parse.unquote(url.path)
     if url.scheme or url.netloc or url.fragment or not path.startswith('/') or '\\' in decoded or '..' in decoded.split('/') or decoded.startswith('//'):
-        raise IdentityError('Ruta inválida.')
+        raise IdentityError('Ruta invÃ¡lida.')
     if decoded.startswith(('/web/database', '/uno360x/bridge', '/web/session/authenticate',
                            '/web/reset_password', '/web/signup', '/web/login')):
         raise IdentityError('Acceso reservado al control central.')
     if 'service-worker' in decoded or 'service_worker' in decoded:
         raise IdentityError('Servicio offline no habilitado.')
     return path
+
+
+def brand_workspace_title(path, status, headers, body):
+    """Apply UNO360X branding to native workspace pages."""
+    route = urllib.parse.urlsplit(path).path
+    is_web_client = route in ('/web', '/odoo') or route.startswith('/odoo/')
+    if status != 200 or not is_web_client:
+        return status, headers, body
+    if not any(key.lower() == 'content-type' and value.split(';', 1)[0].strip().lower() == 'text/html'
+               for key, value in headers):
+        return status, headers, body
+    head_end = body.lower().find(b'</head>')
+    if head_end < 0:
+        return status, headers, body
+    head = body[:head_end]
+    branded = re.sub(
+        rb'(<title\b[^>]*>)([^<]*)(</title>)',
+        lambda match: match[1] + re.sub(rb'\bOdoo\b', b'UNO360X', match[2]) + match[3],
+        head, count=1, flags=re.IGNORECASE,
+    )
+    if b'id="ux-native-profile"' in body:
+        branded += b'<style>.o_web_client .o_main_navbar .o_user_menu{display:none!important}</style>'
+    if branded == head:
+        return status, headers, body
+    headers = [(key, value) for key, value in headers if key.lower() not in ('etag', 'last-modified')]
+    return status, headers, branded + body[head_end:]
+
 
 
 @dataclass
@@ -55,6 +83,7 @@ class Handle:
     lock: object = field(default_factory=threading.Lock)
     sockets: object = field(default_factory=lambda: threading.BoundedSemaphore(3))
     active: bool = True
+    cookie_refreshed: float = 0
 
 
 class GatewayManager:
@@ -67,17 +96,21 @@ class GatewayManager:
     def identity(self):
         return IdentityService(self.database, self.deliver, clock=self.clock)
 
-    def validate(self, handle, identity):
+    def validate(self, handle, identity, *, renew=False):
         if not handle.active:
-            raise IdentityError('Sesión de espacio cerrada.')
+            raise IdentityError('SesiÃ³n de espacio cerrada.')
         backend = handle.backend
         account = identity._account(backend.central_session)
         member = identity._membership(account['id'], handle.tenant)
         if account['id'] != backend.claims['account_id'] or member['role'] != backend.claims['role']:
-            raise IdentityError('El acceso cambió.')
+            raise IdentityError('El acceso cambiÃ³.')
+        if identity.work_permissions(handle.tenant,account['id'],member['role']) != backend.claims.get('work_permissions',()):
+            raise IdentityError('Los permisos cambiaron. Vuelve a entrar a tu empresa.')
         check_trial_access(identity, handle.tenant)
         if not Onboarding(identity).status(backend.central_session, handle.tenant)['local_ready']:
             raise IdentityError('Empresa no disponible.')
+        if renew:
+            identity._account(backend.central_session,renew=True)
 
     def server(self, tenant):
         with self.lock:
@@ -142,11 +175,11 @@ class GatewayManager:
 
     def consume(self, grant, tenant):
         if not isinstance(grant, str) or not 32 <= len(grant) <= 128:
-            raise IdentityError('Entrada inválida.')
+            raise IdentityError('Entrada invÃ¡lida.')
         with self.lock:
             result = self.grants.get(digest(grant))
             if not result or result[1] <= self.clock() or result[0].tenant != tenant:
-                raise IdentityError('Entrada inválida o vencida.')
+                raise IdentityError('Entrada invÃ¡lida o vencida.')
             del self.grants[digest(grant)]
         identity = self.identity()
         try:
@@ -157,11 +190,11 @@ class GatewayManager:
 
     def lookup(self, token, tenant):
         if not isinstance(token, str) or len(token) > 128:
-            raise IdentityError('Sesión inválida.')
+            raise IdentityError('SesiÃ³n invÃ¡lida.')
         with self.lock:
             handle = self.handles.get(digest(token))
         if not handle or handle.tenant != tenant:
-            raise IdentityError('Sesión inválida.')
+            raise IdentityError('SesiÃ³n invÃ¡lida.')
         return handle
 
     def forward(self, handle, method, path, headers, body):
@@ -172,6 +205,11 @@ class GatewayManager:
         try:
             with handle.lock:
                 self.validate(handle, identity)
+                if method in ('GET', 'HEAD'):
+                    response = visual_asset(path, handle.backend.snapshot)
+                    if response is not None:
+                        self.validate(handle, identity, renew=True)
+                        return response
                 # Backend is pinned by the owned snapshot, never a browser parameter.
                 upstream = handle.backend.base
                 clean = {k:v for k,v in headers.items() if k.lower() in SAFE_REQUEST_HEADERS and '\r' not in v and '\n' not in v and len(v) <= 2048}
@@ -191,10 +229,12 @@ class GatewayManager:
                         target = urllib.parse.urlsplit(urllib.parse.urljoin(upstream + '/', location))
                         base = urllib.parse.urlsplit(upstream)
                         if (target.scheme, target.netloc) != (base.scheme, base.netloc):
-                            raise IdentityError('Redirección externa bloqueada.')
+                            raise IdentityError('RedirecciÃ³n externa bloqueada.')
                         result_headers.append(('Location', target.path + ('?' + target.query if target.query else '') + ('#' + target.fragment if target.fragment else '')))
                     # Do not release bytes if access changed while Odoo was responding.
-                    self.validate(handle, identity)
+                    # The bus can poll while an unattended tab is open.
+                    active_request = response.status < 400 and not urllib.parse.urlsplit(path).path.startswith(('/bus/', '/websocket'))
+                    self.validate(handle, identity, renew=active_request)
                     return response.status, result_headers, content
         finally:
             identity.close()
@@ -244,12 +284,16 @@ class GatewayHandler(BaseHTTPRequestHandler):
         if self.command != 'HEAD':
             self.wfile.write(body)
 
+    def workspace_cookie(self, handle):
+        return (f'{self.server.cookie}={handle.token}; HttpOnly; SameSite=Strict; Path=/; '
+                f'Max-Age={SESSION_COOKIE_TTL}{getattr(self.server, "secure_cookie", "")}')
+
     def cookie_handle(self):
         jar = SimpleCookie()
         try:
             jar.load(self.headers.get('Cookie',''))
         except Exception:
-            raise IdentityError('Sesión inválida.') from None
+            raise IdentityError('SesiÃ³n invÃ¡lida.') from None
         token = jar[self.server.cookie].value if self.server.cookie in jar else ''
         return self.server.manager.lookup(token, self.server.tenant)
 
@@ -269,7 +313,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 if set(data) != {'grant'} or len(data['grant']) != 1:
                     raise ValueError()
                 handle = self.server.manager.consume(data['grant'][0], self.server.tenant)
-                self.reply(303, headers=[('Location',getattr(self.server,'landing_path','/odoo')),('Set-Cookie',f'{self.server.cookie}={handle.token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800{getattr(self.server, "secure_cookie", "")}')])
+                handle.cookie_refreshed = self.server.manager.clock()
+                self.reply(303, headers=[('Location',getattr(self.server,'landing_path','/odoo')),('Set-Cookie',self.workspace_cookie(handle))])
             except (ValueError, IdentityError):
                 self.reply(403)
             return
@@ -277,6 +322,11 @@ class GatewayHandler(BaseHTTPRequestHandler):
             self.reply(403);return
         try:
             handle = self.cookie_handle()
+            from . import team_access
+            url = urllib.parse.urlsplit(self.path)
+            if url.path == team_access.PATH:
+                team_access.dispatch(self,handle,url)
+                return
             if urllib.parse.urlsplit(self.path).path == '/web/service-worker.js' and self.command in ('GET','HEAD'):
                 identity = self.server.manager.identity()
                 try:
@@ -304,6 +354,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 self.reply(413);return
             body = self.rfile.read(size) if size else b''
             status,headers,body = self.server.manager.forward(handle,self.command,self.path,dict(self.headers),body)
+            status,headers,body = team_access.decorate(handle,self.path,status,headers,body)
+            status,headers,body = brand_workspace_title(self.path,status,headers,body)
+            now = self.server.manager.clock()
+            if status < 400 and now >= handle.cookie_refreshed + 86400:
+                handle.cookie_refreshed = now
+                headers.append(('Set-Cookie',self.workspace_cookie(handle)))
             self.reply(status, body, headers)
         except IdentityError:
             message = b'<!doctype html><html lang="es"><meta charset="utf-8"><title>Acceso UNO360X</title><h1>Vuelve a iniciar sesi\xc3\xb3n</h1><p>El acceso a esta empresa ya no est\xc3\xa1 disponible.</p><a href="http://127.0.0.1:18072/web/login">Ir a UNO360X</a></html>'

@@ -10,6 +10,7 @@ from control.gateway import GatewayManager,TenantServer,GatewayHandler
 from control.identity import email_key,digest,IdentityError
 from control.web_pages import asset
 from control.unified_access import UnifiedAccessMixin,NativeAccess
+from control.login_email import EmailChallenges
 
 
 def checked_origin(origin):
@@ -41,11 +42,12 @@ class BoundedHTTPServer(ThreadingHTTPServer):
 class HTTPSIdentityServer(BoundedHTTPServer):
  daemon_threads=True
  max_concurrent_requests=32
- def __init__(self,port,database,deliver,launch,origin,allowed_emails,tenant_origin,public_signup=False,operational_login=False,operational_directory=None):
+ def __init__(self,port,database,deliver,launch,origin,allowed_emails,tenant_origin,public_signup=False,operational_login=False,operational_directory=None,email_login=False):
   self.authority=checked_origin(origin);self.origin=origin
   self.tenant_origin=tenant_origin;checked_origin(tenant_origin)
   self.database,self.deliver,self.launch=database,deliver,launch
   self.operational=NativeAccess(directory=operational_directory) if operational_login else None
+  self.email_challenges=EmailChallenges() if email_login else None
   self.public_signup=public_signup
   self.consent_version='public-trial-v1' if public_signup else 'pilot-invitation-v1'
   self.allowed_emails=frozenset(email_key(e) for e in allowed_emails)
@@ -154,11 +156,11 @@ class HTTPSIdentityHandler(UnifiedAccessMixin,LocalHandler):
   self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self' "+self.server.tenant_origin+(" https://erp.uno360x.com" if self.server.operational else "")+"; base-uri 'none'; frame-ancestors 'none'")
   self.end_headers();self.wfile.write(encoded)
  def do_POST(self):
-  if self.server.operational and self.unified_post():return
+  if (self.server.operational or (self.server.email_challenges and self.path in ('/login','/login/code'))) and self.unified_post():return
   if self.path=='/public/logout':self._public_logout();return
   # Never let alternate company-creation or invitation routes bypass pilot capacity.
   permitted={'/trial/register','/verify','/verify/resend','/reset/request','/reset/complete','/login','/logout',
-   '/companies','/trial/draft','/trial/create','/trial/status','/spaces/open','/setup/profile','/setup/status'}
+   '/companies','/trial/draft','/trial/create','/trial/status','/spaces/open','/setup/profile','/setup/status','/invitations/accept','/invitations/activate'}
   if not self._origin_ok():self._reply(403,{'error':'Origen no autorizado.'});return
   if self.path not in permitted:self._reply(404,{'error':'Ruta no disponible.'});return
   if self.path in ('/trial/register','/verify/resend','/reset/request','/login','/trial/create'):
