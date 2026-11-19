@@ -24,6 +24,22 @@ DATABASE = 'Outsolutech_prueba'
 LOGIN_CODE_COOKIE = '__Host-uno360x_login_code'
 
 
+def native_directory_contains(operational, email):
+    """Only the fresh server-owned native directory exempts an existing account.
+
+    This changes throttling, never authentication or authorization. No directory,
+    stale directory or a malformed file retains the normal SaaS account limit.
+    """
+    if not operational or not operational.directory:
+        return False
+    try:
+        directory = json.loads(operational.directory.read_text())
+        return (operational.clock() - 300 <= directory['updated'] <= operational.clock() + 30
+                and digest(email) in directory['logins'])
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -311,7 +327,7 @@ class UnifiedAccessMixin:
                     raise ValueError()
                 with service.db:
                     service.db.execute('BEGIN IMMEDIATE')
-                    allowed = service._allow('unified-login', email, maximum=8, window=300)
+                    allowed = native_directory_contains(self.server.operational, email) or service._allow('unified-login', email, maximum=8, window=300)
                     transport = service._allow('unified-transport', self.client_address[0], maximum=60, window=60)
                 if not allowed or not transport:
                     self._unified_reply(429, {'error': 'Espera unos minutos antes de volver a intentarlo.'}); return True

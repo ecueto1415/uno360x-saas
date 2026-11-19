@@ -82,6 +82,21 @@ class UnifiedAccessTests(unittest.TestCase):
  def test_rate_limit_covers_native_fallback(self):
   for _ in range(8):self.assertEqual(self.request('/login',{'email':'limit@example.test','password':'bad'})[0],400)
   self.assertEqual(self.request('/login',{'email':'limit@example.test','password':PASSWORD})[0],429)
+ def test_known_native_account_has_no_accumulated_account_lock(self):
+  from control.identity import digest
+  directory=Path(self.tmp.name)/'native-directory.json'
+  directory.write_text(json.dumps({'updated':self.now,'logins':[digest('native@example.test')]}))
+  self.server.operational.directory=directory
+  for _ in range(10):
+   self.assertEqual(self.request('/login',{'email':'native@example.test','password':'bad'})[0],400)
+  self.assertEqual(self.login()[0],200)
+ def test_stale_native_directory_keeps_account_throttle(self):
+  from control.unified_access import native_directory_contains
+  from control.identity import digest
+  directory=Path(self.tmp.name)/'native-directory.json'
+  directory.write_text(json.dumps({'updated':self.now-301,'logins':[digest('native@example.test')]}))
+  self.server.operational.directory=directory
+  self.assertFalse(native_directory_contains(self.server.operational,'native@example.test'))
  def test_native_mfa_and_wrong_database_cannot_issue_session(self):
   for info in [{'uid':False,'db':DATABASE,'username':'a@example.test'},{'uid':42,'db':'other','username':'a@example.test'}]:
    self.server.operational.rpc=lambda *args,**kwargs:(info,'cookie')
