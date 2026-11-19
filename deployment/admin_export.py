@@ -88,4 +88,17 @@ def export():
  finally:
   if os.path.exists(temp):os.unlink(temp)
 
+
+ # Resource telemetry is independent of customer databases and credentials.
+ try:
+  import importlib.util
+  history_file=pathlib.Path('/usr/local/lib/uno360x-admin/resource_history.py')
+  spec=importlib.util.spec_from_file_location('uno360x_resource_history',history_file)
+  history=importlib.util.module_from_spec(spec);spec.loader.exec_module(history)
+  history_path=STATE/'resource-history.sqlite3'
+  history.record_sample(history_path,value['server'],value['generated'])
+  os.chown(history_path,0,pwd.getpwnam('uno360x-admin').pw_gid);os.chmod(history_path,0o640)
+ except (OSError,sqlite3.Error,ValueError) as error:
+  print('Resource history unavailable: '+type(error).__name__)
+
 if __name__=='__main__':export()

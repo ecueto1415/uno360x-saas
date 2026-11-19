@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-18",
+  "historical_cpu_ram_samples_imported": 1008,
+  "historical_disk_backfilled": false,
+  "retention_days": 8,
+  "visible_window_days": 7,
+  "aggregation_seconds": 3600,
+  "new_sample_cadence_seconds": 60,
+  "python_history_tests_passed": 5,
+  "existing_admin_tests_passed": 21,
+  "dom_tests_passed": 5,
+  "live_unauthenticated_history_status": 401,
+  "live_assets_and_health_status": 200,
+  "successive_automatic_samples_confirmed": true,
+  "chrome_desktop_cpu_memory_disk_verified": true,
+  "outsolutech_modified": false,
+  "customer_databases_modified": false
+}

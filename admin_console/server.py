@@ -2,9 +2,10 @@
 import json,os,time,hmac,ipaddress,threading
 from pathlib import Path
 from http.cookies import SimpleCookie
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,parse_qs
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from admin_console.auth import Auth,Denied,Limited,csrf
+from admin_console.resource_history import read_history,METRICS
 from admin_console.storage import overlay,increase,QuotaError,Conflict
 from admin_console.deletion_client import request_deletion,is_test_company
 
@@ -56,17 +57,23 @@ class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
   if not self.valid_origin():self.reply(403,{'error':'Origen no autorizado.'});return
   route=urlsplit(self.path).path
-  assets={'/':('text/html','index.html'),'/login':('text/html','index.html'),'/activar':('text/html','index.html'),'/assets/admin.css':('text/css','admin.css'),'/assets/admin.js':('application/javascript','admin.js')}
+  assets={'/':('text/html','index.html'),'/login':('text/html','index.html'),'/activar':('text/html','index.html'),'/assets/admin.css':('text/css','admin.css'),'/assets/admin.js':('application/javascript','admin.js'),'/assets/resource_history.js':('application/javascript','resource_history.js'),'/assets/resource_history.css':('text/css','resource_history.css')}
   if route in assets:
    kind,name=assets[route];self.common(200,kind+'; charset=utf-8',(ROOT/'web'/name).read_bytes());return
   if route=='/api/auth-config':self.reply(200,{'factor':self.server.factor});return
   if route=='/health':self.reply(200,{'status':'available'});return
-  if route not in ('/api/session','/api/overview','/api/activity'):
+  if route not in ('/api/session','/api/overview','/api/activity','/api/resources/history'):
    self.reply(404,{'error':'Ruta no disponible.'});return
   auth=self.auth()
   try:
    account=auth.account(self.cookie(COOKIE),self.agent(),touch=route=='/api/session')
    if route=='/api/session':self.reply(200,account);return
+   if route=='/api/resources/history':
+    params=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
+    metric=params.get('metric',['cpu'])
+    if set(params)-{'metric'} or len(metric)!=1 or metric[0] not in METRICS:
+     self.reply(400,{'error':'Selecciona procesador, memoria o disco.'});return
+    self.reply(200,read_history(self.server.snapshot.with_name('resource-history.sqlite3'),metric[0],now=self.server.clock()));return
    if route=='/api/activity':
     entries=auth.db.execute('SELECT event,occurred FROM audit ORDER BY id DESC LIMIT 60').fetchall();self.reply(200,{'entries':[dict(r) for r in entries]});return
    data=overlay(auth.db,json.loads(self.server.snapshot.read_text()))
