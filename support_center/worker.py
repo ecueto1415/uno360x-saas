@@ -113,6 +113,8 @@ def run(settings, path=STATE, responder=answer, budget=45):
 
 def main():
     settings=settings_and_drop()
+    from .expense_processor import start
+    expense_server=start(settings)
     with open('/var/lib/uno360x-support/worker.lock','a') as lock:
         try:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)

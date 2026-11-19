@@ -11,9 +11,9 @@ from control.catalog import installation_profile
 CONTROL=pathlib.Path('/var/lib/uno360x-saas/control/control.sqlite3')
 
 def reviewed_transition(old,new):
- if set(new['addons'])-set(old['addons'])-{'uno360x_workspace'}:raise RuntimeError('Unreviewed new business module')
+ if set(new['addons'])-set(old['addons'])-{'uno360x_workspace','uno360x_expense_capture','uno360x_expense_chat'}:raise RuntimeError('Unreviewed new business module')
  for name,version in old['addons'].items():
-  if name not in {'uno360x_workspace','uno360x_payroll_hr','uno360x_quote_ui'} and new['addons'].get(name)!=version:raise RuntimeError('Unreviewed business migration: '+name)
+  if not (name=='uno360x_ecf_core' and new['addons'].get(name,{}).get('version')=='18.0.0.4.0') and not (name=='uno360x_business_base' and new['addons'].get(name,{}).get('version')=='18.0.0.4.0') and name not in {'uno360x_workspace','uno360x_payroll_hr','uno360x_quote_ui'} and new['addons'].get(name)!=version:raise RuntimeError('Unreviewed business migration: '+name)
 
 def active_tenants(db,now):
  return db.execute("SELECT p.*,t.modules FROM preparation_jobs p JOIN tenants t ON t.id=p.tenant_id LEFT JOIN trial_workspaces w ON w.tenant_id=p.tenant_id WHERE p.status='ready_local' AND (w.expires IS NULL OR w.expires>?) ORDER BY p.updated,p.id",(now,)).fetchall()

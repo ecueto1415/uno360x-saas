@@ -5,7 +5,7 @@
     <field name="inherit_id" ref="account.view_move_form"/>
     <field name="arch" type="xml">
       <xpath expr="//sheet" position="inside">
-        <group string="Gasto preparado por Jenifer" invisible="not uno_photo_hash" groups="account.group_account_user">
+        <group string="Gasto preparado por Jenifer" invisible="not uno_photo_hash" groups="account.group_account_user,account.group_account_manager">
           <field name="uno_photo_hash" invisible="1"/>
           <field name="uno_photo_source_ncf"/>
           <field name="uno_photo_expense_type" readonly="state != 'draft'"/>

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release": "0.4.0-workspace",
+  "release": "company-cert-files-v1",
   "odoo_series": "18.0",
   "production_deployment": false,
   "base": [
@@ -8,7 +8,9 @@
     "uno360x_quote_ui",
     "uno360x_ecf_core",
     "uno360x_auth_bridge",
-    "uno360x_workspace"
+    "uno360x_workspace",
+    "uno360x_expense_capture",
+    "uno360x_expense_chat"
   ],
   "options": {
     "payroll_hr": [

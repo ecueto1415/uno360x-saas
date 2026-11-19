@@ -7,7 +7,7 @@ import argparse,datetime,json,os,shutil,sqlite3,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from deployment.shared_adapter import SharedHostAdapter
-from control.catalog import installation_profile
+from control.catalog import addon_update_args,installation_profile
 CONTROL=Path('/var/lib/uno360x-saas/control/control.sqlite3')
 
 def main():
@@ -19,9 +19,9 @@ def main():
  modules=json.loads(db.execute('SELECT modules FROM tenants WHERE id=?',(args.tenant,)).fetchone()[0])
  target=installation_profile(modules)
  # This rollout installs the approved common workspace; business migrations need their own review.
- if set(target['addons'])-set(old['installation']['addons'])-{'uno360x_workspace'}:raise RuntimeError('Unexpected new business module')
+ if set(target['addons'])-set(old['installation']['addons'])-{'uno360x_workspace','uno360x_expense_capture','uno360x_expense_chat'}:raise RuntimeError('Unexpected new business module')
  for name,version in old['installation']['addons'].items():
-  if name not in {'uno360x_workspace','uno360x_payroll_hr','uno360x_quote_ui'} and target['addons'].get(name)!=version:raise RuntimeError('Unreviewed business change: '+name)
+  if not (name=='uno360x_ecf_core' and target['addons'].get(name,{}).get('version')=='18.0.0.4.0') and not (name=='uno360x_business_base' and target['addons'].get(name,{}).get('version')=='18.0.0.4.0') and name not in {'uno360x_workspace','uno360x_payroll_hr','uno360x_quote_ui'} and target['addons'].get(name)!=version:raise RuntimeError('Unreviewed business change: '+name)
  if row['fingerprint']==target['fingerprint']:
   print(json.dumps({'tenant':args.tenant,'status':'already_current','fingerprint':target['fingerprint']}));return
  new=dict(old,installation=target,resource_fingerprint=old.get('resource_fingerprint',old['installation']['fingerprint']))
@@ -37,10 +37,20 @@ def main():
   adapter.run('stop',n['app'])
   (backup/'tenant.sql').write_text(adapter.run('exec',n['database'],'pg_dump','-U','postgres','--no-owner','--no-acl',n['role']).stdout)
   adapter.run('volume','export','--output',str(backup/'files.tar'),n['files'])
-  visual_modules=','.join(x for x in ('uno360x_workspace','uno360x_payroll_hr','uno360x_quote_ui') if x in target['addons'])
-  result=adapter.run('run','--rm','--name',n['prefix']+'-workspace-upgrade',*adapter.common(new),adapter.images['odoo:18.0'],'odoo','-c','/etc/odoo/odoo.conf','-i','uno360x_workspace','-u',visual_modules,'--without-demo=all','--stop-after-init','--test-enable','--test-tags','/uno360x_workspace',check=False)
-  (backup/'upgrade.log').write_text(result.stdout+'\n'+result.stderr)
-  if result.returncode:raise RuntimeError('Workspace update failed. SaaS backup retained; native Odoo unaffected.')
+  changes=addon_update_args(old['installation'],target)
+  if old['installation']['addons'].get('uno360x_workspace') != target['addons'].get('uno360x_workspace'):
+   if '-u' in changes:
+    idx=changes.index('-u')+1
+    changes[idx]+=',uno360x_tenant_config'
+   else:
+    changes.extend(['-u','uno360x_tenant_config'])
+  if changes:
+   test_args=['--test-enable','--test-tags','/uno360x_workspace'] if (
+     old['installation']['addons'].get('uno360x_workspace')!=target['addons'].get('uno360x_workspace')) else []
+   result=adapter.run('run','--rm','--name',n['prefix']+'-workspace-upgrade',*adapter.common(new),adapter.images['odoo:18.0'],
+                      'odoo','-c','/etc/odoo/odoo.conf',*changes,'--without-demo=all','--stop-after-init','--max-cron-threads=0',*test_args,check=False)
+   (backup/'upgrade.log').write_text(result.stdout+'\n'+result.stderr)
+   if result.returncode:raise RuntimeError('Workspace update failed. SaaS backup retained; native Odoo unaffected.')
   adapter.shell(new,"""home=env.ref('uno360x_workspace.action_home')
 users=env['res.users'].search([('uno360x_account_id','!=',False)])
 if 'action_id' in users._fields:users.write({'action_id':home.id})

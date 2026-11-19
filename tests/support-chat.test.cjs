@@ -4,10 +4,10 @@ const {JSDOM}=require('jsdom');
 const fs=require('node:fs'),path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../support_center/web/chat.js'),'utf8');
 const wait=()=>new Promise(r=>setTimeout(r,20));
-function setup(t,fetcher,lang='es_DO'){
+function setup(t,fetcher,lang='es_DO',expenseAllowed=false){
  const dom=new JSDOM(`<html lang="${lang}"><body><a href="/uno360x-ayuda">Ayuda</a></body></html>`,{url:'https://piloto.uno360x.com/uno360x-resumen',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window,calls=[];
- w.fetch=async(url,options)=>{calls.push({url,options});const result=fetcher?await fetcher(url,options):{cases:[],selected:null,messages:[],csrf_token:'safe-token'};return {ok:true,json:async()=>result};};
+ w.fetch=async(url,options)=>{if(url==='/__expenses')return {ok:true,json:async()=>({enabled:expenseAllowed})};calls.push({url,options});const result=fetcher?await fetcher(url,options):{cases:[],selected:null,messages:[],csrf_token:'safe-token'};return {ok:true,json:async()=>result};};
  w.eval(source);t.after(()=>w.close());return {w,d:w.document,calls};
 }
 async function openExisting(w,d){
@@ -90,4 +90,14 @@ test('older history is loaded once and retained across refreshes without duplica
  assert.equal(d.querySelector('.us-older').hidden,true);
  d.querySelector('.us-close').click();d.querySelector('.us-launch').click();await wait();
  assert.equal(d.querySelectorAll('.us-message').length,3);assert.equal(d.querySelector('.us-older').hidden,true);
+});
+
+test('expense shortcut is shown only after accounting capability is verified',async t=>{
+ const allowed=setup(t,null,'es_DO',true);
+ allowed.d.querySelector('.us-launch').click();await wait();
+ assert.equal(allowed.d.querySelector('.us-expense').hidden,false);
+ assert.equal(allowed.d.querySelector('.us-expense').getAttribute('href'),'/uno360x/jenifer/gastos');
+ const denied=setup(t,null,'es_DO',false);
+ denied.d.querySelector('.us-launch').click();await wait();
+ assert.equal(denied.d.querySelector('.us-expense').hidden,true);
 });

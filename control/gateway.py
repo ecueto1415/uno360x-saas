@@ -324,8 +324,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
             handle = self.cookie_handle()
             from . import team_access
             from . import support
+            from . import expense_chat
             from . import subscription
             url = urllib.parse.urlsplit(self.path)
+            if url.path == expense_chat.PATH:
+                expense_chat.dispatch(self,handle,url)
+                return
             if url.path == subscription.PATH or url.path.startswith(subscription.ASSET + '/'):
                 subscription.dispatch(self,handle,url)
                 return

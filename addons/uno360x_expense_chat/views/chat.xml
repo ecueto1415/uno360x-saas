@@ -1,0 +1,26 @@
+<odoo>
+ <template id="shortcut" inherit_id="uno360x_workspace.jenifer">
+  <xpath expr="//t[@t-call='uno360x_workspace.shell']" position="inside">
+   <section class="ux-card" t-if="u.has_group('account.group_account_user') or u.has_group('account.group_account_manager')">
+    <h2>Gastos con fotos</h2><p>Envía una factura a Jenifer para preparar un borrador y revisarlo en Contabilidad.</p>
+    <a class="ux-button" href="/uno360x/jenifer/gastos">Registrar gasto con foto</a>
+   </section>
+  </xpath>
+ </template>
+ <template id="page"><t t-call="uno360x_workspace.shell">
+  <link rel="stylesheet" href="/uno360x_expense_chat/static/chat.css?v=1"/>
+  <main class="ux-expense-chat">
+   <header class="ux-intro"><div><p class="ux-eyebrow">JENIFER · TU EMPRESA</p><h1>Gastos con fotos</h1><p>Preparo el borrador. Contabilidad revisa y confirma.</p></div><a class="ux-button secondary" href="/uno360x/area/billing?selection=vendors">Ver facturas de proveedores</a></header>
+   <section class="ux-card"><p>Adjunta una factura JPEG o PNG de hasta 2 MB. Su proveedor debe existir con el RNC correcto. Si un dato no se entiende, te pediré que lo aclares.</p>
+    <p class="expense-private">La foto queda en esta empresa cuando se crea el borrador. No se comparte con los casos del equipo de soporte. No confirma facturas, registra pagos ni presenta el 606.</p>
+    <form id="expense-form"><label for="expense-photo">Foto de la factura</label><input id="expense-photo" type="file" accept="image/jpeg,image/png" required="required"/>
+     <img id="expense-preview" alt="Vista previa de tu factura" hidden="hidden"/>
+     <label for="expense-message">Mensaje para Jenifer</label><textarea id="expense-message" rows="3" maxlength="2000" placeholder="Registra este gasto y déjalo en borrador. Puedes añadir aquí un dato que no se lea bien."/>
+     <button class="ux-button" type="submit" disabled="disabled">Preparar borrador</button>
+    </form><p id="expense-status" role="status">Comprobando tus permisos…</p>
+    <div id="expense-reply" role="log" aria-live="polite"/>
+   </section>
+   <section class="ux-card"><h2>Tus gastos preparados</h2><p>Últimos registros que preparaste en esta empresa.</p><div id="expense-history"/></section>
+  </main><script defer="defer" src="/uno360x_expense_chat/static/chat.js?v=1"/>
+ </t></template>
+</odoo>

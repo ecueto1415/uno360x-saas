@@ -7,7 +7,7 @@
     <section id="us-panel" hidden role="dialog" aria-label="Soporte UNO360X">
       <header><div><strong>Jenifer · Soporte UNO360X</strong><small>Estamos para ayudarte</small></div><button type="button" class="us-close" aria-label="Cerrar soporte">×</button></header>
       <p class="us-privacy">Cuéntanos qué necesitas. No envíes contraseñas, códigos ni certificados. Este chat se comparte con el equipo de soporte.</p>
-      <div class="us-tools"><small class="us-continuous">Tu conversación queda guardada en esta empresa.</small><button type="button" class="us-older" hidden>Ver mensajes anteriores</button></div>
+      <div class="us-tools"><small class="us-continuous">Tu conversación queda guardada en esta empresa.</small><button type="button" class="us-older" hidden>Ver mensajes anteriores</button><a class="us-expense" hidden href="/uno360x/jenifer/gastos">Registrar gasto con foto</a></div>
       <div class="us-messages" role="log" aria-live="polite"></div><p class="us-status" role="status"></p>
       <form><label for="us-text">Tu mensaje</label><textarea id="us-text" rows="3" maxlength="3000" required placeholder="¿En qué te ayudamos?"></textarea>
       <div class="us-actions"><button type="button" class="us-human">Hablar con el equipo</button><button type="button" class="us-ai" hidden>Volver a Jenifer</button><button type="submit" class="us-send">Enviar</button></div></form>
@@ -104,7 +104,14 @@
   }
   launch.onclick = () => {
     panel.hidden = !panel.hidden; launch.setAttribute('aria-expanded', String(!panel.hidden));
-    if (panel.hidden) { generation++; clearTimeout(poll); } else { refresh(); $('#us-text').focus(); }
+    if (panel.hidden) { generation++; clearTimeout(poll); } else {
+      refresh(); $('#us-text').focus();
+      if(!root.dataset.expenseChecked){
+        root.dataset.expenseChecked='1';
+        fetch('/__expenses',{credentials:'same-origin',cache:'no-store'})
+          .then(r=>r.ok?r.json():null).then(v=>{if(v?.enabled)$('.us-expense').hidden=false;}).catch(()=>{});
+      }
+    }
   };
   $('.us-close').onclick = () => { panel.hidden = true; launch.setAttribute('aria-expanded','false'); generation++; clearTimeout(poll); launch.focus(); };
   $('.us-older').onclick = async () => {

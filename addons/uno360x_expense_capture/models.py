@@ -5,6 +5,7 @@ from psycopg2 import IntegrityError
 from odoo import api, fields, models, Command
 from odoo.exceptions import AccessError, UserError
 from .photo import inspect_photo, read_photo
+ACCOUNTANTS = 'account.group_account_user,account.group_account_manager'
 
 
 def amount(value):
@@ -32,22 +33,24 @@ class Move(models.Model):
             ('photo_ncf_partner_unique', 'UNIQUE(company_id, partner_id, uno_photo_source_ncf)', 'Este comprobante ya está registrado para el proveedor.'),
         ]
     uno_photo_hash = fields.Char(copy=False, readonly=True, index=True,
-                                  groups='account.group_account_user')
+                                  groups=ACCOUNTANTS)
     uno_photo_pending = fields.Text(copy=False, readonly=True,
-                                     groups='account.group_account_user')
+                                     groups=ACCOUNTANTS)
     uno_photo_expense_type = fields.Selection(
         [(f'{i:02}', label) for i, label in enumerate([
             'Gastos de personal', 'Trabajos, suministros y servicios', 'Arrendamientos',
             'Activos fijos', 'Representación', 'Otras deducciones admitidas',
             'Gastos financieros', 'Gastos extraordinarios', 'Costo de venta',
             'Adquisiciones de activos', 'Seguros'], 1)],
-        string='Clasificación del gasto capturado', copy=False, groups='account.group_account_user')
+        string='Clasificación del gasto capturado', copy=False, groups=ACCOUNTANTS)
     uno_photo_source_ncf = fields.Char('Comprobante de la foto', copy=False, readonly=True,
-                                        groups='account.group_account_user')
+                                        groups=ACCOUNTANTS)
 
     def _uno_photo_number(self):
         self.ensure_one()
-        if hasattr(self, '_uno606_number'):
+        if self.uno_photo_source_ncf:
+            return self.uno_photo_source_ncf
+        if hasattr(self, '_uno606_number') and self.env.user.has_group('account.group_account_user'):
             return self._uno606_number()
         return str(self.uno_photo_source_ncf or self.ref or '').strip().upper()
 
@@ -57,7 +60,7 @@ class Capture(models.AbstractModel):
     _description = 'Borradores de gastos desde fotos con permisos del solicitante'
 
     def _guard(self):
-        if self.env.su or not self.env.user.has_group('account.group_account_user'):
+        if self.env.su or not any(self.env.user.has_group(g) for g in ACCOUNTANTS.split(',')):
             raise AccessError('Solo contabilidad autorizada puede preparar gastos desde fotos.')
         self.env['account.move'].check_access('create')
 
@@ -68,15 +71,44 @@ class Capture(models.AbstractModel):
             result = read_photo(filename, raw)
         except ValueError as error:
             raise UserError(str(error)) from None
+        result.update(self.capture_options())
+        result['advertencia'] += ' El OCR puede confundir 0/O y 1/I. Si el NCF no es inequívoco, pide confirmar ese dato.'
+        return result
+
+    @api.model
+    def capture_options(self):
+        self._guard()
         taxes = self.env['account.tax'].search([
             ('company_id', '=', self.env.company.id), ('type_tax_use', '=', 'purchase'),
             ('active', '=', True)])
-        result['impuestos_disponibles'] = [{
+        return {'enabled': True, 'company_id': self.env.company.id, 'user_id': self.env.uid,
+            'today': str(fields.Date.context_today(self)),
+            'monedas': self.env['res.currency'].search([('active','=',True)]).mapped('name'),
+            'impuestos_disponibles': [{
             'id': t.id, 'nombre': t.name, 'importe': t.amount,
             'tipo': t.amount_type, 'incluido': t.price_include,
-            'rol_606': t.uno606_role if 'uno606_role' in t._fields else None} for t in taxes]
-        result['advertencia'] += ' El OCR puede confundir 0/O y 1/I. Si el NCF no es inequívoco, pide confirmar ese dato.'
-        return result
+            'rol_606': t.uno606_role if 'uno606_role' in t._fields and self.env.user.has_group('account.group_account_user') else None} for t in taxes]}
+
+    @api.model
+    def capture_draft(self, filename, image, data):
+        self._guard()
+        import base64
+        if not isinstance(image, str) or len(image) > 2_700_000 or not isinstance(data, dict):
+            raise UserError('Adjunta una foto de hasta 2 MB.')
+        try:
+            raw = base64.b64decode(image, validate=True)
+        except (ValueError, TypeError):
+            raise UserError('Foto inválida.') from None
+        return self._prepare(filename, raw, data)
+
+    @api.model
+    def capture_history(self):
+        self._guard()
+        moves = self.env['account.move'].search([
+            ('company_id','=',self.env.company.id), ('create_uid','=',self.env.uid),
+            ('uno_photo_hash','!=',False), ('move_type','=','in_invoice')],
+            order='id desc', limit=30)
+        return [self._result(m, 'existing') for m in moves]
 
     @api.model
     def _prepare(self, filename, raw, data):
@@ -154,12 +186,12 @@ class Capture(models.AbstractModel):
             if len(taxes) != len(set(tax_ids)) or any(
                 t.company_id != company or t.type_tax_use != 'purchase' or not t.active or
                 t.amount_type != 'percent' or t.price_include or t.amount < 0 or
-                (t.uno606_role not in ('vat', 'exempt') if 'uno606_role' in t._fields
+                (t.uno606_role not in ('vat', 'exempt') if 'uno606_role' in t._fields and self.env.user.has_group('account.group_account_user')
                  else t.amount not in (0, 16, 18)) for t in taxes):
                 raise UserError('Impuesto no compatible con esta captura. Contabilidad debe revisar retenciones y otros impuestos.')
             values = {'name': name, 'quantity': float(qty),
                 'price_unit': float(price), 'tax_ids': [Command.set(taxes.ids)]}
-            if 'uno606_nature' in self.env['account.move.line']._fields:
+            if 'uno606_nature' in self.env['account.move.line']._fields and self.env.user.has_group('account.group_account_user'):
                 values['uno606_nature'] = nature
             lines.append(Command.create(values))
         expense = data.get('tipo_gasto') or False
@@ -177,7 +209,7 @@ class Capture(models.AbstractModel):
                     'invoice_date': issued, 'invoice_line_ids': lines,
                     'uno_photo_expense_type': expense,
                     'uno_photo_hash': checksum, 'uno_photo_pending': '\n'.join(dict.fromkeys(pending))}
-                if 'uno606_ncf' in moves._fields:
+                if 'uno606_ncf' in moves._fields and self.env.user.has_group('account.group_account_user'):
                     values.update(uno606_ncf=ncf, uno606_expense_type=expense, uno606_reviewed=False)
                 move = moves.with_context(default_move_type='in_invoice').create(values)
                 if abs(Decimal(str(move.amount_total)) - amount(data['total'])) > Decimal('0.01') or abs(

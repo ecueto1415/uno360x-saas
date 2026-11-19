@@ -3,7 +3,7 @@ import sys,pathlib,json,os,pwd,time,itertools,secrets,subprocess,shutil,tarfile
 ROOT=pathlib.Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 from control.container_adapter import ContainerAdapter
 from control.template_install import TemplateInstallMixin
-from control.catalog import installation_profile
+from control.catalog import addon_update_args,installation_profile
 from control.template_cache import CACHE,RECIPE,cache_key,checksum,verified_cache,custom_addons
 OPTIONS=['jenifer_ai','payroll_hr','projects_services']
 class Builder(TemplateInstallMixin,ContainerAdapter):
@@ -20,7 +20,31 @@ class Builder(TemplateInstallMixin,ContainerAdapter):
    args=(*args,'--load-language','es_DO','-u','uno360x_auth_bridge,uno360x_workspace')
   return super().run(*args,**kw)
 
-def build(modules,images):
+def upgrade_pristine(adapter, snapshot, previous, marker, log):
+ if marker.exists() and json.loads(marker.read_text())['fingerprint']==snapshot['installation']['fingerprint']:
+  adapter.check_modules(snapshot)
+  return
+ seed=dict(snapshot,installation=previous,resource_fingerprint=snapshot['installation']['fingerprint'])
+ if not marker.exists():
+  adapter.installation(seed)
+ if json.loads(marker.read_text())['fingerprint']!=previous['fingerprint']:
+  raise RuntimeError('Unexpected pristine seed fingerprint')
+ changes=addon_update_args(previous,snapshot['installation'])
+ if previous['addons'].get('uno360x_workspace') != snapshot['installation']['addons'].get('uno360x_workspace'):
+  if '-u' in changes:
+   changes[changes.index('-u')+1]+=',uno360x_tenant_config'
+  else:
+   changes.extend(['-u','uno360x_tenant_config'])
+ if changes:
+  result=ContainerAdapter.run(adapter,'run','--rm',*adapter.common(snapshot),adapter.images['odoo:18.0'],
+      'odoo','-c','/etc/odoo/odoo.conf',*changes,'--without-demo=all','--stop-after-init','--max-cron-threads=0',check=False)
+  log.write_text(result.stdout+'\n'+result.stderr)
+  if result.returncode:raise RuntimeError('Pristine addon upgrade failed; private log retained')
+ adapter.check_modules(snapshot)
+ marker.write_text(json.dumps({'fingerprint':snapshot['installation']['fingerprint']}))
+
+
+def build(modules,images,previous=None,previous_root=None):
  profile=installation_profile(modules);key=cache_key(profile,images)
  if verified_cache(profile,images):return {'modules':modules,'cached':True}
  # Do not compete with a customer creation job or start under low memory.
@@ -33,26 +57,39 @@ def build(modules,images):
  pending=c.execute("SELECT count(*) FROM preparation_jobs WHERE status='running' OR (status='queued' AND COALESCE(current_step,'')!='capacity')").fetchone()[0];c.close()
  if pending:raise RuntimeError('Customer provisioning has priority')
  stage=CACHE/'ready'/('.building-'+key);stage.mkdir(mode=0o700,parents=True,exist_ok=True);resume=stage/'builder.json'
- tid=json.loads(resume.read_text())['tenant_id'] if resume.exists() else secrets.token_hex(16)
- resume.write_text(json.dumps({'tenant_id':tid}));resume.chmod(0o600)
+ if resume.exists():
+  build_state=json.loads(resume.read_text())
+ else:
+  build_state={'tenant_id':secrets.token_hex(16)}
+  if (previous and previous_root and set(previous['addons'])<=set(profile['addons'])
+      and set(profile['addons'])-set(previous['addons'])<={'uno360x_expense_capture','uno360x_expense_chat'}
+      and set(custom_addons(profile,ROOT))-set(custom_addons(previous,previous_root))<= {'uno360x_expense_capture','uno360x_expense_chat'} and verified_cache(previous,images)):
+   if all(tuple(map(int,profile['addons'][name]['version'].split('.'))) >=
+          tuple(map(int,previous['addons'][name]['version'].split('.'))) for name in previous['addons']):
+    build_state['pristine_seed']=previous
+  resume.write_text(json.dumps(build_state));resume.chmod(0o600)
+ tid=build_state['tenant_id']
  s={'tenant_id':tid,'slug':'pristine-template','hostname':'template.invalid','mode':'local_laboratory','installation':profile}
  a=Builder(CACHE/'build',images,ROOT,'template-builder','uno360x-template-');a.database_limits=['--cpus','0.25','--memory','192m'];a.database_command=['postgres','-c','shared_buffers=32MB','-c','max_connections=25','-c','maintenance_work_mem=32MB','-c','max_locks_per_transaction=256']
  started=time.monotonic();n=a.names(s)
  try:
   with a.lock(tid):
    a.network(s);a.database(s)
-   base=installation_profile([]);seed_profile=base if modules and verified_cache(base,images) else None
-   if seed_profile is None:
-    for manifest in sorted((CACHE/'ready').glob('*/manifest.json'),key=lambda p:p.stat().st_mtime,reverse=True):
-     meta=json.loads(manifest.read_text());candidate=meta.get('installation')
-     if not candidate or set(candidate['addons'])!=set(base['addons']):continue
-     if any(candidate['addons'][k]!=base['addons'][k] for k in base['addons'] if k!='uno360x_workspace'):continue
-     if verified_cache(candidate,images):seed_profile=candidate;break
-   if not (n['directory']/'installed.json').exists() and seed_profile and seed_profile['fingerprint']!=profile['fingerprint']:
-    seed=dict(s,installation=seed_profile,resource_fingerprint=profile['fingerprint']);a.installation(seed)
-    # Builder-only transition from the empty Base seed to this exact profile.
-    (n['directory']/'installed.json').unlink()
-   a.installation(s)
+   if build_state.get('pristine_seed'):
+    upgrade_pristine(a,s,build_state['pristine_seed'],n['directory']/'installed.json',n['directory']/'targeted-upgrade.log')
+   else:
+    base=installation_profile([]);seed_profile=base if modules and verified_cache(base,images) else None
+    if seed_profile is None:
+     for manifest in sorted((CACHE/'ready').glob('*/manifest.json'),key=lambda p:p.stat().st_mtime,reverse=True):
+      meta=json.loads(manifest.read_text());candidate=meta.get('installation')
+      if not candidate or set(candidate['addons']) not in (set(base['addons']),set(base['addons'])-{'uno360x_expense_capture','uno360x_expense_chat'}):continue
+      if any(candidate['addons'][k]!=base['addons'][k] for k in candidate['addons'] if k!='uno360x_workspace'):continue
+      if verified_cache(candidate,images):seed_profile=candidate;break
+    if not (n['directory']/'installed.json').exists() and seed_profile and seed_profile['fingerprint']!=profile['fingerprint']:
+     seed=dict(s,installation=seed_profile,resource_fingerprint=profile['fingerprint']);a.installation(seed)
+     # Builder-only transition from the empty Base seed to this exact profile.
+     (n['directory']/'installed.json').unlink()
+    a.installation(s)
    a.shell(s,"""import secrets,json
 print('FACTORY_DEFAULTS '+json.dumps({model:[{'id':x.id,'name':x.display_name,'xmlid':x.get_external_id().get(x.id)} for x in env[model].with_context(active_test=False).search([],limit=8)] for model in ('project.task','account.analytic.line','hr.employee') if model in env.registry}))
 assert not env['uno360x.tenant.identity'].search_count([])
@@ -102,7 +139,7 @@ env.cr.commit();print('UNO360X_OK')
    (stage/'manifest.json').write_text(json.dumps(meta));(stage/'manifest.json').chmod(0o600)
    resume.unlink(missing_ok=True)
    target=CACHE/'ready'/key;stage.rename(target);verified_cache(profile,images)
-   return {'modules':modules,'build_seconds':meta['build_seconds'],'cached':False}
+   return {'modules':modules,'build_seconds':meta['build_seconds'],'cached':False,'reused_pristine':bool(build_state.get('pristine_seed'))}
  finally:
   ready=(CACHE/'ready'/key).exists()
   # Failed factory jobs keep their PRIVATE synthetic state for diagnostics and
@@ -124,10 +161,13 @@ def main():
  combinations=[list(x) for n in range(4) for x in itertools.combinations(OPTIONS,n)]
  # Prioritize Base, full suite, then individual plans and combinations.
  combinations=[[],OPTIONS]+[x for x in combinations if x and x!=OPTIONS]
+ previous_root=pathlib.Path('/srv/uno360x-saas/master-current').resolve()
  journal=[]
  for modules in combinations:
   (CACHE/'progress.json').write_text(json.dumps({'current':modules,'completed':journal,'updated':time.time()}))
-  try:result=build(modules,images)
+  try:
+   previous=installation_profile(modules,previous_root) if previous_root!=ROOT and (previous_root/'product/catalog.json').is_file() else None
+   result=build(modules,images,previous,previous_root)
   except Exception as error:
    (CACHE/'progress.json').write_text(json.dumps({'current':modules,'completed':journal,'failed':type(error).__name__,'updated':time.time()}));raise
   journal.append(result);print(json.dumps(result),flush=True)

@@ -5,7 +5,7 @@ After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/uno360x-support/current
-ExecStart=/usr/bin/python3 -m support_center.worker
+ExecStart=/opt/odoo18/venv/bin/python3.12 -m support_center.worker
 UMask=0007
 TimeoutStartSec=110
 Restart=on-failure
@@ -16,8 +16,8 @@ ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/var/lib/uno360x-support
 CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
-MemoryMax=160M
-CPUQuota=25%
+MemoryMax=320M
+CPUQuota=35%
 
 [Install]
 WantedBy=multi-user.target
