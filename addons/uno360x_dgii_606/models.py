@@ -277,7 +277,9 @@ class Report(models.TransientModel):
             for key,_ in columns:
                 value=row.get(key)
                 if key=='retention_only': value='Sí' if value else 'No'
-                elif key=='payment_form': value=dict(PAYMENTS).get(value,value)
+                elif key=='payment_form':
+                    pending_payment=any(p.get('move_id')==row.get('move_id') and p['field']=='Pagos' for p in result['errors'])
+                    value='Por confirmar' if pending_payment else dict(PAYMENTS).get(value,value)
                 elif key in ('issued','paid') and value:
                     value=f'{value[6:8]}/{value[4:6]}/{value[:4]}'
                 elif value is False or value is None or value=='': value='—'
