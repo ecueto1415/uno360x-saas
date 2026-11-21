@@ -29,9 +29,9 @@ historical name). No SaaS tenant, invoice or fiscal configuration was changed.
   added to a file. The transport reads this restricted record into RAM.
 - Previous Microsoft outgoing server 2 is archived, with its configuration retained.
 - `jenifer_directa.mail_provider=zoho` and `jenifer_directa.zoho_server_id=4`.
-- **Temporary:** `jenifer_directa.inbox_provider=microsoft`. The transport continues
-  to read Microsoft's retained copy through existing OAuth. Zoho IMAP works, but
-  the Microsoft-origin test messages were classified as spam by Zoho.
+- Final configuration: `jenifer_directa.inbox_provider=zoho`. The temporary
+  Microsoft inbox fallback was removed after a new authenticated message reached
+  Zoho Inbox, was read in full and answered successfully from the same transport.
 - Existing scheduled-mail pause, collection schedules and cron activation were
   not changed. The failed/paused service was not globally resumed.
 - Native Odoo was reloaded once (service restart completed in 2.05 seconds), so
@@ -60,13 +60,24 @@ SPF domain or an X-MS internal marker cannot override a failed Zoho verdict.
   one Zoho Sent copy verified after indexing completed.
 - Effective configured hybrid transport -> ecueto: accepted and received; retry
   returned duplicate; one Microsoft Sent archival copy verified.
-- Microsoft -> Jenifer public address -> Zoho routing alias: test found in Zoho
-  spam; aligned SPF was correctly recognized after the authentication parser change.
+- Initial Microsoft -> Jenifer public address -> Zoho routing alias tests were
+  classified as spam. After Microsoft DKIM activation, fresh test
+  `20261121-dkim1` reached Zoho Inbox with DKIM and aligned SPF passing; it was
+  absent from the spam folder. Full body retrieval and internal sender trust passed.
+- Reply from the pure Zoho transport was received in ecueto's Microsoft mailbox
+  at 17:59:21 UTC / 13:59:21 Santo Domingo. One Zoho Sent copy was verified; retry
+  returned duplicate. No uncertain deliveries remain.
+- Effective provider settings were read back as Zoho/Zoho. The existing Zoho UID
+  checkpoint was advanced only over the identified technical test message (UID 3).
+  No customer messages or historical Microsoft checkpoints were replayed.
+- Read-only Microsoft IMAP verification confirmed that the original incoming test
+  was also retained in Jenifer's Microsoft mailbox. Authoritative DNS still reports
+  the Microsoft MX. Odoo remains active.
 - Eleven isolated transport tests passed, including hybrid routing, TLS, historical
   baseline, common deduplication, uncertain delivery and forged-header rejection.
 - No customer collection, fiscal document or automatic historical reply was sent.
 
-## Pending before moving inbox processing fully to Zoho
+## Completed Microsoft DKIM authentication
 
 Microsoft's custom-domain DKIM had no keys. Keys were created and these CNAMEs
 published in Wix, without replacing the Zoho DKIM selector:
@@ -76,16 +87,15 @@ published in Wix, without replacing the Zoho DKIM selector:
 | selector1._domainkey | selector1-outsolutech-com._domainkey.outsolutech965.w-v1.dkim.mail.microsoft |
 | selector2._domainkey | selector2-outsolutech-com._domainkey.outsolutech965.w-v1.dkim.mail.microsoft |
 
-Both records resolve through public DNS, but Microsoft's enable operation still
-reported DNS synchronization pending at the last check. **Microsoft DKIM signing
-is not yet enabled.** Do not disable spam protection or broadly allow the domain.
+After DNS synchronization, Microsoft accepted the enable operation. Defender shows
+**Enabled — Signing DKIM signatures for this domain**, last checked
+2026-11-21 13:57:21 Santo Domingo. Both CNAME records and their public keys resolve.
+Zoho's existing verified DKIM selector remains separate and enabled. No spam or
+quarantine protection was disabled and no broad domain allow rule was introduced.
 
-After Microsoft accepts/enables DKIM, send a fresh routine test to Jenifer's public
-address. Require Inbox delivery and a valid authentication result, verify body and
-attachment read-only retrieval, then change only `jenifer_directa.inbox_provider`
-to `zoho`. Coordinate its existing checkpoint to avoid replaying setup or historical
-messages. Reload the cached native engine and verify a single reply. Retain the
-Microsoft forwarding copy and license until the history/migration decision is made.
+Microsoft forwarding copies, historical messages and the existing license remain
+in place. Historical mailbox migration and reactivation of paused automatic mail
+jobs are separate from this transport/authentication change.
 
 ## Source and rollback
 
