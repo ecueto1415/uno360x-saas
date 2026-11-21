@@ -1,0 +1,1 @@
+{'name': 'UNO360X - Descarte de licitaciones', 'version': '18.2.1.0.0', 'license': 'LGPL-3', 'depends': ['jenifer_outsolutech'], 'data': ['views.xml'], 'installable': True}
