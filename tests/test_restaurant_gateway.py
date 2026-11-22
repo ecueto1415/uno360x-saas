@@ -23,6 +23,16 @@ class Manager:
         if not handle.active:raise IdentityError('closed')
 
 class RestaurantGatewayTest(unittest.TestCase):
+    def test_restaurant_access_on_both_pos_views_without_duplicates(self):
+        html=b'<main><header class="ua-heading"><div><h1>Punto de venta</h1></div><a>+ Caja</a></header></main>'
+        headers=[('Content-Type','text/html; charset=utf-8')]
+        with patch.object(restaurant,'KEY',SimpleNamespace(is_file=lambda:True)):
+            for route in ('/uno360x-pos','/uno360x/area/pos?q=&selection=all'):
+                result=restaurant.decorate(route,200,headers,html)[2]
+                self.assertIn(b'</h1><a class="ua-primary" href="/uno360x-restaurante/">Restaurante</a>',result)
+                self.assertEqual(restaurant.decorate(route,200,headers,result)[2],result)
+            self.assertEqual(restaurant.decorate('/uno360x/area/sale',200,headers,html)[2],html)
+
     def test_verified_company_and_pos_staff_only(self):
         restaurant._staff_cache.clear()
         h=SimpleNamespace(tenant='a'*32,backend=Backend(),lock=threading.Lock(),active=True)

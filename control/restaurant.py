@@ -99,8 +99,11 @@ def dispatch(handler,handle,url):
         handler.reply(503,b'El POS no pudo completar la solicitud. Conserva el pedido y vuelve a intentar.',[('Content-Type','text/plain; charset=utf-8')])
 
 def decorate(path,status,headers,body):
-    if path.split('?')[0]!='/uno360x-pos' or status!=200 or not KEY.is_file():return status,headers,body
+    if path.split('?')[0] not in ('/uno360x-pos','/uno360x/area/pos') or status!=200 or not KEY.is_file():return status,headers,body
     if not any(k.lower()=='content-type' and 'text/html' in v for k,v in headers):return status,headers,body
     button=b'<section class="ux-card"><h2>Restaurantes y bares</h2><p>Mesas, Cocina, Barra y caja. Piloto en pruebas: sin emision a DGII.</p><a class="ux-button" href="/uno360x-restaurante/">Restaurante</a></section>'
-    if b'/uno360x-restaurante/' not in body:body=body.replace(b'</main>',button+b'</main>',1)
+    if b'/uno360x-restaurante/' not in body:
+        anchor=b'<h1>Punto de venta</h1>'
+        access=b'<a class="ua-primary" href="/uno360x-restaurante/">Restaurante</a>'
+        body=body.replace(anchor,anchor+access,1) if anchor in body else body.replace(b'</main>',button+b'</main>',1)
     return status,headers,body

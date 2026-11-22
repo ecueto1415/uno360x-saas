@@ -61,3 +61,14 @@ los probados. Acceso sin identidad a API devuelve 403. El contenido de todos los
 estados de empresas permaneció idéntico a la copia previa al despliegue.
 OUTSOLUTECH conservó PID 3072027 y el receptor fiscal INCIVI PID 1265678.
 Copia previa: `/var/backups/uno360x-restaurant/split-20261122-152407`.
+
+## Acceso desde ambas vistas de Cajas
+
+El acceso a Restaurante estaba decorado solo en `/uno360x-pos`; la vista Cajas
+`/uno360x/area/pos` mostraba únicamente la caja anterior Panadería. Se agregó
+Restaurante en el encabezado de ambas rutas, junto al área principal, sin renombrar
+ni modificar la caja existente. Tres pruebas Python aprobadas. Se reinició solo
+el gateway SaaS; OUTSOLUTECH y receptor fiscal INCIVI conservaron sus procesos.
+Verificado en navegador con INCIVI: acceso en Cajas, cinco mesas iniciales más
+la antigua Mesa 08 con cuenta abierta conservada, Administrar mesas y guía de
+productos/división visibles. No se agregaron productos ni se cobraron pedidos.
