@@ -4,7 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {makeServer} from './server.mjs';
 import {totals,margin} from './domain.mjs';
 
-test('Piloto Mesa 08, segunda ronda, caja, simulación fiscal y para llevar',async t=>{
+test('Piloto Mesa 03, segunda ronda, caja, simulación fiscal y para llevar',async t=>{
  const server=makeServer(':memory:');await new Promise(r=>server.listen(0,'127.0.0.1',r));
  t.after(()=>new Promise(r=>server.close(r)));
  const base='http://127.0.0.1:'+server.address().port;
@@ -14,7 +14,7 @@ test('Piloto Mesa 08, segunda ronda, caja, simulación fiscal y para llevar',asy
  }
  const stock=async()=>(await (await fetch(base+'/api/state')).json()).state.ingredients.ron.stock;
  await post('open',{fund:200000});
- const {result:o}=await post('order',{service:'mesa',table:8,people:3},'camarero');
+ const {result:o}=await post('order',{service:'mesa',table:3,people:3},'camarero');
  const add=(product,order=o.id,fields={})=>post('add',{order,product,...fields},'camarero');
  const {result:b}=await add('burger',o.id,{note:'Sin cebolla',modifiers:['Sin cebolla']});
  const {result:w}=await add('wings');

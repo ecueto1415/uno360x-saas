@@ -23,7 +23,7 @@ test('Trusted SaaS roles, assignment audit, retry and tenant separation',async t
  }
  assert.equal((await fetch(origin+'/api/state')).status,403);
  await send('open',{fund:0});
- const o=(await send('order',{service:'mesa',table:8,people:4,waiter:'2'})).result;
+ const o=(await send('order',{service:'mesa',table:3,people:4,waiter:'2'})).result;
  assert.deepEqual(o.waiter,people[1]);
  for(const role of ['caja','camarero','cocina','barra'])await send('reassign',{order:o.id,waiter:'3',reason:'Cambio de turno'},role,'2',a,400);
  await send('reassign',{order:o.id,waiter:'99',reason:'Fuera de empresa'},'supervisor','1',a,400);
@@ -36,6 +36,6 @@ test('Trusted SaaS roles, assignment audit, retry and tenant separation',async t
  const audit=changed.state.audits[0];assert.equal(audit.user,'1');assert.equal(audit.userName,'Responsable POS');assert.deepEqual(audit.details.previous,people[1]);assert.deepEqual(audit.details.next,people[2]);assert.equal(audit.details.reason,'Cambio de turno');assert.ok(audit.at);
  await send('open',{fund:0},'supervisor','1',b);
  await send('reassign',data,'supervisor','1',b,400);
- await send('order',{service:'mesa',table:7,people:2,waiter:'3'},'camarero','2',a,400);
- const own=(await send('order',{service:'mesa',table:7,people:2},'camarero','2')).result;assert.deepEqual(own.waiter,people[1]);
+ await send('order',{service:'mesa',table:4,people:2,waiter:'3'},'camarero','2',a,400);
+ const own=(await send('order',{service:'mesa',table:4,people:2},'camarero','2')).result;assert.deepEqual(own.waiter,people[1]);
 });
