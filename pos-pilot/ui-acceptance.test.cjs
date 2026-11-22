@@ -19,7 +19,8 @@ test('Approved POS design keeps restaurant workflow on desktop and mobile',async
   await nav('Mesas').click();await page.locator('[data-action="table"][data-value="8"]').click();await page.getByLabel('Personas').fill('4');await button('Abrir pedido').click();
   for(const product of ['burger','wings','mojito']){await page.locator('[data-action="product"][data-value="'+product+'"]').click();await button('Añadir a la cuenta').click();}
   await page.locator('.order-panel .total').getByText(/1,497.60/).waitFor();
-  assert.equal(await page.locator('.tile img').evaluateAll(images=>images.filter(img=>img.complete&&img.naturalWidth).length),3);
+  await page.waitForFunction(()=>[...document.querySelectorAll('.tile img')].every(img=>img.complete&&img.naturalWidth>=1000));
+  assert.equal(await page.locator('.tile img').evaluateAll(images=>images.filter(img=>img.naturalWidth>=1000).length),3);
   assert.equal(await page.locator('h1').textContent(),'Mesa 08');
   await page.getByRole('searchbox').fill('moj');assert.equal(await page.locator('.tile').count(),1);await page.getByRole('searchbox').fill('');
   await button('Bebidas').click();assert.equal(await page.locator('.tile').count(),1);await button('Todos').click();

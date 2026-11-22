@@ -53,7 +53,7 @@ export function makeServer(file, access=null, inventory=null, origin=null){
   return replies;
  }
  const files={'/':'index.html','/app.mjs':'app.mjs','/domain.mjs':'domain.mjs','/style.css':'style.css',
-  '/images/burger.jpg':'images/burger.jpg','/images/wings.jpg':'images/wings.jpg','/images/mojito.jpg':'images/mojito.jpg'};
+  '/images/burger.jpg':'images/burger-hq.jpg','/images/wings.jpg':'images/wings-hq.jpg','/images/mojito.jpg':'images/mojito-hq.jpg'};
  const content={html:'text/html; charset=utf-8',mjs:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',jpg:'image/jpeg'};
  function reply(res,status,body,mime='application/json; charset=utf-8'){
   res.writeHead(status,{'Content-Type':mime,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',

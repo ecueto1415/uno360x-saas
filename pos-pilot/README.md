@@ -133,3 +133,6 @@ No se publicó en producción ni se modificaron OUTSOLUTECH o INCIVI. Continúan
 
 
 Ajuste de facilidad de uso: móvil/tablet vertical muestran un botón Menú para evitar que las ocho opciones ocupen la pantalla; al seleccionar una sección, la navegación se recoge. Ver pedido y total permanecen accesibles en la barra inferior. Las tres pruebas touch completaron agregar/modificar, enviar y pagar (efectivo, tarjeta, transferencia según dispositivo) y verificaron un único consumo de receta por venta. La prueba detectó y corrigió que el botón fijo quedara deshabilitado tras guardar un producto; forma parte del recorrido de regresión.
+
+
+Fotos de demostración renovadas: hamburguesa, alitas y mojito generados como recursos de menú, 1254×1254 px. Se codificaron en JPEG con calidad 92 sin reducir dimensiones; peso combinado aproximado 1.1 MB. El servidor conserva los enlaces existentes /images/burger.jpg, wings.jpg y mojito.jpg y sirve los nuevos archivos *-hq.jpg; no se modificaron productos, precios ni registros. Los originales pequeños permanecen en el repositorio para trazabilidad. Se comprobó en el navegador del piloto local la resolución nativa de las tres imágenes y ambos accesos a Barra: estación desde el menú y pedido en barra desde el catálogo. En móvil la navegación se despliega con Menú. No se modificó producción.
