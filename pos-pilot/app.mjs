@@ -1,7 +1,9 @@
 import {money,totals,margin} from './domain.mjs';
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const modes={Mesas:'Mesas',Caja:'Caja',Cocina:'Cocina',Barra:'Barra',Inventario:'Inventario y mermas',Reportes:'Reportes y cierre de caja',Menú:'Menú y recetas'};
+const modes={Mesas:'Mesas',Pedidos:'Pedidos',Cocina:'Cocina',Barra:'Barra',Caja:'Caja',Inventario:'Inventario y mermas',Reportes:'Reportes y cierre de caja',Menú:'Menú y recetas'};
+const iconPaths={Mesas:'M4 9h16M6 9V5h12v4M6 9l-2 11M18 9l2 11M8 15h8',Pedidos:'M9 4H5v17h14V4h-4M9 3h6v4H9zM8 12h8M8 16h6',Cocina:'M7 14a4 4 0 0 1-2-7 4 4 0 0 1 7-3 4 4 0 0 1 7 3 4 4 0 0 1-2 7v7H7zM7 17h10',Barra:'M3 3h18l-9 10zM12 13v8M7 21h10',Caja:'M4 9h16v12H4zM7 9V3h10v6M7 14h3M14 14h3M7 17h3M14 17h3',Inventario:'M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10',Reportes:'M4 3v18h17M8 17v-5M13 17V7M18 17v-9',Menú:'M4 4h16v16H4zM8 8h8M8 12h8M8 16h4'};
+const icon=name=>'<svg class="icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+(iconPaths[name]||iconPaths.Menú)+'"/></svg>';
 let inventoryConnected=false;
 let pendingRequest;
 let mode='Caja',state,summary,selected,locked=false,formData,category='',query='',stationPoll;
@@ -26,6 +28,11 @@ async function refresh(renderNow=true){
  const res=await fetch('/api/state',{signal:AbortSignal.timeout(5000)});
  const data=await res.json();if(!res.ok)throw new Error(data.error);
  ({state,summary,inventoryConnected}=data);
+ if(!selected){
+  const table=Number(new URL(location.href).searchParams.get('mesa'));
+  const current=state.orders.find(o=>o.table===table&&!o.closed);
+  if(current){selected=current.id;mode='Caja';}
+ }
  if(data.connected){
   $('.rail-foot').hidden=true;
   $('#role').value=data.connected.role;
@@ -35,15 +42,28 @@ async function refresh(renderNow=true){
 }
 function switchTo(next){mode=next;render();}
 function render(){
- $('#nav').innerHTML=Object.keys(modes).map(n=>action('nav',n,n,n===mode?'active':'')).join('');
- $('#title').textContent=modes[mode];
- $('#view').innerHTML=({Mesas:tables,Caja:register,Cocina:()=>station('cocina'),Barra:()=>station('barra'),Inventario:inventory,Reportes:reports,Menú:menu})[mode]();
+ $('#nav').innerHTML=Object.keys(modes).map((n,i)=>(i===5?'<div class="nav-divider"></div>':'')+action('nav',icon(n)+'<span>'+n+'</span>',n,(n===mode?'active ':'')+(i>4?'secondary-nav':''))).join('');
+ const current=picked();
+ $('#title').textContent=mode==='Caja'&&current?orderName(current):modes[mode];
+ $('#context').textContent=mode==='Caja'&&current?(current.people?current.people+' personas · ':'')+'Pedido #'+current.number:'Restaurantes y bares';
+ $('#shift-status').textContent=state.shift&&!state.shift.closed?'Turno abierto':'Caja cerrada';
+ $('#shift-status').classList.toggle('closed',!state.shift||Boolean(state.shift.closed));
+ $('#view').innerHTML=({Mesas:tables,Pedidos:orders,Caja:register,Cocina:()=>station('cocina'),Barra:()=>station('barra'),Inventario:inventory,Reportes:reports,Menú:menu})[mode]();
+ $('#mobile-orderbar').hidden=mode!=='Caja'||!current;
+ $('#mobile-orderbar button').disabled=locked;
+ $('#mobile-nav-toggle').disabled=locked;
+ document.body.classList.toggle('has-mobile-order',mode==='Caja'&&Boolean(current));
+ $('#mobile-total').textContent=current?money(totals(current.lines,current.service).total):'';
+}
+function orders(){
+ const open=state.orders.filter(o=>!o.closed);
+ return panel('Pedidos en curso','<div class="actions">'+action('nav','Ver mesas','Mesas')+action('new','Para llevar','llevar')+action('new','Pedido en barra','barra')+'</div><div class="grid order-grid">'+(open.map(o=>action('pick','<strong>'+orderName(o)+'</strong><small>Pedido #'+o.number+' · '+o.lines.length+' productos</small><b>'+money(totals(o.lines,o.service).total)+'</b>',o.id,'order-card')).join('')||'<p class="muted">No hay pedidos abiertos.</p>')+'</div>');
 }
 function tables(){
  const active=state.orders.filter(o=>!o.closed);
  return '<div class="layout">'+panel('Salón principal','<div class="grid">'+Array.from({length:9},(_,i)=>{
   const n=i+1,o=active.find(o=>o.table===n);
-  return action('table','Mesa '+String(n).padStart(2,'0')+'<br><small>'+(o?o.people+' personas · En servicio':'Libre')+'</small>',n,o?'selected':'');
+  return action('table',icon('Mesas')+'<strong>Mesa '+String(n).padStart(2,'0')+'</strong><small>'+(o?o.people+' personas · En servicio':'Libre')+'</small>',n,'table-card '+(o?'selected':''));
  }).join('')+'</div>')+panel('Otros servicios',action('new','Para llevar','llevar')+' '+action('new','Pedido en barra','barra')+
  active.filter(o=>!o.table).map(o=>line(orderName(o)+' #'+o.number,action('pick','Abrir',o.id))).join(''))+'</div>';
 }
@@ -52,19 +72,19 @@ function register(){
  const o=picked();
  const cats=[...new Set(state.products.map(p=>p.category))];
  const products=state.products.filter(p=>(!category||p.category===category)&&p.name.toLowerCase().includes(query.toLowerCase()));
- const catalog='<div class="tabs">'+action('nav','En mesa','Mesas')+action('new','Para llevar','llevar')+action('new','Barra','barra')+'</div><input class="search" id="search" type="search" aria-label="Buscar producto" placeholder="Buscar producto" value="'+esc(query)+'"><div class="tabs">'+action('category','Todos','',!category?'active':'')+cats.map(c=>action('category',esc(c),c,c===category?'active':'')).join('')+'</div><div class="grid catalog">'+products.map(p=>{
+ const catalog='<div class="tabs">'+action('nav','En mesa','Mesas',!o||o.service==='mesa'?'active':'')+action('new','Para llevar','llevar',o?.service==='llevar'?'active':'')+action('new','Barra','barra',o?.service==='barra'?'active':'')+'</div><input class="search" id="search" type="search" aria-label="Buscar producto" placeholder="Buscar producto" value="'+esc(query)+'"><div class="tabs">'+action('category','Todos','',!category?'active':'')+cats.map(c=>action('category',esc(c),c,c===category?'active':'')).join('')+'</div><div class="grid catalog">'+products.map(p=>{
  const src=p.photo?.startsWith('data:')?p.photo:p.photo?'/images/'+p.photo:'';
  return action('product',(src?'<img src="'+esc(src)+'" alt="">':'<span class="placeholder">'+(p.station==='barra'?'🍹':'🍽')+'</span>')+'<strong>'+title(p)+'</strong><small>'+money(p.cents)+'</small>',p.id,'tile');
  }).join('')+'</div>';
  if(!o)return '<div class="layout">'+panel('Menú',catalog)+panel('Cuenta', '<p>Abre una mesa o selecciona un pedido.</p>'+action('nav','Ver mesas','Mesas','primary'))+'</div>';
- const items=o.lines.map(l=>line(title(l)+'<br><small>'+esc([l.station,l.status,'ITBIS '+l.tax+'%',...l.modifiers,l.note].filter(Boolean).join(' · '))+'</small>',
+ const items=o.lines.map(l=>line('<span class="line-quantity">1</span><span class="line-description">'+title(l)+'<small>'+esc([l.station==='barra'?'Barra':'Cocina',l.status,'ITBIS '+l.tax+'%',...l.modifiers,l.note].filter(Boolean).join(' · '))+'</small></span>',
  money(l.cents)+(l.refund?' · Devuelta':l.payment?' ✓':'')+(!l.payment&&!o.closed&&$('#role').value==='supervisor'?' '+action('void','Anular',l.id)+' '+action('discount','Descuento',l.id):''))).join('');
  let bill=items+prices(totals(o.lines,o.service));
  if(o.closed&&o.fiscal)bill+=line('Pago','Registrado')+line('Comprobante '+o.fiscal.kind,esc(o.fiscal.status))+'<div class="actions">'+action('print','Imprimir ticket',o.id,'primary')+action('fiscal','Ver estado fiscal',o.id)+
  (state.shift?.id===o.shift&&!state.shift.closed&&$('#role').value==='supervisor'&&o.lines.some(l=>!l.refund)?action('refund','Devolver partidas',o.id):'')+'</div>'+
  (state.refunds||[]).filter(r=>r.order===o.id).map(r=>line('Devolución registrada',money(r.amount))).join('');
- else if(!o.closed)bill+='<div class="actions">'+action('send','Enviar comanda',o.id)+action('pay','Dividir y cobrar',o.id)+action('charge','Cobrar',o.id,'primary')+'</div>';
- return '<div class="layout">'+panel('Menú',catalog)+panel(orderName(o)+' · #'+o.number,(o.people?'<p class="muted">'+o.people+' personas</p>':'')+bill)+'</div>';
+ else if(!o.closed)bill+='<div class="checkout-actions">'+action('charge',icon('Caja')+'Cobrar',o.id,'primary')+'<div>'+action('send','Enviar comanda',o.id)+action('pay','Dividir y cobrar',o.id)+'</div></div>';
+ return '<div class="layout register-layout"><section class="panel catalog-panel"><h2>Menú</h2>'+catalog+'</section><section class="panel order-panel"><div class="order-heading"><h2>Pedido · '+orderName(o)+'</h2><span class="station-badge">Cocina · Barra</span></div>'+(o.people?'<p class="muted">'+o.people+' personas · Pedido #'+o.number+'</p>':'')+bill+'</section></div>';
 }
 function station(key){
  const cards=state.orders.flatMap(o=>[...new Set(o.lines.filter(l=>l.station===key&&l.batch).map(l=>l.batch))].map(batch=>{
@@ -135,8 +155,17 @@ async function command(type,data){
 document.addEventListener('click',e=>{
  const b=e.target.closest('[data-action]');if(!b||locked)return;
  const {action:a,value:v}=b.dataset;
- if(a==='nav')switchTo(v);
+ if(a==='toggleNav'){
+  const expanded=$('.rail').classList.toggle('menu-open');
+  $('#mobile-nav-toggle').setAttribute('aria-expanded',String(expanded));
+ }
+ if(a==='nav'){
+  $('.rail').classList.remove('menu-open');
+  $('#mobile-nav-toggle').setAttribute('aria-expanded','false');
+  switchTo(v);
+ }
  if(a==='dismiss')$('#modal').close();
+ if(a==='showOrder')$('.order-panel')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
  if(a==='category'){category=v;render();}
  if(a==='table'){
   const n=Number(v),o=state.orders.find(o=>o.table===n&&!o.closed);
