@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeServer} from './server.mjs';
+import {makeDemoServer as makeServer} from './server.mjs';
 import {equalShares} from './domain.mjs';
 test('Five configurable tables; equal parts are atomic, cent-exact, mixed-method and consume once',async()=>{
  const server=makeServer(':memory:');await new Promise(r=>server.listen(0,'127.0.0.1',r));

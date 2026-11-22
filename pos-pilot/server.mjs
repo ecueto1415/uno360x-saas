@@ -10,7 +10,7 @@ import { seed, apply, cashSummary } from './domain.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 const roles=new Set(['caja','camarero','cocina','barra','supervisor']);
 const demoStaff=[{id:'caja',name:'Cajero de prueba'},{id:'camarero',name:'Camarero de prueba'},{id:'supervisor',name:'Supervisor de prueba'},{id:'ana',name:'Ana García'},{id:'carlos',name:'Carlos Pérez'}];
-export function makeServer(file, access=null, inventory=null, origin=null){
+export function makeServer(file, access=null, inventory=null, origin=null, options={}){
  if(origin&&(!access||new URL(origin).protocol!=='https:'||new URL(origin).origin!==origin))
   throw Error('El acceso por red local requiere HTTPS y una identidad del negocio.');
  if(file!==':memory:')mkdirSync(dirname(file),{recursive:true});
@@ -18,7 +18,7 @@ export function makeServer(file, access=null, inventory=null, origin=null){
  db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS pilot (id TEXT PRIMARY KEY, state TEXT NOT NULL)');
  const read=db.prepare('SELECT state FROM pilot WHERE id=?');
  const write=db.prepare('INSERT INTO pilot VALUES (?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state');
- function state(scope){const row=read.get(scope);return row?JSON.parse(row.state):seed();}
+ function state(scope){const row=read.get(scope);return row?JSON.parse(row.state):seed(options);}
  function mutation(command,user,scope,actor,staff){
   db.exec('BEGIN IMMEDIATE');
   try{
@@ -100,6 +100,7 @@ export function makeServer(file, access=null, inventory=null, origin=null){
  server.on('close',()=>{db.close();access?.close();});
  return server;
 }
+export function makeDemoServer(...args){args[4]={demo:true};return makeServer(...args);}
 if(process.argv[1]&&import.meta.url===pathToFileURL(realpathSync(process.argv[1])).href){
  const port=Number(process.env.POS_PORT||4177);
  const {POS_IDENTITY_DB,POS_ENTITLEMENTS}=process.env;

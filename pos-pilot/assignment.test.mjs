@@ -4,7 +4,7 @@ import {randomUUID,createHmac,createHash} from 'node:crypto';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {makeServer} from './server.mjs';
+import {makeDemoServer as makeServer} from './server.mjs';
 import {proxyAccess} from './proxy-access.mjs';
 
 test('Trusted SaaS roles, assignment audit, retry and tenant separation',async t=>{

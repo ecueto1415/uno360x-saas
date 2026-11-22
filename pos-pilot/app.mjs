@@ -1,4 +1,4 @@
-import {money,totals,margin,restaurantTables,equalShares} from './domain.mjs';
+import {money,totals,margin,restaurantTables,equalShares,businessTypes,setupRequired} from './domain.mjs';
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const modes={Mesas:'Mesas',Pedidos:'Pedidos',Cocina:'Cocina',Barra:'Barra',Caja:'Caja',Inventario:'Inventario y mermas',Reportes:'Reportes y cierre de caja',Menú:'Menú y recetas'};
@@ -9,6 +9,7 @@ let staff=[],displayName='',currentAccount='';
 const basePath=new URL(import.meta.url).pathname.replace(/\/app.mjs$/,'');
 const staffOptions=()=>staff.map(person=>[person.id,person.name]);
 let pendingRequest;
+let setupOpen=false,setupChoice;
 let mode='Caja',state,summary,selected,locked=false,formData,category='',query='',stationPoll;
 const cash=v=>Math.round(Number(v)*100);
 const picked=()=>state.orders.find(o=>o.id===selected);
@@ -16,7 +17,7 @@ const orderName=o=>o.service==='mesa'?(restaurantTables(state).find(t=>t.number=
 const title=l=>esc(l.name);
 const action=(name,label,value='',style='')=>'<button type="button" class="'+style+'" data-action="'+name+'" data-value="'+esc(value)+'">'+label+'</button>';
 const panel=(label,content)=>'<section class="panel"><h2>'+label+'</h2>'+content+'</section>';
-const form=(type,content)=>'<form data-command="'+type+'">'+content+'<button class="primary" type="submit">'+({open:'Abrir turno',add:'Añadir a la cuenta',pay:'Registrar pago',product:'Guardar producto',order:'Abrir pedido',close:'Confirmar cierre',waste:'Registrar merma',count:'Guardar conteo',void:'Autorizar anulación',discount:'Autorizar descuento',refund:'Registrar devolución'}[type]||'Guardar')+'</button></form>';
+const form=(type,content)=>'<form data-command="'+type+'">'+content+'<button class="primary" type="submit">'+({open:'Abrir turno',add:'Añadir a la cuenta',pay:'Registrar pago',product:'Guardar producto',order:'Abrir pedido',close:'Confirmar cierre',waste:'Registrar merma',count:'Guardar conteo',void:'Autorizar anulación',discount:'Autorizar descuento',refund:'Registrar devolución','setup-business':'Continuar','setup-tables':'Continuar'}[type]||'Guardar')+'</button></form>';
 const input=(name,label,type='text',extra='')=>'<label>'+label+'<input name="'+name+'" type="'+type+'" '+extra+'></label>';
 const options=(entries,chosen)=>entries.map(([v,t])=>'<option value="'+esc(v)+'" '+(v===chosen?'selected':'')+'>'+esc(t)+'</option>').join('');
 const select=(name,label,entries,chosen)=>'<label>'+label+'<select name="'+name+'">'+options(entries,chosen)+'</select></label>';
@@ -44,7 +45,31 @@ async function refresh(renderNow=true){
  }
  if(renderNow)render();
 }
-function switchTo(next){mode=next;render();}
+function switchTo(next){mode=configuring()?'Caja':next;render();}
+const configuring=()=>setupOpen||setupRequired(state);
+function setupWizard(){
+ if($('#role').value!=='supervisor')return panel('Configuración inicial pendiente','<p>El administrador debe elegir el negocio, preparar las mesas y agregar los productos antes de abrir el POS.</p>');
+ const setup=state.setup||{step:'business',business:'restaurant',tablesEnabled:true};
+ const step=setup.step||'business';
+ const back=action('setupBack','Atrás');
+ if(step==='business'){
+  const chosen=setupChoice||setup.business||'restaurant';
+  const descriptions={restaurant:'Atención en mesas, Cocina y Barra.',bakery:'Venta en mostrador y mesas opcionales.',retail:'Venta de productos y cobro directo, sin mesas.',quick:'Pedidos para llevar o en barra, sin salón.'};
+  return panel('Paso 1 de 3 · Elige tu negocio','<p class="muted">Esta configuración aparece solo al crear tu POS. Después puedes cambiarla desde Menú.</p>')+
+   '<div class="layout">'+businessTypes.map(([id,name])=>panel(name,'<p>'+descriptions[id]+'</p><div class="actions">'+action('chooseBusiness',chosen===id?'Seleccionado':'Elegir',id,chosen===id?'primary':'')+'</div>')).join('')+'</div>'+
+   '<form data-command="setup-business"><input type="hidden" name="business" value="'+esc(chosen)+'"><div class="actions">'+(setup.completed?action('finishSetupView','Atrás'):'<button type="button" disabled>Atrás</button>')+'<button class="primary" type="submit">Continuar</button></div></form>';
+ }
+ if(step==='tables'){
+  const cards=restaurantTables(state).map(t=>action('editTable',icon('Mesas')+'<strong>'+esc(t.name)+'</strong><small>'+(t.active?'Editar nombre o desactivar':'Inactiva · Editar')+'</small>',t.number,'table-card')).join('');
+  return panel('Paso 2 de 3 · Configura tus mesas','<p class="muted">Para Restaurante y bar empezamos con 5 mesas. En negocios sin mesas se omite este paso.</p>')+
+   '<form data-command="setup-tables"><div class="layout">'+panel('Tus mesas','<p class="muted">Toca una mesa para editar su nombre o desactivarla.</p><div class="grid">'+cards+'</div><div class="actions">'+action('editTable','+ Agregar mesa')+'</div>')+
+   panel('Configuración',select('enabled','¿Atiendes en mesas?',[['yes','Sí, con mesas'],['no','No, solo mostrador']],setup.tablesEnabled?'yes':'no')+input('count','Cantidad inicial','number','min="1" max="200" value="'+(setup.tableCount||5)+'" required')+'<p class="muted">Puedes agregar más o editar cada mesa. Una mesa con cuenta abierta no se desactiva.</p>')+'</div><div class="actions">'+back+'<button class="primary" type="submit">Continuar</button></div></form>';
+ }
+ const rows=state.products.map(p=>line(title(p)+'<br><small>'+esc(p.category)+' · '+money(p.cents)+' · '+esc(p.station==='ninguna'?'Sin comanda':p.station)+'</small>',action('edit','Editar',p.id))).join('');
+ return panel('Paso 3 de 3 · Agrega tus productos','<p class="muted">Usa el botón Nuevo producto del Menú actual. Los productos de ejemplo son opcionales y no se agregan solos.</p>')+
+  '<div class="layout">'+panel('Productos','<div class="actions">'+action('edit','+ Nuevo producto','','primary')+(!setup.examplesLoaded?action('setupExamples','Cargar ejemplos'):'')+'</div>'+(rows||'<p class="muted">Todavía no hay productos. Crea el primero o continúa y agrégalo después.</p>'))+
+  panel('Antes de empezar','<p>1. Crea el producto con su nombre y precio.</p><p>2. Selecciona su categoría, imagen y destino: Cocina o Barra, o Sin comanda para venta directa.</p><p>3. Guarda y repite para el siguiente producto.</p><p class="muted">No hace falta completar todos los productos ahora. Los agregas después desde Menú.</p>')+'</div><div class="actions">'+back+action('setupFinish','Guardar y abrir el POS','','primary')+'</div>';
+}
 function render(){
  $('#nav').innerHTML=Object.keys(modes).map((n,i)=>(i===5?'<div class="nav-divider"></div>':'')+action('nav',icon(n)+'<span>'+n+'</span>',n,(n===mode?'active ':'')+(i>4?'secondary-nav':''))).join('');
  const current=picked();
@@ -52,11 +77,11 @@ function render(){
  $('#context').textContent=mode==='Caja'&&current?(current.people?current.people+' personas · ':'')+'Atiende: '+(current.waiter?.name||'Sin asignar'):'Restaurantes y bares';
  $('#shift-status').textContent=state.shift&&!state.shift.closed?'Turno abierto':'Caja cerrada';
  $('#shift-status').classList.toggle('closed',!state.shift||Boolean(state.shift.closed));
- $('#view').innerHTML=({Mesas:tables,Pedidos:orders,Caja:register,Cocina:()=>station('cocina'),Barra:()=>station('barra'),Inventario:inventory,Reportes:reports,Menú:menu})[mode]();
- $('#mobile-orderbar').hidden=mode!=='Caja'||!current||current.closed;
+ $('#view').innerHTML=configuring()?setupWizard():({Mesas:tables,Pedidos:orders,Caja:register,Cocina:()=>station('cocina'),Barra:()=>station('barra'),Inventario:inventory,Reportes:reports,Menú:menu})[mode]();
+ $('#mobile-orderbar').hidden=configuring()||mode!=='Caja'||!current||current.closed;
  document.querySelectorAll('#mobile-orderbar button').forEach(b=>b.disabled=locked);
  $('#mobile-nav-toggle').disabled=locked;
- document.body.classList.toggle('has-mobile-order',mode==='Caja'&&Boolean(current));
+ document.body.classList.toggle('has-mobile-order',!configuring()&&mode==='Caja'&&Boolean(current));
  $('#mobile-total').textContent=current?money(totals(current.lines,current.service).total-state.payments.filter(p=>p.order===current.id).reduce((n,p)=>n+p.amount,0)):'';
 }
 function orders(){
@@ -64,6 +89,7 @@ function orders(){
  return panel('Pedidos en curso','<div class="actions">'+action('nav','Ver mesas','Mesas')+action('new','Para llevar','llevar')+action('new','Pedido en barra','barra')+'</div><div class="grid order-grid">'+(open.map(o=>action('pick','<strong>'+orderName(o)+'</strong><small>Pedido #'+o.number+' · '+o.lines.length+' productos</small><small>Atiende: '+esc(o.waiter?.name||'Sin asignar')+'</small><b>'+money(totals(o.lines,o.service).total)+'</b>',o.id,'order-card')).join('')||'<p class="muted">No hay pedidos abiertos.</p>')+'</div>');
 }
 function tables(){
+ if(state.setup?.tablesEnabled===false)return panel('Venta sin mesas','<p>Este POS está configurado para mostrador o pedidos para llevar. Puedes cambiarlo desde Menú → Configurar mi POS.</p>'+action('nav','Ir a Caja','Caja','primary'));
  const active=state.orders.filter(o=>!o.closed);
  return '<div class="layout">'+panel('Salón principal','<p class="muted">Toca una mesa para abrir su pedido.</p>'+($('#role').value==='supervisor'?'<div class="actions">'+action('manageTables','Administrar mesas')+'</div>':'')+'<div class="grid">'+restaurantTables(state).filter(t=>t.active).map(t=>{
   const n=t.number,o=active.find(o=>o.table===n);
@@ -117,7 +143,7 @@ function reports(){
  panel('Autorizaciones',state.audits.map(a=>line(esc(a.action)+' · '+esc(a.userName||a.user),esc(a.details.previous?.name||'')+(a.details.next?' → '+esc(a.details.next.name)+'<br>':'')+esc(a.details.reason)+'<br><small>'+esc(new Date(a.at).toLocaleString('es-DO'))+'</small>')).join('')||'Sin autorizaciones')+'</div>';
 }
 function menu(){
- return '<div class="layout">'+panel('Productos',action('edit','+ Nuevo producto','','primary')+state.products.map(p=>{
+ return '<div class="layout">'+panel('Productos',($('#role').value==='supervisor'?'<div class="actions">'+action('edit','+ Nuevo producto','','primary')+action('configureSetup','Configurar mi POS')+'</div>':'')+state.products.map(p=>{
   const info=margin(p,state.ingredients);
   return line(title(p)+'<br><small>'+esc(p.category)+' · '+money(p.cents)+' · '+esc(p.station)+'</small>'+
   (Object.keys(p.recipe||{}).length?'<br><small>Costo estimado '+money(info.cost)+' · Margen normal '+money(info.normal)+(info.happy===null?'':' · Happy hour '+money(info.happy))+'</small>':''),action('edit','Editar',p.id));
@@ -149,12 +175,15 @@ async function command(type,data){
   state=r.state;summary=r.summary;
   if($('#modal').open)$('#modal').close();
   if(type==='order'){selected=r.result.id;mode='Caja';}
+  if(type==='setup-finish'){setupOpen=false;setupChoice=undefined;mode='Caja';}
   if(type==='sync-inventory')flash('Inventario: '+r.result.filter(x=>x.state==='confirmado').length+' confirmados, '+r.result.filter(x=>x.state==='pendiente').length+' pendientes.');
   else if(type==='send')flash('Comandas nuevas · Cocina: '+r.result.cocina+' · Barra: '+r.result.barra);
   else if(type==='reassign')flash('Mesa reasignada a '+r.result.name+'.');
   else if(type==='refund')flash('Devolución de prueba registrada: '+money(r.result.amount));
   else if(type==='pay')flash('Pago registrado: '+money(r.result.amount));
   else if(type==='add')flash(r.result.name+' agregado al pedido. Envía la comanda cuando termines de elegir.');
+  else if(type==='setup-examples')flash(r.result.added+' productos de ejemplo agregados.');
+  else if(type==='setup-finish')flash('Tu POS quedó configurado. Abre un turno cuando estés listo para vender.');
   else if(type==='fiscal')flash('Mismo comprobante · '+r.result.status);
   else flash('Operación registrada.');
  }catch(e){const message=e instanceof TypeError&&pendingRequest?'Sin comunicación con caja. Repite la misma operación al reconectar.':e.message;flash(message,true);if($('#modal').open){const msg=document.createElement('p');msg.textContent=message;msg.setAttribute('role','alert');$('#modal-content').prepend(msg);}}
@@ -173,6 +202,12 @@ document.addEventListener('click',e=>{
   switchTo(v);
  }
  if(a==='dismiss')$('#modal').close();
+ if(a==='chooseBusiness'){setupChoice=v;render();}
+ if(a==='configureSetup'){setupOpen=true;setupChoice=undefined;command('setup-step',{step:'business'});}
+ if(a==='finishSetupView'){setupOpen=false;render();}
+ if(a==='setupBack'){const step=state.setup?.step;command('setup-step',{step:step==='products'&&['restaurant','bakery'].includes(state.setup.business)?'tables':'business'});}
+ if(a==='setupExamples')command('setup-examples',{});
+ if(a==='setupFinish')command('setup-finish',{});
  if(a==='manageTables')modal('Administrar mesas','<p>Empiezas con 5 mesas. Agrega más o edita su nombre. Solo el supervisor puede hacerlo.</p>'+action('editTable','+ Agregar mesa','','primary')+restaurantTables(state).map(t=>line(esc(t.name)+' · '+(t.active?'Activa':'Inactiva'),action('editTable','Editar',t.number))).join(''));
  if(a==='editTable'){
   const t=restaurantTables(state).find(t=>t.number===Number(v));
@@ -231,7 +266,7 @@ document.addEventListener('click',e=>{
    input('price','Precio (RD$)','number','min="0" step=".01" '+attrs(p.cents==null?'':p.cents/100)+' required')+
    input('happyPrice','Precio happy hour (RD$)','number','min="0" step=".01" '+attrs(p.happy==null?'':p.happy/100))+
    select('tax','ITBIS',[[0,'Exento'],[16,'16 %'],[18,'18 %']],p.tax??18)+
-   select('station','Estación',[['cocina','Cocina'],['barra','Barra']],p.station)+
+   select('station','Estación',[['cocina','Cocina'],['barra','Barra'],['ninguna','Sin comanda']],p.station||(['retail','quick'].includes(state.setup?.business)?'ninguna':'cocina'))+
    input('modifiers','Modificadores separados por comas','text',attrs(p.modifiers?.join(', ')))+
    select('photo','Imagen',[['','Ícono de categoría'],['burger.jpg','Genérica · Comida'],['wings.jpg','Genérica · Alitas'],['mojito.jpg','Genérica · Bebida'],...(p.photo?.startsWith('data:')?[['keep','Conservar foto actual']]:[])],p.photo?.startsWith('data:')?'keep':p.photo)+
    input('upload','Subir foto (JPG, PNG o WebP)','file','accept="image/jpeg,image/png,image/webp"')+recipe),{id:p.id,existingPhoto:p.photo});
@@ -266,10 +301,11 @@ document.addEventListener('submit',async e=>{
  if(!e.target.dataset.command)return;e.preventDefault();if(locked)return;
  const data=new FormData(e.target),type=e.target.dataset.command;
  const values=Object.fromEntries(data);
- const payload={...formData,...values}; delete payload.upload;delete payload.existingPhoto;
+ const payload={...(e.target.closest('#modal')?formData:{}),...values}; delete payload.upload;delete payload.existingPhoto;
  if(type==='open')payload.fund=cash(values.fund);
  if(type==='order')payload.people=values.people?Number(values.people):undefined;
  if(type==='table'){payload.number=Number(values.number);payload.active=values.active==='yes';}
+ if(type==='setup-tables'){payload.count=Number(values.count);payload.enabled=values.enabled==='yes';}
  if(type==='add'){payload.modifiers=data.getAll('modifiers');payload.happy=data.has('happy');}
  if(type==='pay'||type==='refund')payload.lines=data.getAll('lines');
  if(type==='pay'&&payload.split==='equal'){

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {makeServer} from './server.mjs';
+import {makeDemoServer as makeServer} from './server.mjs';
 import {totals,margin} from './domain.mjs';
 
 test('Piloto Mesa 03, segunda ronda, caja, simulación fiscal y para llevar',async t=>{

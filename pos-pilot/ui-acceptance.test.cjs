@@ -4,7 +4,7 @@ const {chromium}=require(process.env.POS_PLAYWRIGHT_PATH||'playwright');
 const path=require('node:path');
 const {mkdirSync}=require('node:fs');
 test('Approved POS design keeps restaurant workflow on desktop and mobile',async()=>{
- const {makeServer}=await import('./server.mjs');
+ const {makeDemoServer:makeServer}=await import('./server.mjs');
  const server=makeServer(':memory:');await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
@@ -49,7 +49,7 @@ test('Approved POS design keeps restaurant workflow on desktop and mobile',async
 });
 
 test('Touch phone and tablet: product modifiers, keyboard forms and reachable order',async()=>{
- const {makeServer}=await import('./server.mjs');
+ const {makeDemoServer:makeServer}=await import('./server.mjs');
  const server=makeServer(':memory:');await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
@@ -76,7 +76,7 @@ test('Touch phone and tablet: product modifiers, keyboard forms and reachable or
 });
 
 test('Mesa 03 complete touch journey: kitchen, bar, second round and split cash/card',async()=>{
- const {makeServer}=await import('./server.mjs');const browser=await chromium.launch({channel:'msedge',headless:true});
+ const {makeDemoServer:makeServer}=await import('./server.mjs');const browser=await chromium.launch({channel:'msedge',headless:true});
  try{for(const device of [{name:'phone',width:390,height:844},{name:'tablet',width:768,height:1024}]){
  const server=makeServer(':memory:');await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const context=await browser.newContext({viewport:{width:device.width,height:device.height},hasTouch:true,isMobile:true});

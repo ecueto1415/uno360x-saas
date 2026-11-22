@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const {chromium}=require(process.env.POS_PLAYWRIGHT_PATH||'playwright');
 test('Touch: five tables, manage tables, add products and equal split with mixed payments',async()=>{
- const {makeServer}=await import('./server.mjs');const browser=await chromium.launch({channel:'msedge',headless:true});
+ const {makeDemoServer:makeServer}=await import('./server.mjs');const browser=await chromium.launch({channel:'msedge',headless:true});
  const output=process.env.POS_SCREENSHOTS||path.resolve('pos-pilot/var/split-review');fs.mkdirSync(output,{recursive:true});
  try{for(const device of [{name:'tablet',width:768,height:1024},{name:'phone',width:390,height:844}]){
   const server=makeServer(':memory:');await new Promise(r=>server.listen(0,'127.0.0.1',r));

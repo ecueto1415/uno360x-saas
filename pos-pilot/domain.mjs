@@ -5,7 +5,7 @@ export const products = [
  {id:'wings',name:'Alitas',category:'Comida',cents:42000,tax:18,station:'cocina',photo:'wings.jpg',modifiers:['BBQ','Picante']},
  {id:'mojito',name:'Mojito',category:'Bebidas',cents:30000,happy:25000,tax:18,station:'barra',photo:'mojito.jpg',modifiers:['Sin hielo','Poco dulce'],recipe:{ron:45,limon:25,jarabe:20,menta:8,soda:60}},
 ];
-export const seed = () => ({tables:defaultTables(),shift:null,orders:[],payments:[],audits:[],events:[],operations:{},products:structuredClone(products),
+export const seed = ({demo=false}={}) => ({...(demo?{}:{setup:{step:'business',business:null,tablesEnabled:true,completed:false}}),tables:defaultTables(),shift:null,orders:[],payments:[],audits:[],events:[],operations:{},products:demo?structuredClone(products):[],
  ingredients:{ron:{name:'Ron blanco',unit:'ml',stock:2500,cost:55},limon:{name:'Jugo de limón',unit:'ml',stock:1200,cost:16},jarabe:{name:'Jarabe',unit:'ml',stock:900,cost:12},menta:{name:'Hierbabuena',unit:'hojas',stock:120,cost:50},soda:{name:'Soda',unit:'ml',stock:2000,cost:6}}});
 export function totals(lines,service) {
  const subtotal=lines.reduce((a,l)=>a+l.cents,0);
@@ -29,8 +29,57 @@ export function equalShares(total,people){
  fail(Number.isSafeInteger(total)&&total>0&&Number.isInteger(people)&&people>=2&&people<=30&&total>=people,'Indica entre 2 y 30 personas para dividir la cuenta.');
  return Array.from({length:people},(_,i)=>Math.floor(total/people)+(i<total%people?1:0));
 }
+export const businessTypes=[['restaurant','Restaurante y bar'],['bakery','Cafetería y panadería'],['retail','Tienda y comercio'],['quick','Venta rápida']];
+export const setupRequired=s=>Boolean(s.setup&&!s.setup.completed);
+function configureTables(s,enabled,count){
+ fail(typeof enabled==='boolean'&&Number.isInteger(count)&&count>=1&&count<=200,'Indica entre 1 y 200 mesas.');
+ fail(!s.orders.some(o=>!o.closed&&o.table&&(!enabled||o.table>count)),'Hay mesas con cuentas abiertas. Ciérralas antes de reducir o desactivar el salón.');
+ const tables=restaurantTables(s);
+ const previousCount=s.setup.tableCount||5,wasEnabled=s.setup.tablesEnabled;
+ for(let number=1;number<=count;number++)if(!tables.some(t=>t.number===number))tables.push({number,name:'Mesa '+String(number).padStart(2,'0'),active:enabled});
+ for(const t of tables){if(!enabled||t.number>count)t.active=false;else if(!wasEnabled||t.number>previousCount)t.active=true;}
+ s.tables=tables;s.setup.tablesEnabled=enabled;s.setup.tableCount=count;
+}
 export function apply(s,command,user,actor=user,staff=[]){
  const {type}=command;
+ if(type.startsWith('setup-')){
+  role(user,'supervisor');
+  s.setup??={business:'restaurant',tablesEnabled:true,tableCount:Math.max(5,...restaurantTables(s).filter(t=>t.active).map(t=>t.number)),completed:true,step:'business'};
+  if(type==='setup-business'){
+   fail(businessTypes.some(([id])=>id===command.business),'Selecciona un tipo de negocio.');
+   const tableBusiness=['restaurant','bakery'].includes(command.business);
+   if(!tableBusiness)configureTables(s,false,s.setup.tableCount||5);
+   s.setup.business=command.business;s.setup.step=tableBusiness?'tables':'products';
+   log(s,actor,'tipo de negocio POS',{business:command.business});return s.setup;
+  }
+  if(type==='setup-step'){
+   fail(['business','tables','products'].includes(command.step)&&(!['tables','products'].includes(command.step)||s.setup.business),'Paso de configuración inválido.');
+   s.setup.step=command.step;return s.setup;
+  }
+  fail(s.setup.business,'Selecciona primero el tipo de negocio.');
+  if(type==='setup-tables'){
+   fail(['restaurant','bakery'].includes(s.setup.business),'Este tipo de negocio trabaja sin mesas.');
+   configureTables(s,command.enabled,command.count);s.setup.step='products';
+   log(s,actor,'configuración inicial de mesas',{enabled:command.enabled,count:command.count});return s.setup;
+  }
+  if(type==='setup-examples'){
+   if(s.setup.examplesLoaded)return {added:0};
+   const examples=s.setup.business==='restaurant'?products:s.setup.business==='bakery'?[
+    {id:'example-coffee',name:'Café',category:'Bebidas',cents:10000,tax:18,station:'barra',photo:'',modifiers:[]},
+    {id:'example-bread',name:'Pan',category:'Panadería',cents:2500,tax:0,station:'ninguna',photo:'',modifiers:[]}
+   ]:[{id:'example-water',name:'Agua embotellada',category:'Bebidas',cents:5000,tax:18,station:'ninguna',photo:'',modifiers:[]}];
+   const added=examples.filter(p=>!s.products.some(old=>old.id===p.id));
+   s.products.push(...structuredClone(added));s.setup.examplesLoaded=true;
+   log(s,actor,'productos de ejemplo',{count:added.length});return {added:added.length};
+  }
+  if(type==='setup-finish'){
+   fail(s.setup.step==='products','Completa los pasos de configuración antes de abrir el POS.');
+   s.setup.completed=true;s.setup.completedAt=new Date().toISOString();
+   log(s,actor,'configuración POS completada',{business:s.setup.business,products:s.products.length});return s.setup;
+  }
+  throw new Error('Paso de configuración desconocido.');
+ }
+ if(setupRequired(s))fail(['product','table'].includes(type),'El administrador debe completar la configuración inicial del POS.');
  if(type==='table'){
   role(user,'supervisor');const number=command.number,name=label(command.name,40);
   fail(Number.isInteger(number)&&number>=1&&number<=200&&name&&typeof command.active==='boolean','Indica un número de mesa de 1 a 200 y su nombre.');
@@ -38,6 +87,7 @@ export function apply(s,command,user,actor=user,staff=[]){
   fail(command.active||!s.orders.some(o=>!o.closed&&o.table===number),'No puedes desactivar una mesa con una cuenta abierta.');
   const previous=table?{...table}:null,next={number,name,active:command.active};
   if(table)Object.assign(table,next);else tables.push(next);s.tables=tables;
+  if(s.setup&&command.active)s.setup.tableCount=Math.max(s.setup.tableCount||5,number);
   log(s,actor,'configuración de mesa',{previous,next});return next;
  }
  if(type==='open'){
@@ -48,7 +98,7 @@ export function apply(s,command,user,actor=user,staff=[]){
  if(type==='product'){
   role(user,'supervisor');
   const name=label(command.name),category=label(command.category,40),p=s.products.find(p=>p.id===command.id);
-  fail(name&&category&&nonnegative(command.cents)&&[0,16,18].includes(command.tax)&&['cocina','barra'].includes(command.station),'Datos del producto inválidos.');
+  fail(name&&category&&nonnegative(command.cents)&&[0,16,18].includes(command.tax)&&['cocina','barra','ninguna'].includes(command.station),'Datos del producto inválidos.');
   const photo=String(command.photo||'');
   fail(!photo||['burger.jpg','wings.jpg','mojito.jpg'].includes(photo)||/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(photo)&&photo.length<=700000,'Imagen inválida o grande.');
   const recipe=p?.recipe||{};
@@ -114,7 +164,7 @@ export function apply(s,command,user,actor=user,staff=[]){
  if(type==='order'){
   role(user,'caja','camarero','supervisor');
   fail(['mesa','barra','llevar'].includes(command.service),'Tipo de pedido inválido.');
-  if(command.service==='mesa')fail(restaurantTables(s).some(t=>t.number===command.table&&t.active)&&Number.isInteger(command.people)&&command.people>=1&&command.people<=30,'Mesa no habilitada o cantidad de personas inválida.');
+  if(command.service==='mesa')fail(s.setup?.tablesEnabled!==false&&restaurantTables(s).some(t=>t.number===command.table&&t.active)&&Number.isInteger(command.people)&&command.people>=1&&command.people<=30,'Mesa no habilitada o cantidad de personas inválida.');
   if(command.service==='mesa') fail(!s.orders.some(o=>!o.closed&&o.table===command.table),'Esa mesa ya tiene un pedido.');
   const assigned=staff.find(person=>person.id===(command.waiter||actor));
   fail(!command.waiter||assigned,'El responsable no está habilitado en esta empresa.');
@@ -139,7 +189,7 @@ export function apply(s,command,user,actor=user,staff=[]){
   fail(!s.payments.some(p=>p.order===o.id),'La cuenta ya tiene pagos.');
   const p=s.products.find(p=>p.id===command.product);fail(p,'Producto inválido.');
   const modifiers=Array.isArray(command.modifiers)?command.modifiers.filter(m=>p.modifiers.includes(m)):[];
-  const l={id:id(),product:p.id,name:p.name,cents:command.happy&&p.happy!=null?p.happy:p.cents,tax:p.tax,station:p.station,modifiers,note:label(command.note,180),recipe:structuredClone(p.recipe||{}),status:'pendiente'};
+  const l={id:id(),product:p.id,name:p.name,cents:command.happy&&p.happy!=null?p.happy:p.cents,tax:p.tax,station:p.station,modifiers,note:label(command.note,180),recipe:structuredClone(p.recipe||{}),status:p.station==='ninguna'?'lista':'pendiente'};
   o.lines.push(l);return l;
  }
  if(type==='send'){

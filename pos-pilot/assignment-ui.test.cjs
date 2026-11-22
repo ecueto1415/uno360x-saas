@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {chromium}=require(process.env.POS_PLAYWRIGHT_PATH||'playwright');
 const {mkdirSync}=require('node:fs');const path=require('node:path');
 test('Assigned waiter and supervisor-only reassignment on tablet and phone',async()=>{
- const {makeServer}=await import('./server.mjs');const browser=await chromium.launch({channel:'msedge',headless:true});
+ const {makeDemoServer:makeServer}=await import('./server.mjs');const browser=await chromium.launch({channel:'msedge',headless:true});
  const staff=[{id:'1',name:'Responsable POS'},{id:'2',name:'Ana García'},{id:'3',name:'Carlos Pérez'}];
  try{for(const device of [{name:'phone',width:390,height:844},{name:'tablet',width:768,height:1024}]){
   const access={close(){},authorize(req){const id=req.headers['x-fixture-user'];return ['1','2','3'].includes(id)?{scope:'test',account:id,displayName:staff.find(p=>p.id===id).name,branchName:'Local piloto',staff,role:id==='1'?'supervisor':id==='2'?'camarero':'caja'}:null;}};
