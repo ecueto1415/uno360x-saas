@@ -19,7 +19,7 @@ const role=(user,...roles)=>fail(roles.includes(user),'Este rol no tiene permiso
 const nonnegative=(n,max=100000000)=>Number.isSafeInteger(n)&&n>=0&&n<=max;
 const label=(s,max=100)=>String(s??'').trim().slice(0,max);
 const log=(s,user,action,details)=>s.audits.push({user,action,details,at:new Date().toISOString()});
-export function apply(s,command,user,actor=user){
+export function apply(s,command,user,actor=user,staff=[]){
  const {type}=command;
  if(type==='open'){
   role(user,'caja','supervisor');fail(!s.shift||s.shift.closed,'Ya hay un turno abierto.');
@@ -94,11 +94,24 @@ export function apply(s,command,user,actor=user){
   fail(['mesa','barra','llevar'].includes(command.service),'Tipo de pedido inválido.');
   if(command.service==='mesa')fail(Number.isInteger(command.table)&&command.table>=1&&command.table<=9&&Number.isInteger(command.people)&&command.people>=1&&command.people<=30,'Mesa o cantidad de personas inválida.');
   if(command.service==='mesa') fail(!s.orders.some(o=>!o.closed&&o.table===command.table),'Esa mesa ya tiene un pedido.');
-  const o={id:id(),number:s.orders.length+1042,shift:s.shift.id,service:command.service,table:command.service==='mesa'?command.table:null,people:command.people,lines:[],closed:false};
+  const assigned=staff.find(person=>person.id===(command.waiter||actor));
+  fail(!command.waiter||assigned,'El responsable no está habilitado en esta empresa.');
+  if(user==='camarero')fail(!command.waiter||command.waiter===actor,'Solo un supervisor puede asignar otra persona.');
+  const waiter=assigned||{id:actor,name:actor};
+  const o={id:id(),number:s.orders.length+1042,shift:s.shift.id,service:command.service,table:command.service==='mesa'?command.table:null,people:command.people,waiter:{id:waiter.id,name:waiter.name},lines:[],closed:false};
   s.orders.push(o);return o;
  }
  const o=s.orders.find(o=>o.id===command.order);
  fail(o&&o.shift===s.shift.id&&(!o.closed||type==='ready'),'Pedido cerrado o fuera del turno.');
+ if(type==='reassign'){
+  role(user,'supervisor');
+  const next=staff.find(person=>person.id===command.waiter),reason=label(command.reason,180);
+  fail(o.service==='mesa'&&next&&reason,'Selecciona un responsable habilitado y escribe el motivo.');
+  fail(o.waiter?.id!==next.id,'La mesa ya está asignada a esa persona.');
+  const previous=o.waiter||null;o.waiter={id:next.id,name:next.name};
+  log(s,actor,'reasignación de mesa',{order:o.number,table:o.table,previous,next:o.waiter,reason});
+  return o.waiter;
+ }
  if(type==='add'){
   role(user,'caja','camarero','supervisor');
   fail(!o.lines.some(l=>l.payment),'La cuenta ya tiene pagos.');

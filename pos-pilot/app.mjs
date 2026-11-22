@@ -5,6 +5,9 @@ const modes={Mesas:'Mesas',Pedidos:'Pedidos',Cocina:'Cocina',Barra:'Barra',Caja:
 const iconPaths={Mesas:'M4 9h16M6 9V5h12v4M6 9l-2 11M18 9l2 11M8 15h8',Pedidos:'M9 4H5v17h14V4h-4M9 3h6v4H9zM8 12h8M8 16h6',Cocina:'M7 14a4 4 0 0 1-2-7 4 4 0 0 1 7-3 4 4 0 0 1 7 3 4 4 0 0 1-2 7v7H7zM7 17h10',Barra:'M3 3h18l-9 10zM12 13v8M7 21h10',Caja:'M4 9h16v12H4zM7 9V3h10v6M7 14h3M14 14h3M7 17h3M14 17h3',Inventario:'M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10',Reportes:'M4 3v18h17M8 17v-5M13 17V7M18 17v-9',Menú:'M4 4h16v16H4zM8 8h8M8 12h8M8 16h4'};
 const icon=name=>'<svg class="icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+(iconPaths[name]||iconPaths.Menú)+'"/></svg>';
 let inventoryConnected=false;
+let staff=[],displayName='',currentAccount='';
+const basePath=new URL(import.meta.url).pathname.replace(/\/app.mjs$/,'');
+const staffOptions=()=>staff.map(person=>[person.id,person.name]);
 let pendingRequest;
 let mode='Caja',state,summary,selected,locked=false,formData,category='',query='',stationPoll;
 const cash=v=>Math.round(Number(v)*100);
@@ -25,9 +28,10 @@ function modal(title,html,data={}){
  if(!$('#modal').open)$('#modal').showModal();
 }
 async function refresh(renderNow=true){
- const res=await fetch('/api/state',{signal:AbortSignal.timeout(5000)});
+ const res=await fetch(basePath+'/api/state',{signal:AbortSignal.timeout(10000)});
  const data=await res.json();if(!res.ok)throw new Error(data.error);
  ({state,summary,inventoryConnected}=data);
+ staff=data.staff||[];displayName=data.connected?.displayName||'';currentAccount=data.connected?.account||'';
  if(!selected){
   const table=Number(new URL(location.href).searchParams.get('mesa'));
   const current=state.orders.find(o=>o.table===table&&!o.closed);
@@ -45,7 +49,7 @@ function render(){
  $('#nav').innerHTML=Object.keys(modes).map((n,i)=>(i===5?'<div class="nav-divider"></div>':'')+action('nav',icon(n)+'<span>'+n+'</span>',n,(n===mode?'active ':'')+(i>4?'secondary-nav':''))).join('');
  const current=picked();
  $('#title').textContent=mode==='Caja'&&current?orderName(current):modes[mode];
- $('#context').textContent=mode==='Caja'&&current?(current.people?current.people+' personas · ':'')+'Pedido #'+current.number:'Restaurantes y bares';
+ $('#context').textContent=mode==='Caja'&&current?(current.people?current.people+' personas · ':'')+'Atiende: '+(current.waiter?.name||'Sin asignar'):'Restaurantes y bares';
  $('#shift-status').textContent=state.shift&&!state.shift.closed?'Turno abierto':'Caja cerrada';
  $('#shift-status').classList.toggle('closed',!state.shift||Boolean(state.shift.closed));
  $('#view').innerHTML=({Mesas:tables,Pedidos:orders,Caja:register,Cocina:()=>station('cocina'),Barra:()=>station('barra'),Inventario:inventory,Reportes:reports,Menú:menu})[mode]();
@@ -57,13 +61,13 @@ function render(){
 }
 function orders(){
  const open=state.orders.filter(o=>!o.closed);
- return panel('Pedidos en curso','<div class="actions">'+action('nav','Ver mesas','Mesas')+action('new','Para llevar','llevar')+action('new','Pedido en barra','barra')+'</div><div class="grid order-grid">'+(open.map(o=>action('pick','<strong>'+orderName(o)+'</strong><small>Pedido #'+o.number+' · '+o.lines.length+' productos</small><b>'+money(totals(o.lines,o.service).total)+'</b>',o.id,'order-card')).join('')||'<p class="muted">No hay pedidos abiertos.</p>')+'</div>');
+ return panel('Pedidos en curso','<div class="actions">'+action('nav','Ver mesas','Mesas')+action('new','Para llevar','llevar')+action('new','Pedido en barra','barra')+'</div><div class="grid order-grid">'+(open.map(o=>action('pick','<strong>'+orderName(o)+'</strong><small>Pedido #'+o.number+' · '+o.lines.length+' productos</small><small>Atiende: '+esc(o.waiter?.name||'Sin asignar')+'</small><b>'+money(totals(o.lines,o.service).total)+'</b>',o.id,'order-card')).join('')||'<p class="muted">No hay pedidos abiertos.</p>')+'</div>');
 }
 function tables(){
  const active=state.orders.filter(o=>!o.closed);
  return '<div class="layout">'+panel('Salón principal','<div class="grid">'+Array.from({length:9},(_,i)=>{
   const n=i+1,o=active.find(o=>o.table===n);
-  return action('table',icon('Mesas')+'<strong>Mesa '+String(n).padStart(2,'0')+'</strong><small>'+(o?o.people+' personas · En servicio':'Libre')+'</small>',n,'table-card '+(o?'selected':''));
+  return action('table',icon('Mesas')+'<strong>Mesa '+String(n).padStart(2,'0')+'</strong><small>'+(o?o.people+' personas · En servicio':'Libre')+'</small>'+(o?'<small>Atiende: '+esc(o.waiter?.name||'Sin asignar')+'</small>':''),n,'table-card '+(o?'selected':''));
  }).join('')+'</div>')+panel('Otros servicios',action('new','Para llevar','llevar')+' '+action('new','Pedido en barra','barra')+
  active.filter(o=>!o.table).map(o=>line(orderName(o)+' #'+o.number,action('pick','Abrir',o.id))).join(''))+'</div>';
 }
@@ -73,7 +77,7 @@ function register(){
  const cats=[...new Set(state.products.map(p=>p.category))];
  const products=state.products.filter(p=>(!category||p.category===category)&&p.name.toLowerCase().includes(query.toLowerCase()));
  const catalog='<div class="tabs">'+action('nav','En mesa','Mesas',!o||o.service==='mesa'?'active':'')+action('new','Para llevar','llevar',o?.service==='llevar'?'active':'')+action('new','Barra','barra',o?.service==='barra'?'active':'')+'</div><input class="search" id="search" type="search" aria-label="Buscar producto" placeholder="Buscar producto" value="'+esc(query)+'"><div class="tabs">'+action('category','Todos','',!category?'active':'')+cats.map(c=>action('category',esc(c),c,c===category?'active':'')).join('')+'</div><div class="grid catalog">'+products.map(p=>{
- const src=p.photo?.startsWith('data:')?p.photo:p.photo?'/images/'+p.photo:'';
+ const src=p.photo?.startsWith('data:')?p.photo:p.photo?basePath+'/images/'+p.photo:'';
  return action('product',(src?'<img src="'+esc(src)+'" alt="">':'<span class="placeholder">'+(p.station==='barra'?'🍹':'🍽')+'</span>')+'<strong>'+title(p)+'</strong><small>'+money(p.cents)+'</small>',p.id,'tile');
  }).join('')+'</div>';
  if(!o)return '<div class="layout">'+panel('Menú',catalog)+panel('Cuenta', '<p>Abre una mesa o selecciona un pedido.</p>'+action('nav','Ver mesas','Mesas','primary'))+'</div>';
@@ -84,12 +88,13 @@ function register(){
  (state.shift?.id===o.shift&&!state.shift.closed&&$('#role').value==='supervisor'&&o.lines.some(l=>!l.refund)?action('refund','Devolver partidas',o.id):'')+'</div>'+
  (state.refunds||[]).filter(r=>r.order===o.id).map(r=>line('Devolución registrada',money(r.amount))).join('');
  else if(!o.closed)bill+='<div class="checkout-actions">'+action('charge',icon('Caja')+'Cobrar',o.id,'primary')+'<div>'+action('send','Enviar comanda',o.id)+action('pay','Dividir y cobrar',o.id)+'</div></div>';
- return '<div class="layout register-layout"><section class="panel catalog-panel"><h2>Menú</h2>'+catalog+'</section><section class="panel order-panel"><div class="order-heading"><h2>Pedido · '+orderName(o)+'</h2><span class="station-badge">Cocina · Barra</span></div>'+(o.people?'<p class="muted">'+o.people+' personas · Pedido #'+o.number+'</p>':'')+bill+'</section></div>';
+ const assignment='<div class="assignment"><span>Atiende: <strong>'+esc(o.waiter?.name||'Sin asignar')+'</strong></span>'+(!o.closed&&o.service==='mesa'&&$('#role').value==='supervisor'?action('reassign','Reasignar mesa',o.id):'')+'</div>';
+ return '<div class="layout register-layout"><section class="panel catalog-panel"><h2>Menú</h2>'+catalog+'</section><section class="panel order-panel"><div class="order-heading"><h2>Pedido · '+orderName(o)+'</h2><span class="station-badge">Cocina · Barra</span></div>'+(o.people?'<p class="muted">'+o.people+' personas · Pedido #'+o.number+'</p>':'')+assignment+bill+'</section></div>';
 }
 function station(key){
  const cards=state.orders.flatMap(o=>[...new Set(o.lines.filter(l=>l.station===key&&l.batch).map(l=>l.batch))].map(batch=>{
   const items=o.lines.filter(l=>l.batch===batch&&l.station===key);
-  return panel(orderName(o)+' · #'+o.number,items.map(l=>line(title(l)+'<br><small>'+esc([...l.modifiers,l.note].filter(Boolean).join(' · '))+'</small>',
+  return panel(orderName(o)+' · #'+o.number,'<p class="muted">Atiende: '+esc(o.waiter?.name||'Sin asignar')+'</p>'+items.map(l=>line(title(l)+'<br><small>'+esc([...l.modifiers,l.note].filter(Boolean).join(' · '))+'</small>',
    l.status==='lista'?'Lista':action('ready','Marcar lista',o.id+','+l.id,'primary'))).join(''));
  }));
  return '<div class="grid">'+(cards.join('')||panel('Sin comandas','<p>Las partidas enviadas aparecerán aquí.</p>'))+'</div>';
@@ -108,7 +113,7 @@ function reports(){
  return '<div class="layout">'+panel('Movimientos de caja',line('Fondo inicial',money(s.fund))+Object.entries(summary.methods).map(([n,m])=>line(n,money(m))).join('')+Object.entries(summary.refunds||{}).filter(([,m])=>m>0).map(([n,m])=>line('Devoluciones · '+n,money(m))).join('')+line('Efectivo esperado',money(summary.expected),'total'))+
  panel('Arqueo de efectivo',s.closed?line('Efectivo contado',money(s.counted))+line('Diferencia',money(s.difference))+line('Cerró',esc(s.userClosed)):form('close',input('counted','Efectivo contado','number','min="0" step=".01" required')))+
  panel('Comprobantes del turno',state.orders.filter(o=>o.shift===s.id&&o.fiscal).map(o=>line(orderName(o)+' #'+o.number,esc(o.fiscal.kind)+' · '+esc(o.fiscal.status)+' '+action('pick','Abrir venta',o.id)+' '+action('print','Imprimir',o.id))).join('')||'Sin comprobantes')+
- panel('Autorizaciones',state.audits.map(a=>line(esc(a.action)+' · '+esc(a.user),esc(a.details.reason))).join('')||'Sin autorizaciones')+'</div>';
+ panel('Autorizaciones',state.audits.map(a=>line(esc(a.action)+' · '+esc(a.userName||a.user),esc(a.details.previous?.name||'')+(a.details.next?' → '+esc(a.details.next.name)+'<br>':'')+esc(a.details.reason)+'<br><small>'+esc(new Date(a.at).toLocaleString('es-DO'))+'</small>')).join('')||'Sin autorizaciones')+'</div>';
 }
 function menu(){
  return '<div class="layout">'+panel('Productos',action('edit','+ Nuevo producto','','primary')+state.products.map(p=>{
@@ -135,7 +140,7 @@ async function command(type,data){
    throw new Error('Hay una operación sin confirmar. Repite la misma acción y datos antes de continuar.');
   }
   pendingRequest??={payload,role,key:crypto.randomUUID()};
-  const response=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json','X-Pos-Role':role},
+  const response=await fetch(basePath+'/api/command',{method:'POST',headers:{'Content-Type':'application/json','X-Pos-Role':role},
    body:JSON.stringify({key:pendingRequest.key,...JSON.parse(payload)})});
   const r=await response.json();
   pendingRequest=undefined;
@@ -145,6 +150,7 @@ async function command(type,data){
   if(type==='order'){selected=r.result.id;mode='Caja';}
   if(type==='sync-inventory')flash('Inventario: '+r.result.filter(x=>x.state==='confirmado').length+' confirmados, '+r.result.filter(x=>x.state==='pendiente').length+' pendientes.');
   else if(type==='send')flash('Comandas nuevas · Cocina: '+r.result.cocina+' · Barra: '+r.result.barra);
+  else if(type==='reassign')flash('Mesa reasignada a '+r.result.name+'.');
   else if(type==='refund')flash('Devolución de prueba registrada: '+money(r.result.amount));
   else if(type==='pay')flash('Pago registrado: '+money(r.result.amount));
   else if(type==='fiscal')flash('Mismo comprobante · '+r.result.status);
@@ -170,7 +176,7 @@ document.addEventListener('click',e=>{
  if(a==='table'){
   const n=Number(v),o=state.orders.find(o=>o.table===n&&!o.closed);
   if(o){selected=o.id;switchTo('Caja');}
-  else modal('Mesa '+v.padStart(2,'0'),form('order',input('people','Personas','number','min="1" max="30" value="3" required')),{service:'mesa',table:n});
+  else modal('Mesa '+v.padStart(2,'0'),form('order',input('people','Personas','number','min="1" max="30" value="3" required')+($('#role').value==='camarero'?'<p>Atiende: '+esc(displayName||'Camarero de prueba')+'</p>':select('waiter','Quién atiende',staffOptions(),currentAccount||$('#role').value))),{service:'mesa',table:n});
  }
  if(a==='new')modal(v==='barra'?'Pedido en barra':'Pedido para llevar',form('order','<p>Se abrirá una cuenta nueva.</p>'),{service:v});
  if(a==='pick'){selected=v;switchTo('Caja');}
@@ -181,6 +187,7 @@ document.addEventListener('click',e=>{
   (p.happy!=null?'<label class="check"><input type="checkbox" name="happy">Happy hour · '+money(p.happy)+'</label>':'')+input('note','Nota para '+p.station)),{order:o.id,product:v});
  }
  if(a==='send')command('send',{order:v});
+ if(a==='reassign')modal('Reasignar mesa',form('reassign',select('waiter','Nuevo responsable',staffOptions(),picked()?.waiter?.id)+input('reason','Motivo del cambio','text','maxlength="180" required')),{order:v});
  if(a==='ready'){const [order,line]=v.split(',');command('ready',{order,line});}
  if(a==='void')modal('Anular partida',form('void',input('reason','Motivo','text','required')),{order:selected,line:v});
  if(a==='discount')modal('Descuento autorizado',form('discount',input('discount','Descuento (RD$)','number','min="0.01" step=".01" required')+input('reason','Motivo','text','required')),{order:selected,line:v});
