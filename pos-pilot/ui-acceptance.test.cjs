@@ -74,3 +74,38 @@ test('Touch phone and tablet: product modifiers, keyboard forms and reachable or
   }
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 });
+
+test('Mesa 08 complete touch journey: kitchen, bar, second round and split cash/card',async()=>{
+ const {makeServer}=await import('./server.mjs');const browser=await chromium.launch({channel:'msedge',headless:true});
+ try{for(const device of [{name:'phone',width:390,height:844},{name:'tablet',width:768,height:1024}]){
+ const server=makeServer(':memory:');await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const context=await browser.newContext({viewport:{width:device.width,height:device.height},hasTouch:true,isMobile:true});
+ try{
+  const origin='http://127.0.0.1:'+server.address().port;const errors=[];
+  const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
+  const b=name=>page.getByRole('button',{name,exact:true});
+  async function navigate(target,name){const item=target.locator('#nav [data-value="'+name+'"]');if(!await item.isVisible())await target.locator('#mobile-nav-toggle').tap();await item.tap();}
+  async function setRole(target,role){if(!await target.locator('#role').isVisible())await target.locator('#mobile-nav-toggle').tap();await target.locator('#role').selectOption(role);}
+  const snapshot=async()=> (await (await fetch(origin+'/api/state')).json()).state;
+  await page.goto(origin);await b('Abrir turno').tap();await navigate(page,'Mesas');await page.locator('[data-action="table"][data-value="8"]').tap();await page.getByLabel('Personas').fill('4');await b('Abrir pedido').tap();
+  for(const id of ['burger','wings','mojito']){await page.locator('[data-action="product"][data-value="'+id+'"]').tap();await b('Añadir a la cuenta').tap();}
+  await page.locator('.order-panel .total').getByText(/1,497.60/).waitFor();await b('Enviar comanda').tap();await page.getByText('Comandas nuevas · Cocina: 2 · Barra: 1').waitFor();
+  const kitchen=await context.newPage();await kitchen.goto(origin);await setRole(kitchen,'cocina');await navigate(kitchen,'Cocina');
+  assert.equal(await kitchen.locator('#view .item').count(),2);assert.ok((await kitchen.locator('#view').textContent()).includes('Hamburguesa'));assert.ok((await kitchen.locator('#view').textContent()).includes('Alitas'));assert.ok(!(await kitchen.locator('#view').textContent()).includes('Mojito'));
+  for(const remaining of [1,0]){await kitchen.locator('[data-action="ready"]').first().tap();await kitchen.waitForFunction(n=>document.querySelectorAll('[data-action="ready"]').length===n,remaining);}
+  const bar=await context.newPage();await bar.goto(origin);await setRole(bar,'barra');await navigate(bar,'Barra');assert.equal(await bar.locator('#view .item').count(),1);assert.ok((await bar.locator('#view').textContent()).includes('Mojito'));assert.ok(!(await bar.locator('#view').textContent()).includes('Hamburguesa'));await bar.locator('[data-action="ready"]').tap();await bar.waitForFunction(()=>document.querySelectorAll('[data-action="ready"]').length===0);
+  await page.locator('[data-action="product"][data-value="mojito"]').tap();await page.getByLabel('Nota para barra').fill('Segunda ronda');await b('Añadir a la cuenta').tap();await b('Enviar comanda').tap();await page.getByText('Comandas nuevas · Cocina: 0 · Barra: 1').waitFor();
+  await bar.locator('[data-action="ready"]').waitFor();assert.equal(await bar.locator('[data-action="ready"]').count(),1);await bar.locator('[data-action="ready"]').tap();await bar.waitForFunction(()=>document.querySelectorAll('[data-action="ready"]').length===0);
+  let s=await snapshot();assert.equal(s.orders[0].lines.filter(line=>line.station==='cocina').length,2);assert.equal(s.orders[0].lines.filter(line=>line.station==='barra').length,2);assert.equal(new Set(s.orders[0].lines.map(line=>line.batch)).size,2);assert.ok(s.orders[0].lines.every(line=>line.status==='lista'));
+  await b('Dividir y cobrar').tap();await page.getByLabel(/Hamburguesa/).check();await page.getByLabel(/Alitas/).check();await page.getByLabel('Método de pago').selectOption('efectivo');await b('Registrar pago').tap();await page.getByText(/Pago registrado/).waitFor();
+  await b('Cobrar').tap();await page.getByLabel('Método de pago').selectOption('tarjeta');await b('Registrar pago').tap();await page.getByText('Simulado · sin envío a DGII',{exact:true}).waitFor();
+  s=await snapshot();assert.equal(s.payments.length,2);assert.equal(s.payments[0].amount,111360);assert.equal(s.payments[1].amount,76800);assert.equal(s.orders[0].fiscal.amount,188160);assert.equal(s.ingredients.ron.stock,2410);assert.ok(s.orders[0].closed);
+  await b('Ver estado fiscal').tap();s=await snapshot();assert.equal(s.payments.length,2);assert.equal(s.ingredients.ron.stock,2410);
+  await navigate(page,'Reportes');assert.ok((await page.locator('#view').textContent()).includes('3,113.60'));await page.getByLabel('Efectivo contado').fill('3113.60');await b('Confirmar cierre').tap();
+  assert.ok((await snapshot()).shift.closed);assert.equal((await snapshot()).shift.difference,0);
+  for(const target of [page,kitchen,bar])assert.equal(await target.evaluate(()=>document.documentElement.scrollWidth),device.width);
+  const output=process.env.POS_SCREENSHOTS||path.resolve('pos-pilot/var/design-review');mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,'mesa08-'+device.name+'-cierre.png'),fullPage:true});await kitchen.screenshot({path:path.join(output,'mesa08-'+device.name+'-cocina.png'),fullPage:true});await bar.screenshot({path:path.join(output,'mesa08-'+device.name+'-barra.png'),fullPage:true});
+  assert.deepEqual(errors,[]);console.log(device.name+': Mesa08 food=2 kitchen, mojitos=2 bar, incremental rounds, cash 1113.60 + card 768.00, stock once, closure zero difference PASSED');
+ }finally{await context.close();await new Promise(resolve=>server.close(resolve));}
+ }}finally{await browser.close();}
+});

@@ -136,3 +136,12 @@ Ajuste de facilidad de uso: móvil/tablet vertical muestran un botón Menú para
 
 
 Fotos de demostración renovadas: hamburguesa, alitas y mojito generados como recursos de menú, 1254×1254 px. Se codificaron en JPEG con calidad 92 sin reducir dimensiones; peso combinado aproximado 1.1 MB. El servidor conserva los enlaces existentes /images/burger.jpg, wings.jpg y mojito.jpg y sirve los nuevos archivos *-hq.jpg; no se modificaron productos, precios ni registros. Los originales pequeños permanecen en el repositorio para trazabilidad. Se comprobó en el navegador del piloto local la resolución nativa de las tres imágenes y ambos accesos a Barra: estación desde el menú y pedido en barra desde el catálogo. En móvil la navegación se despliega con Menú. No se modificó producción.
+
+
+### Recorrido Mesa 08 multiestación confirmado (22/11/2026)
+
+Prueba adicional de navegador con bases en memoria nuevas por dispositivo (celular 390×844 y tablet 768×1024, hasTouch): caja, Mesa 08 para cuatro personas, hamburguesa/alitas/mojito; pantallas separadas de Cocina y Barra bajo sus respectivos roles. Cocina recibió exclusivamente dos productos y pudo marcarlos listos; Barra recibió un mojito, y luego únicamente otro mojito pendiente en la segunda ronda. Se confirmaron cuatro partidas listas y dos lotes distintos.
+
+Cobro dividido: comida en efectivo RD$1,113.60 y dos mojitos en tarjeta RD$768.00; total RD$1,881.60. Dos pagos, un comprobante simulado, ron 2500→2410 ml; consultar nuevamente el comprobante no duplicó pagos ni consumo. Cierre: fondo RD$2,000 + cobro efectivo RD$1,113.60 = RD$3,113.60 contados, diferencia cero. Sin errores de JavaScript ni desbordamiento horizontal en caja/cocina/barra. Se completó el mismo recorrido en ambos dispositivos emulados; duración global de la ejecución automatizada ~74 s (incluye acciones y esperas de prueba; no es una medición del tiempo de cobro). No se modificó la demostración del usuario ni se emitió a DGII o producción. Evidencias locales: outputs/POS_Primer_Diseno_20261122/mesa08-{phone,tablet}-{cierre,cocina,barra}.png, fuera del repositorio.
+
+Para repetir: node --test --test-name-pattern="Mesa 08 complete touch" pos-pilot/ui-acceptance.test.cjs con Playwright configurado como arriba. Persisten las limitaciones de emulación versus dispositivos, impresoras e integración fiscal reales.
