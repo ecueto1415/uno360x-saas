@@ -42,9 +42,30 @@ function configureTables(s,enabled,count){
 }
 export function apply(s,command,user,actor=user,staff=[]){
  const {type}=command;
+ if(['business-change','tables-config','stations-config'].includes(type)){
+  role(user,'supervisor');fail(!setupRequired(s),'Completa primero la configuración inicial.');
+  s.setup??={business:'restaurant',tablesEnabled:true,tableCount:Math.max(5,...restaurantTables(s).filter(t=>t.active).map(t=>t.number)),completed:true,step:'products'};
+  if(type==='business-change'){
+   fail(command.confirmed===true,'Confirma el cambio de tipo de negocio desde Ajustes del POS.');
+   fail(command.previousBusiness===s.setup.business,'El tipo de negocio cambió. Revisa los ajustes antes de confirmar.');
+   fail(businessTypes.some(([id])=>id===command.business)&&command.business!==s.setup.business,'Selecciona un tipo de negocio diferente.');
+   const previous=s.setup.business;s.setup.business=command.business;
+   log(s,actor,'cambio de tipo de negocio POS',{previous,next:command.business,confirmed:true});return s.setup;
+  }
+  if(type==='tables-config'){
+   configureTables(s,command.enabled,command.count);
+   log(s,actor,'ajustes de mesas POS',{enabled:command.enabled,count:command.count});return s.setup;
+  }
+  fail(typeof command.kitchen==='boolean'&&typeof command.bar==='boolean','Selecciona el estado de Cocina y Barra.');
+  for(const [station,enabled] of [['cocina',command.kitchen],['barra',command.bar]]){
+   fail(enabled||!s.products.some(p=>p.station===station),'Reasigna los productos de '+station+' antes de desactivar esa estación.');
+   fail(enabled||!s.orders.some(o=>!o.closed&&o.lines.some(l=>l.station===station&&l.status!=='lista')),'Hay comandas pendientes en '+station+'.');
+  }
+  s.setup.stations={cocina:command.kitchen,barra:command.bar};log(s,actor,'ajustes de estaciones POS',s.setup.stations);return s.setup;
+ }
  if(type.startsWith('setup-')){
   role(user,'supervisor');
-  s.setup??={business:'restaurant',tablesEnabled:true,tableCount:Math.max(5,...restaurantTables(s).filter(t=>t.active).map(t=>t.number)),completed:true,step:'business'};
+  fail(setupRequired(s),'Este POS ya está configurado. Usa Ajustes del POS.');
   if(type==='setup-business'){
    fail(businessTypes.some(([id])=>id===command.business),'Selecciona un tipo de negocio.');
    const tableBusiness=['restaurant','bakery'].includes(command.business);
@@ -99,6 +120,7 @@ export function apply(s,command,user,actor=user,staff=[]){
   role(user,'supervisor');
   const name=label(command.name),category=label(command.category,40),p=s.products.find(p=>p.id===command.id);
   fail(name&&category&&nonnegative(command.cents)&&[0,16,18].includes(command.tax)&&['cocina','barra','ninguna'].includes(command.station),'Datos del producto inválidos.');
+  fail(command.station==='ninguna'||s.setup?.stations?.[command.station]!==false,'La estación está desactivada. Actívala en Ajustes del POS.');
   const photo=String(command.photo||'');
   fail(!photo||['burger.jpg','wings.jpg','mojito.jpg'].includes(photo)||/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(photo)&&photo.length<=700000,'Imagen inválida o grande.');
   const recipe=p?.recipe||{};

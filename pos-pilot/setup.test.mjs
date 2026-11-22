@@ -22,7 +22,7 @@ test('Setup is persisted per business, supervisor-only, resumable and examples a
   const key=crypto.randomUUID();await cmd('setup-examples',{},'supervisor',key);await cmd('setup-examples',{},'supervisor',key);await cmd('setup-examples');assert.equal((await state()).products.length,3);
   await cmd('setup-finish');assert.equal((await state()).setup.completed,true);await cmd('open',{fund:0});
   const order=(await cmd('order',{service:'mesa',table:1,people:2})).result;
-  await cmd('setup-step',{step:'business'});assert.equal((await cmd('setup-business',{business:'retail'})).status,400);assert.equal((await state()).orders[0].id,order.id);
+  assert.equal((await cmd('setup-step',{step:'business'})).status,400);assert.equal((await cmd('setup-business',{business:'retail'})).status,400);assert.equal((await state()).orders[0].id,order.id);
  }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
 test('Initial settings and product catalog never cross tenant boundaries',async()=>{

@@ -38,7 +38,7 @@ test('Approved setup on tablet and phone: all business types, persisted tables/p
     await b('Guardar y abrir el POS').tap();await b('Abrir turno').waitFor();assert.equal((await snap()).shift,null);assert.equal((await snap()).payments.length,0);assert.equal((await snap()).setup.completed,true);
     await p.reload();await b('Abrir turno').waitFor();assert.equal(await p.getByRole('heading',{name:'Paso 1 de 3 · Elige tu negocio',exact:true}).count(),0);
     assert.equal(await p.locator('.brand').evaluate(el=>el.outerHTML),brand);assert.deepEqual(await p.locator('#nav button').allTextContents(),menu);
-    await p.locator('#mobile-nav-toggle').tap();await p.locator('#nav [data-value="Menú"]').tap();await b('Configurar mi POS').tap();await p.getByRole('heading',{name:'Paso 1 de 3 · Elige tu negocio',exact:true}).waitFor();assert.equal((await snap()).setup.completed,true);assert.equal((await snap()).products.length,business==='restaurant'?4:1);
+    await p.locator('#mobile-nav-toggle').tap();await p.locator('#nav [data-value="Menú"]').tap();await b('Ajustes del POS').tap();await p.getByRole('heading',{name:'Ajustes del POS',exact:true}).waitFor();assert.equal((await snap()).setup.completed,true);assert.equal((await snap()).products.length,business==='restaurant'?4:1);
     assert.deepEqual(errors,[]);console.log(device.name+' '+business+': saved/resumed/completed; shell preserved; no sale; reopen without resetting PASSED');
    }finally{await context.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
   }
