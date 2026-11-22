@@ -42,6 +42,11 @@ function configureTables(s,enabled,count){
 }
 export function apply(s,command,user,actor=user,staff=[]){
  const {type}=command;
+ if(type==='staff-role'){
+  role(user,'supervisor');fail(staff.some(p=>p.id===command.account)&&['caja','camarero','cocina','barra'].includes(command.role),'Selecciona un usuario habilitado de esta empresa y un rol del POS.');
+  (s.staffRoles??={})[command.account]=command.role;log(s,actor,'rol del equipo POS',{account:command.account,role:command.role});return {account:command.account,role:command.role};
+ }
+ if(['floor-save','zone-save'].includes(type)){fail(!setupRequired(s),'Completa primero la configuración inicial.');return configureFloor(s,command,user,actor);}
  if(['business-change','tables-config','stations-config'].includes(type)){
   role(user,'supervisor');fail(!setupRequired(s),'Completa primero la configuración inicial.');
   s.setup??={business:'restaurant',tablesEnabled:true,tableCount:Math.max(5,...restaurantTables(s).filter(t=>t.active).map(t=>t.number)),completed:true,step:'products'};
@@ -147,8 +152,9 @@ export function apply(s,command,user,actor=user,staff=[]){
  if(type==='fiscal'){
   role(user,'caja','supervisor');
   const order=s.orders.find(o=>o.id===command.order);
-  fail(order?.fiscal,'El pedido todavía no tiene comprobante.');
-  return order.fiscal;
+  const document=order&&invoicesFor(order).find(d=>!command.invoice||d.id===command.invoice);
+  fail(document,'El comprobante no está disponible para este pedido.');
+  return document;
  }
  fail(s.shift&&!s.shift.closed,'Abre un turno para operar la caja.');
  if(type==='close'){
@@ -158,7 +164,7 @@ export function apply(s,command,user,actor=user,staff=[]){
  }
  if(type==='refund'){
   role(user,'supervisor');
-  const order=s.orders.find(o=>o.id===command.order&&o.shift===s.shift.id&&o.closed&&o.fiscal);
+  const order=s.orders.find(o=>o.id===command.order&&o.shift===s.shift.id&&o.closed&&invoicesFor(o).length);
   fail(order,'La venta debe estar pagada y pertenecer al turno abierto.');
   const reason=label(command.reason,180);
   const selection=command.lines;
@@ -192,11 +198,13 @@ export function apply(s,command,user,actor=user,staff=[]){
   fail(!command.waiter||assigned,'El responsable no está habilitado en esta empresa.');
   if(user==='camarero')fail(!command.waiter||command.waiter===actor,'Solo un supervisor puede asignar otra persona.');
   const waiter=assigned||{id:actor,name:actor};
-  const o={id:id(),number:s.orders.length+1042,shift:s.shift.id,service:command.service,table:command.service==='mesa'?command.table:null,tableName:restaurantTables(s).find(t=>t.number===command.table)?.name,people:command.people,waiter:{id:waiter.id,name:waiter.name},lines:[],closed:false};
+  const o={id:id(),number:s.orders.length+1042,shift:s.shift.id,service:command.service,table:command.service==='mesa'?command.table:null,tableName:restaurantTables(s).find(t=>t.number===command.table)?.name,people:command.people,waiter:{id:waiter.id,name:waiter.name},guests:[],opened:new Date().toISOString(),lines:[],closed:false};
   s.orders.push(o);return o;
  }
  const o=s.orders.find(o=>o.id===command.order);
  fail(o&&o.shift===s.shift.id&&(!o.closed||type==='ready'),'Pedido cerrado o fuera del turno.');
+ if(['guest-save','guest-assign','invoice-mode','request-check'].includes(type))return guestCommand(s,o,command,user,actor);
+ if(['add','send'].includes(type))ownOrder(o,user,actor);
  if(type==='reassign'){
   role(user,'supervisor');
   const next=staff.find(person=>person.id===command.waiter),reason=label(command.reason,180);
@@ -210,8 +218,9 @@ export function apply(s,command,user,actor=user,staff=[]){
   role(user,'caja','camarero','supervisor');
   fail(!s.payments.some(p=>p.order===o.id),'La cuenta ya tiene pagos.');
   const p=s.products.find(p=>p.id===command.product);fail(p,'Producto inválido.');
+  fail(!command.guest||command.guest==='shared'||(o.guests||[]).some(g=>g.id===command.guest),'La persona no pertenece a esta mesa.');
   const modifiers=Array.isArray(command.modifiers)?command.modifiers.filter(m=>p.modifiers.includes(m)):[];
-  const l={id:id(),product:p.id,name:p.name,cents:command.happy&&p.happy!=null?p.happy:p.cents,tax:p.tax,station:p.station,modifiers,note:label(command.note,180),recipe:structuredClone(p.recipe||{}),status:p.station==='ninguna'?'lista':'pendiente'};
+  const l={id:id(),product:p.id,name:p.name,cents:command.happy&&p.happy!=null?p.happy:p.cents,tax:p.tax,station:p.station,modifiers,note:label(command.note,180),recipe:structuredClone(p.recipe||{}),status:p.station==='ninguna'?'lista':'pendiente',guest:command.guest||null};
   o.lines.push(l);return l;
  }
  if(type==='send'){
@@ -242,7 +251,12 @@ export function apply(s,command,user,actor=user,staff=[]){
  }
  if(type==='pay'){
   role(user,'caja','supervisor');
-  const equal=command.split==='equal';
+  if(command.invoiceMode!==undefined)guestCommand(s,o,{type:'invoice-mode',mode:command.invoiceMode},user,actor);
+  const equal=command.split==='equal',byPerson=command.split==='person',separate=o.invoiceMode==='person';
+  fail(!separate||byPerson,'Cobra por persona para conservar las facturas separadas.');
+  const guest=byPerson&&(o.guests||[]).find(g=>g.id===command.guest);
+  if(byPerson)fail(guest,'Selecciona una persona de esta mesa.');
+  if(separate)fail(o.lines.every(l=>(o.guests||[]).some(g=>g.id===l.guest))&&!invoicesFor(o).some(d=>d.guest===guest.id),'Asigna todos los productos a personas y evita facturar una persona dos veces.');
   fail(!o.equalSplit||equal,'Continúa cobrando las partes de esta cuenta.');
   let amounts;
   if(equal){
@@ -251,26 +265,34 @@ export function apply(s,command,user,actor=user,staff=[]){
    amounts=o.equalSplit?.amounts||equalShares(totals(o.lines,o.service).total,command.people);
    fail(!o.equalSplit||command.people===o.equalSplit.people,'La cantidad de personas ya quedó fijada con el primer pago.');
    fail(Number.isInteger(command.part)&&command.part>=0&&command.part<amounts.length&&!s.payments.some(p=>p.order===o.id&&p.equalPart===command.part),'Esa parte ya está pagada o no es válida.');
-  }else fail(Array.isArray(command.lines)&&command.lines.length>0&&new Set(command.lines).size===command.lines.length,'Selecciona las partidas a cobrar.');
+  }else if(!byPerson)fail(Array.isArray(command.lines)&&command.lines.length>0&&new Set(command.lines).size===command.lines.length,'Selecciona las partidas a cobrar.');
   fail(['efectivo','tarjeta','transferencia'].includes(command.method),'Método inválido.');
-  const lines=equal?o.lines:command.lines.map(k=>o.lines.find(l=>l.id===k));
-  fail(lines.every(l=>l&&!l.payment),'Alguna partida ya está pagada.');
+  const lines=equal?o.lines:byPerson?o.lines.filter(l=>l.guest===guest.id&&!l.payment):command.lines.map(k=>o.lines.find(l=>l.id===k));
+  fail(lines.length>0&&lines.every(l=>l&&!l.payment),'Alguna partida ya está pagada o no hay productos pendientes.');
   fail(lines.every(l=>l.status!=='pendiente'),'Envía las comandas antes de cobrar.');
   const kind=command.kind,rnc=label(command.rnc,11);
   fail(['E31','E32'].includes(kind)&&(kind!=='E31'||/^[0-9]{9}$/.test(rnc)),'E31 requiere un RNC de nueve dígitos.');
-  fail(!o.billing||o.billing.kind===kind&&o.billing.rnc===(kind==='E31'?rnc:''),'Ya se eligió el comprobante para esta cuenta.');
+  const buyer=label(command.buyer,150);
+  if(separate&&kind==='E31')fail(buyer,'Completa la razón social del comprador para E31.');
+  fail(separate||!o.billing||o.billing.kind===kind&&o.billing.rnc===(kind==='E31'?rnc:''),'Ya se eligió el comprobante para esta cuenta.');
   const use={};if(!equal||!o.equalSplit)for(const l of lines)for(const [key,qty] of Object.entries(l.recipe||{}))use[key]=(use[key]||0)+qty;
   fail(Object.entries(use).every(([k,n])=>s.ingredients[k]?.stock>=n),'Existencia insuficiente para registrar esta venta.');
-  const record={id:id(),method:command.method,order:o.id,shift:o.shift,user:actor,lines:equal?[]:command.lines,amount:equal?amounts[command.part]:totals(lines,o.service).total,...(equal?{equalPart:command.part}:{})};
+  const record={id:id(),method:command.method,order:o.id,shift:o.shift,user:actor,lines:equal?[]:lines.map(l=>l.id),amount:equal?amounts[command.part]:totals(lines,o.service).total,...(equal?{equalPart:command.part}:{}),...(guest?{guest:guest.id}:{}),at:new Date().toISOString()};
   s.payments.push(record);
   if(equal)o.equalSplit={people:command.people,amounts};
   const settled=!equal||s.payments.filter(p=>p.order===o.id).length===amounts.length;
   if(settled)for(const l of lines)l.payment=record.id;
   for(const [k,n] of Object.entries(use)){s.ingredients[k].stock-=n;s.events.push({type:'sale',reference:record.id+':'+k,ingredient:k,quantity:n,payment:record.id});}
-  o.billing={kind,rnc:kind==='E31'?rnc:''};
+  o.invoiceMode??='table';
+  const billing={kind,rnc:kind==='E31'?rnc:'',buyer:buyer||guest?.name||''};
+  if(!separate)o.billing??=billing;
+  else{
+   const document=simulatedInvoice(o,lines,billing,guest);(o.invoices??=[]).push(document);record.invoice=document.id;
+   for(const l of lines)l.invoice=document.id;
+  }
   if(o.lines.every(l=>l.payment)){
    o.closed=true;
-   o.fiscal={id:id(),status:'Simulado · sin envío a DGII',...o.billing,amount:totals(o.lines,o.service).total, route:o.billing.kind==='E32' && totals(o.lines,o.service).total<25000000?'RFCE':'ECF'};
+   if(!separate)o.fiscal=simulatedInvoice(o,o.lines,o.billing);
   }
   return record;
  }
@@ -287,3 +309,85 @@ export function cashSummary(s){
 }
 export function margin(p,ingredients){const cost=Object.entries(p.recipe||{}).reduce((sum,[k,n])=>sum+n*ingredients[k].cost,0);
  return {cost,normal:p.cents-cost,happy:p.happy==null?null:p.happy-cost};}
+
+const modelAssert=(ok,text)=>{if(!ok)throw Error(text);};
+const manager=user=>modelAssert(user==='supervisor','Solo el administrador puede editar el plano.');
+const clean=(v,n=60)=>String(v??'').trim().slice(0,n);
+export const invoicesFor=o=>o.invoices|| (o.fiscal?[o.fiscal]:[]);
+export const floorZones=s=>s.floor?.zones||[{id:'salon',name:'Salón'},{id:'terraza',name:'Terraza'},{id:'barra',name:'Barra'}];
+export function floorTables(s){
+ const positions=[[6,5],[94,5],[50,45],[6,94],[94,94]];
+ const tables=restaurantTables(s),rows=Math.ceil(tables.length/3);
+ return tables.map((t,i)=>({zone:'salon',shape:'rect',seats:4,x:tables.length<=5?positions[i][0]:(i%3)*50,y:tables.length<=5?positions[i][1]:rows<=1?0:Math.floor(i/3)/(rows-1)*100,...t}));
+}
+export function configureFloor(s,command,user,actor){
+ manager(user);const zones=floorZones(s);
+ if(command.type==='zone-save'){
+  const name=clean(command.name,35);modelAssert(name,'Escribe el nombre de la zona.');
+  modelAssert(!zones.some(z=>z.name.toLowerCase()===name.toLowerCase()&&z.id!==command.id),'Ya existe una zona con ese nombre.');
+  const zone=zones.find(z=>z.id===command.id);modelAssert(!command.id||zone,'Zona no disponible.');
+  if(zone)zone.name=name;else zones.push({id:crypto.randomUUID(),name});
+  s.floor={...s.floor,zones,version:(s.floor?.version||0)+1};
+  s.audits.push({user:actor,action:'zona del salón',details:{reason:name},at:new Date().toISOString()});return s.floor;
+ }
+ modelAssert(command.version===(s.floor?.version||0),'El plano cambió. Vuelve a abrirlo antes de guardar.');
+ modelAssert(Array.isArray(command.tables)&&command.tables.length>0&&command.tables.length<=200&&new Set(command.tables.map(t=>t.number)).size===command.tables.length,'Plano inválido.');
+ const tables=floorTables(s);
+ for(const input of command.tables){
+  const table=tables.find(t=>t.number===input.number);
+  modelAssert(table&&zones.some(z=>z.id===input.zone)&&['rect','round'].includes(input.shape)&&Number.isInteger(input.seats)&&input.seats>=1&&input.seats<=30&&['x','y'].every(k=>Number.isFinite(input[k])&&input[k]>=0&&input[k]<=100)&&clean(input.name,40),'Revisa la zona, posición, nombre y lugares de las mesas.');
+  Object.assign(table,{zone:input.zone,shape:input.shape,seats:input.seats,x:input.x,y:input.y,name:clean(input.name,40)});
+ }
+ s.tables=tables;s.floor={zones,version:(s.floor?.version||0)+1};
+ s.audits.push({user:actor,action:'edición del plano',details:{reason:'Posiciones y configuración del salón guardadas'},at:new Date().toISOString()});return s.floor;
+}
+export function ownOrder(o,user,actor){modelAssert(user!=='camarero'||o.waiter?.id===actor,'Solo puedes modificar las mesas que atiendes.');}
+export function guestCommand(s,o,command,user,actor){
+ const type=command.type;
+ modelAssert(['caja','supervisor','camarero'].includes(user),'Este rol no puede organizar la cuenta.');ownOrder(o,user,actor);
+ if(type==='request-check'){o.checkRequested=true;return {requested:true};}
+ const paid=s.payments.some(p=>p.order===o.id)||invoicesFor(o).length>0;
+ if(type==='invoice-mode'){
+  modelAssert(['caja','supervisor'].includes(user),'Solo Caja o el administrador elige la facturación.');
+  modelAssert(['table','person'].includes(command.mode),'Elige una modalidad de facturación.');
+  modelAssert(!paid||(o.invoiceMode||'table')===command.mode,'La modalidad ya está fijada por un pago o comprobante.');
+  if(command.mode==='person')modelAssert(!o.equalSplit&&(o.guests||[]).length>0&&o.lines.length>0&&o.lines.every(l=>(o.guests||[]).some(g=>g.id===l.guest)),'Asigna todos los productos de Cuenta general y Compartido antes de facturar por persona.');
+  o.invoiceMode=command.mode;return {mode:o.invoiceMode};
+ }
+ modelAssert(!paid,'La organización de personas y productos queda fija después del primer pago.');
+ o.guests??=[];
+ if(type==='guest-save'){
+  const guest=o.guests.find(g=>g.id===command.guest);modelAssert(!command.guest||guest,'Persona no disponible en esta mesa.');
+  modelAssert(guest||o.guests.length<30,'Se permiten hasta 30 personas por pedido.');
+  modelAssert(String(command.name??'').trim().length<=60,'El nombre debe tener hasta 60 caracteres.');
+  const sequence=guest?o.guestSequence||o.guests.length:(o.guestSequence||o.guests.length)+1;
+  const name=clean(command.name)||guest?.name||'Persona '+sequence;
+  modelAssert(!o.guests.some(g=>g.id!==guest?.id&&g.name.toLowerCase()===name.toLowerCase()),'Ya existe una persona con ese nombre en esta mesa.');
+  if(guest)guest.name=name;else{o.guests.push({id:crypto.randomUUID(),name});o.guestSequence=sequence;}
+  return guest||o.guests.at(-1);
+ }
+ const line=o.lines.find(l=>l.id===command.line);modelAssert(line&&!line.payment,'Selecciona un producto pendiente.');
+ modelAssert(!command.guest||command.guest==='shared'||o.guests.some(g=>g.id===command.guest),'La persona no pertenece a esta mesa.');
+ line.guest=command.guest||null;return line;
+}
+export function simulatedInvoice(o,lines,billing,guest){
+ const amount=totals(lines,o.service).total;
+ return {id:crypto.randomUUID(),status:'Simulado · sin envío a DGII',...billing,guest:guest?.id||null,guestName:guest?.name||'',lines:lines.map(l=>l.id),amount,totals:totals(lines,o.service),created:new Date().toISOString(),route:billing.kind==='E32'&&amount<25000000?'RFCE':'ECF'};
+}
+export function publicState(s,user,actor){
+ if(['supervisor','caja'].includes(user))return s;
+ const out=structuredClone(s);out.operations={};out.audits=[];out.events=[];out.refunds=[];out.staffRoles={};
+ const station=['cocina','barra'].includes(user);
+ const owned=new Set(s.orders.filter(o=>o.waiter?.id===actor).map(o=>o.id));
+ out.payments=station?[]:out.payments.filter(p=>owned.has(p.order));
+ out.orders=out.orders.map(o=>{
+  if(!station&&owned.has(o.id)){delete o.billing;delete o.fiscal;delete o.invoices;return o;}
+  const meta={id:o.id,number:o.number,table:o.table,tableName:o.tableName,service:o.service,people:o.people,waiter:o.waiter,closed:o.closed,shift:o.shift,opened:o.opened,checkRequested:o.checkRequested,amountsHidden:true,lineCount:o.lines.length};
+  meta.lines=station?o.lines.filter(l=>l.station===user).map(l=>({id:l.id,name:l.name,station:l.station,batch:l.batch,status:l.status,modifiers:l.modifiers,note:l.note})):[];
+  return meta;
+ });
+ if(out.shift)out.shift={id:out.shift.id,opened:out.shift.opened,closed:out.shift.closed};
+ for(const item of Object.values(out.ingredients))delete item.cost;
+ if(station)out.products=out.products.map(p=>({id:p.id,name:p.name,category:p.category,station:p.station,photo:p.photo,modifiers:p.modifiers}));
+ return out;
+}

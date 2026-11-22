@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stockConnector } from './lab-stock.mjs';
 import { businessAccess } from './access.mjs';
 import {proxyAccess,bodyMatches} from './proxy-access.mjs';
-import { seed, apply, cashSummary } from './domain.mjs';
+import { seed, apply, cashSummary,publicState } from './domain.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 const roles=new Set(['caja','camarero','cocina','barra','supervisor']);
 const demoStaff=[{id:'caja',name:'Cajero de prueba'},{id:'camarero',name:'Camarero de prueba'},{id:'supervisor',name:'Supervisor de prueba'},{id:'ana',name:'Ana García'},{id:'carlos',name:'Carlos Pérez'}];
@@ -19,6 +19,11 @@ export function makeServer(file, access=null, inventory=null, origin=null, optio
  const read=db.prepare('SELECT state FROM pilot WHERE id=?');
  const write=db.prepare('INSERT INTO pilot VALUES (?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state');
  function state(scope){const row=read.get(scope);return row?JSON.parse(row.state):seed(options);}
+ function view(body,user,actor){
+  if(['supervisor','caja'].includes(user))return body;
+  const result=['cocina','barra'].includes(user)&&body.result?Object.fromEntries(['id','status','station','type','ingredient','quantity','expected','difference','reason'].filter(k=>Object.hasOwn(body.result,k)).map(k=>[k,body.result[k]])):body.result;
+  return {...body,result,state:publicState(body.state,user,actor),summary:{restricted:true,methods:{},refunds:{}}};
+ }
  function mutation(command,user,scope,actor,staff){
   db.exec('BEGIN IMMEDIATE');
   try{
@@ -73,26 +78,29 @@ export function makeServer(file, access=null, inventory=null, origin=null, optio
    const connected=access?.authorize(req);
    if(access&&!connected)return reply(res,403,{error:'La cuenta no tiene acceso al POS de esta sucursal.'});
    const scope=connected?.scope||'negocio-demostracion:sucursal-centro';
+   const authorizedRole=()=>connected?.role==='caja'?(state(scope).staffRoles?.[connected.account]||'caja'):connected?.role||req.headers['x-pos-role']||(req.method==='GET'?'supervisor':undefined);
    const staff=connected?(connected.staff||[{id:connected.account,name:connected.displayName||connected.account}]):demoStaff;
    if(req.method==='GET'&&url.pathname==='/api/state'){
-    const s=state(scope);return reply(res,200,{state:s,summary:cashSummary(s),inventoryConnected:Boolean(inventory),staff,connected:connected?{role:connected.role,branchName:connected.branchName,displayName:connected.displayName||'',account:connected.account}:null});
+    const s=state(scope),user=authorizedRole();if(!roles.has(user))return reply(res,403,{error:'Rol inválido.'});
+    return reply(res,200,view({state:s,summary:cashSummary(s),inventoryConnected:Boolean(inventory),staff,connected:connected?{role:user,branchName:connected.branchName,displayName:connected.displayName||'',account:connected.account}:null},user,connected?.account||user));
    }
    if(req.method==='POST'&&url.pathname==='/api/command'){
     if(req.headers.origin&&req.headers.origin!==(origin||'http://'+req.headers.host))return reply(res,403,{error:'Origen inválido.'});
     if(!req.headers['content-type']?.startsWith('application/json'))return reply(res,415,{error:'Tipo de solicitud inválido.'});
-    const user=connected?.role||req.headers['x-pos-role'];if(!roles.has(user))return reply(res,403,{error:'Rol de laboratorio inválido.'});
+    let user=authorizedRole();if(!roles.has(user))return reply(res,403,{error:'Rol de laboratorio inválido.'});
     let body='';
     for await(const block of req){
      body+=block;if(body.length>850000)return reply(res,413,{error:'Archivo demasiado grande.'});
     }
     if(!bodyMatches(connected,body))return reply(res,403,{error:'Solicitud no autorizada.'});
+    user=authorizedRole();if(!roles.has(user))return reply(res,403,{error:'Rol inválido.'});
     const command=JSON.parse(body);
     if(command.type==='sync-inventory'){
      if(!inventory||!['caja','supervisor'].includes(user))return reply(res,403,{error:'Inventario central de pruebas no disponible para este rol.'});
      const result=await syncInventory(scope),s=state(scope);
      return reply(res,200,{result,state:s,summary:cashSummary(s)});
     }
-    return reply(res,200,mutation(command,user,scope,connected?.account||user,staff));
+    return reply(res,200,view(mutation(command,user,scope,connected?.account||user,staff),user,connected?.account||user));
    }
    reply(res,404,{error:'Ruta no encontrada.'});
   }catch(e){reply(res,400,{error:e.message});}

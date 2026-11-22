@@ -20,7 +20,7 @@ test('Piloto Mesa 03, segunda ronda, caja, simulación fiscal y para llevar',asy
  const {result:w}=await add('wings');
  const {result:m,state:initial}=await add('mojito');
  assert.deepEqual(totals([b,w,m],'mesa'),{subtotal:117000,tax:21060,tip:11700,total:149760});
- assert.deepEqual(margin(initial.products.find(p=>p.id==='mojito'),initial.ingredients),{cost:3875,normal:26125,happy:21125});
+ assert.deepEqual(margin((await (await fetch(base+'/api/state')).json()).state.products.find(p=>p.id==='mojito'),(await (await fetch(base+'/api/state')).json()).state.ingredients),{cost:3875,normal:26125,happy:21125});
  const {result:first}=await post('send',{order:o.id},'camarero');
  assert.equal(first.cocina,2);assert.equal(first.barra,1);
  await post('ready',{order:o.id,line:b.id},'barra',randomUUID(),400);

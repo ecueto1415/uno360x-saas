@@ -13,17 +13,20 @@ test('Assigned waiter and supervisor-only reassignment on tablet and phone',asyn
    const p=await ctx.newPage();const url='http://127.0.0.1:'+server.address().port;
    const b=n=>p.getByRole('button',{name:n,exact:true});
    async function nav(n){const target=p.locator('#nav [data-value="'+n+'"]');if(!await target.isVisible())await p.locator('#mobile-nav-toggle').tap();await target.tap();}
-   await p.goto(url);await b('Abrir turno').tap();await nav('Mesas');await p.locator('[data-action="table"][data-value="3"]').tap();await p.getByLabel('Quién atiende').selectOption('2');await b('Abrir pedido').tap();
+   await p.goto(url);await b('Abrir turno').tap();await nav('Mesas');await p.locator('[data-action="floorSelect"][data-value="3"]').tap();await p.locator('[data-action="table"][data-value="3"]').tap();await p.getByLabel('Quién atiende').selectOption('2');await p.locator('#modal').getByRole('button',{name:'Abrir pedido',exact:true}).tap();
    await p.locator('.assignment').getByText('Ana García',{exact:true}).waitFor();assert.equal(await p.locator('.rail-foot').isVisible(),false);
    await b('Reasignar mesa').tap();await p.getByLabel('Nuevo responsable').selectOption('3');await p.getByLabel('Motivo del cambio').fill('Cambio de turno - prueba touch');
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth),device.width);
    const out=process.env.POS_SCREENSHOTS||path.resolve('pos-pilot/var/design-review');mkdirSync(out,{recursive:true});await p.screenshot({path:path.join(out,'mesa-responsable-'+device.name+'-reasignar.png'),fullPage:true});
    await b('Guardar').tap();await p.locator('.assignment').getByText('Carlos Pérez',{exact:true}).waitFor();
-   await nav('Mesas');await p.locator('[data-action="table"][data-value="3"]').getByText('Atiende: Carlos Pérez',{exact:true}).waitFor();
+   await nav('Mesas');await p.getByRole('button',{name:/Mesa 03.*Carlos Pérez/}).waitFor();
    await p.screenshot({path:path.join(out,'mesa-responsable-'+device.name+'-mesas.png'),fullPage:true});
    await nav('Reportes');await p.getByText(/Cambio de turno - prueba touch/).waitFor();assert.match(await p.locator('#view').innerText(),/Responsable POS/);assert.match(await p.locator('#view').innerText(),/Ana García/);assert.match(await p.locator('#view').innerText(),/Carlos Pérez/);
    for(const user of ['2','3']){
-    await ctx.setExtraHTTPHeaders({'X-Fixture-User':user});await p.reload();await nav('Mesas');await p.locator('[data-action="table"][data-value="3"]').tap();await p.locator('.assignment').getByText('Carlos Pérez',{exact:true}).waitFor();assert.equal(await b('Reasignar mesa').count(),0);
+    await ctx.setExtraHTTPHeaders({'X-Fixture-User':user});await p.reload();await nav('Mesas');
+    if(user==='3'){await p.locator('[data-action="floorSelect"][data-value="3"]').tap();await p.locator('[data-action="table"][data-value="3"]').tap();await p.locator('.assignment').getByText('Carlos Pérez',{exact:true}).waitFor();}
+    else await p.getByText('Cuenta reservada al responsable y a Caja.',{exact:true}).waitFor();
+    assert.equal(await b('Reasignar mesa').count(),0);
     await p.locator('#mobile-nav-toggle').tap();assert.equal(await p.locator('#role').isVisible(),false);await p.locator('#mobile-nav-toggle').tap();
    }
    assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth),device.width);console.log(device.name+': assignment visible, reassignment audited, cashier/waiter button absent, trusted role hidden PASSED');

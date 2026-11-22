@@ -16,14 +16,14 @@ test('Approved POS design keeps restaurant workflow on desktop and mobile',async
   const output=process.env.POS_SCREENSHOTS||path.resolve('pos-pilot/var/design-review');mkdirSync(output,{recursive:true});
   await page.goto(base);
   await button('Abrir turno').click();
-  await nav('Mesas').click();await page.locator('[data-action="table"][data-value="3"]').click();await page.getByLabel('Personas').fill('4');await button('Abrir pedido').click();
+  await nav('Mesas').click();await page.locator('[data-action="floorSelect"][data-value="3"]').click();await page.locator('[data-action="table"][data-value="3"]').click();await page.getByLabel('Personas').fill('4');await page.locator('#modal').getByRole('button',{name:'Abrir pedido',exact:true}).click();
   for(const product of ['burger','wings','mojito']){await page.locator('[data-action="product"][data-value="'+product+'"]').click();await button('Añadir a la cuenta').click();}
   await page.locator('.order-panel .total').getByText(/1,497.60/).waitFor();
   await page.waitForFunction(()=>[...document.querySelectorAll('.tile img')].every(img=>img.complete&&img.naturalWidth>=1000));
   assert.equal(await page.locator('.tile img').evaluateAll(images=>images.filter(img=>img.naturalWidth>=1000).length),3);
   assert.equal(await page.locator('h1').textContent(),'Mesa 03');
   await page.getByRole('searchbox').fill('moj');assert.equal(await page.locator('.tile').count(),1);await page.getByRole('searchbox').fill('');
-  await button('Bebidas').click();assert.equal(await page.locator('.tile').count(),1);await button('Todos').click();
+  await button('Bebidas').click();assert.equal(await page.locator('.tile').count(),1);await page.locator('[data-action=category]').filter({hasText:/^Todos$/}).click();
   await page.screenshot({path:path.join(output,'pos-primer-diseno-desktop.png'),fullPage:true});
   for(const width of [1024,768,390,320]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width,'overflow at '+width);assert.ok(await button('Cobrar').isVisible());}
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(output,'pos-primer-diseno-mobile.png'),fullPage:true});
@@ -39,7 +39,7 @@ test('Approved POS design keeps restaurant workflow on desktop and mobile',async
   assert.equal(state.payments.length,2);assert.equal(state.ingredients.ron.stock,2410);
   for(const mode of ['Cocina','Barra','Inventario','Reportes','Menú','Mesas','Pedidos','Caja']){await nav(mode).click();await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390,'overflow in '+mode);await page.setViewportSize({width:1440,height:1000});}
   await nav('Reportes').click();await page.getByLabel('Efectivo contado').fill('3113.60');await button('Confirmar cierre').click();
-  await nav('Caja').click();await button('Abrir turno').click();await button('Para llevar').click();await button('Abrir pedido').click();
+  await nav('Caja').click();await button('Abrir turno').click();await button('Para llevar').click();await page.locator('#modal').getByRole('button',{name:'Abrir pedido',exact:true}).click();
   for(const product of ['burger','wings','mojito']){await page.locator('[data-action="product"][data-value="'+product+'"]').click();await button('Añadir a la cuenta').click();}
   await page.locator('.order-panel .total').getByText(/1,380.60/).waitFor();
   assert.equal(await page.locator('.catalog-panel .tabs').first().locator('.active').textContent(),'Para llevar');
@@ -59,7 +59,7 @@ test('Touch phone and tablet: product modifiers, keyboard forms and reachable or
    const b=name=>page.getByRole('button',{name,exact:true});
    await page.goto(base);
    if(device.name==='phone')await b('Abrir turno').tap();
-   await page.locator('#mobile-nav-toggle').isVisible().then(async visible=>{if(visible)await page.locator('#mobile-nav-toggle').tap()});await page.locator('#nav [data-value="Mesas"]').tap();await page.locator('[data-action="table"][data-value="'+({phone:1,'tablet-portrait':2,'tablet-landscape':3}[device.name])+'"]').tap();await b('Abrir pedido').tap();
+   await page.locator('#mobile-nav-toggle').isVisible().then(async visible=>{if(visible)await page.locator('#mobile-nav-toggle').tap()});await page.locator('#nav [data-value="Mesas"]').tap();await page.locator('[data-action="floorSelect"][data-value="'+({phone:1,'tablet-portrait':2,'tablet-landscape':3}[device.name])+'"]').tap();await page.locator('[data-action="table"][data-value="'+({phone:1,'tablet-portrait':2,'tablet-landscape':3}[device.name])+'"]').tap();await page.locator('#modal').getByRole('button',{name:'Abrir pedido',exact:true}).tap();
    await page.locator('[data-action="product"][data-value="mojito"]').tap();await page.getByLabel('Poco dulce').check();await page.getByLabel('Nota para barra').fill('Prueba touch');await b('Añadir a la cuenta').tap();
    await page.locator('.order-panel .line-description').filter({hasText:'Mojito'}).waitFor();
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),device.width);
@@ -87,7 +87,7 @@ test('Mesa 03 complete touch journey: kitchen, bar, second round and split cash/
   async function navigate(target,name){const item=target.locator('#nav [data-value="'+name+'"]');if(!await item.isVisible())await target.locator('#mobile-nav-toggle').tap();await item.tap();}
   async function setRole(target,role){if(!await target.locator('#role').isVisible())await target.locator('#mobile-nav-toggle').tap();await target.locator('#role').selectOption(role);}
   const snapshot=async()=> (await (await fetch(origin+'/api/state')).json()).state;
-  await page.goto(origin);await b('Abrir turno').tap();await navigate(page,'Mesas');await page.locator('[data-action="table"][data-value="3"]').tap();await page.getByLabel('Personas').fill('4');await b('Abrir pedido').tap();
+  await page.goto(origin);await b('Abrir turno').tap();await navigate(page,'Mesas');await page.locator('[data-action="floorSelect"][data-value="3"]').tap();await page.locator('[data-action="table"][data-value="3"]').tap();await page.getByLabel('Personas').fill('4');await page.locator('#modal').getByRole('button',{name:'Abrir pedido',exact:true}).tap();
   for(const id of ['burger','wings','mojito']){await page.locator('[data-action="product"][data-value="'+id+'"]').tap();await b('Añadir a la cuenta').tap();}
   await page.locator('.order-panel .total').getByText(/1,497.60/).waitFor();await b('Enviar comanda').tap();await page.getByText('Comandas nuevas · Cocina: 2 · Barra: 1').waitFor();
   const kitchen=await context.newPage();await kitchen.goto(origin);await setRole(kitchen,'cocina');await navigate(kitchen,'Cocina');
