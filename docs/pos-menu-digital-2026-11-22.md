@@ -67,3 +67,11 @@ Se creó un catálogo de demostración separado, sin empresa Odoo ni credenciale
 Demostración pública: https://piloto.uno360x.com/menu-pos/d2e793d9bb2b40f3bf928cfd25eba157/
 
 Cloudflare rechaza el cliente HTTP Python saliente de la VM con 1010. La verificación pública se realizó en un navegador normal, sin cambiar ni deshabilitar las protecciones de Cloudflare. Las pruebas HTTP de permisos/revocación y la matriz visual se completaron además en el laboratorio.
+
+## Ajuste solicitado: quitar QR de televisión
+
+Se retira el panel QR del DOM de TV y la cuadrícula ocupa todo el ancho. No se altera el menú móvil ni la generación/descarga del QR de mesa en Ajustes del POS. La rotación y demás controles se conservan en este cambio puntual.
+
+Prueba Playwright existente actualizada: ausencia de `.qr`/`.qr-panel` en TV, ancho completo, TV 1920×1080 y 1366×768 sin desplazamiento, administración en desktop/tablet/celular, QR aún descargable en administración, menú móvil y detalle sin cambios. Archivo `menu-public-ui.test.cjs` aprobado.
+
+Release del ajuste sin QR: `/srv/uno360x-saas/restaurant-releases/20261122-tv-no-qr/source`. Respaldo: `/var/backups/uno360x-restaurant/split-20261123-011719` (UTC). Vista pública HTTPS verificada en navegador: sin imagen/panel QR y productos a ancho completo. Odoo y receptor fiscal conservaron sus procesos.
