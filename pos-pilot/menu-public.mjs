@@ -2,16 +2,15 @@ const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>
 const money=n=>new Intl.NumberFormat('es-DO',{style:'currency',currency:'DOP'}).format(n/100);
 const base=location.pathname.replace(/\/$/,''),tv=new URL(location.href).searchParams.get('view')==='tv';
 document.body.classList.toggle('tv',tv);
-let data,category='',query='',page=0,paused=false,ticker,lastRotation=Date.now(),lastResponse='',detailId;
-const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+let data,category='',query='',page=0,lastRotation=Date.now(),lastResponse='',detailId;
 const categoryIcon=p=>p.category.toLocaleLowerCase().match(/bebida|bar|jugo|café/)?'🍹':'🍽';
 const filtered=()=>data.items.filter(p=>(!category||p.category===category)&&(!query||(p.name+' '+p.description).toLocaleLowerCase().includes(query.toLocaleLowerCase())));
 const priceNote='Precios sin ITBIS. El impuesto aplicable se indica en cada producto. Consumo en el local: 10% de propina legal adicional. Para llevar: sin propina legal.';
-function card(p){return `<button type="button" class="product ${p.available?'':'unavailable'}" data-product="${esc(p.id)}" aria-label="${esc(p.name+' · '+money(p.cents)+(p.available?'':' · No disponible'))}">${p.photo?`<img src="${esc(p.photo)}" alt="" loading="lazy" decoding="async">`:`<span class="category-icon" aria-hidden="true">${categoryIcon(p)}</span>`}<span class="product-copy"><strong>${esc(p.name)}</strong><span class="description">${esc(p.description||p.category)}</span><span class="price">${money(p.cents)}</span><small class="tax-caption">${p.tax?'ITBIS '+p.tax+'% adicional':'Exento de ITBIS'}</small><span class="availability-space">${p.available?'':'<span class="unavailable-label">No disponible</span>'}</span></span></button>`;}
+function card(p){const tag=tv?'article':'button',attrs=tv?'':`type="button" data-product="${esc(p.id)}"`;return `<${tag} ${attrs} class="product ${p.available?'':'unavailable'}" aria-label="${esc(p.name+' · '+money(p.cents)+(p.available?'':' · No disponible'))}">${p.photo?`<img src="${esc(p.photo)}" alt="" loading="lazy" decoding="async">`:`<span class="category-icon" aria-hidden="true">${categoryIcon(p)}</span>`}<span class="product-copy"><strong>${esc(p.name)}</strong><span class="description">${esc(p.description||p.category)}</span><span class="price">${money(p.cents)}</span><small class="tax-caption">${p.tax?'ITBIS '+p.tax+'% adicional':'Exento de ITBIS'}</small><span class="availability-space">${p.available?'':'<span class="unavailable-label">No disponible</span>'}</span></span></${tag}>`;}
 function render(){
- const allCategories=[...new Set(data.items.map(p=>p.category))],categories=tv?[...new Set([...allCategories.slice(0,6),...(category?[category]:[])])]:allCategories,list=filtered(),pages=Math.max(1,Math.ceil(list.length/3));page=Math.min(page,pages-1);
+ const categories=[...new Set(data.items.map(p=>p.category))];if(tv&&!categories.includes(category)){category=categories[0]||'';page=0;}const list=filtered(),pages=Math.max(1,Math.ceil(list.length/3));page=Math.min(page,pages-1);
  $('#business').innerHTML=(data.logo?`<img src="${esc(data.logo)}" alt="Logo del negocio">`:'')+esc(data.name);document.title=data.name+' | Menú UNO360X';
- $('#menu').innerHTML=`<section class="menu-heading"><div><h1>${tv?'¿Qué te apetece hoy?':'Nuestro menú'}</h1><p>Elige tu favorito y pídelo a nuestro equipo.</p></div>${tv?`<button class="pause" data-action="pause" aria-pressed="${paused}">${paused?'Continuar rotación':'Pausar rotación'}</button>`:''}</section>${tv?'':`<label class="search-label">Buscar producto<input type="search" id="search" placeholder="Buscar comida o bebida" value="${esc(query)}"></label>`}<div class="menu-layout"><section class="products-area"><nav class="categories" aria-label="Categorías"><button type="button" data-category="" class="${category?'':'active'}">Todos</button>${categories.map(c=>`<button type="button" data-category="${esc(c)}" class="${c===category?'active':''}">${esc(c)}</button>`).join('')}</nav><div class="products">${(tv?list.slice(page*3,page*3+3):list).map(card).join('')||'<p class="empty">No hay productos para esta búsqueda.</p>'}</div>${tv?`<div class="pagination" aria-label="Página de productos">${page+1} / ${pages} · ${category||'Todos'}</div>`:''}</section></div><footer><p>${priceNote}</p><small>Para pedir, habla con nuestro equipo. Menú de consulta · UNO360X.</small><p id="connection" role="status"></p></footer>`;
+ $('#menu').innerHTML=`<section class="menu-heading"><div><h1>${tv?esc(category==='Comida'?'Comidas':category||'Nuestro menú'):'Nuestro menú'}</h1><p>Elige tu favorito y pídelo a nuestro equipo.</p></div></section>${tv?'':`<label class="search-label">Buscar producto<input type="search" id="search" placeholder="Buscar comida o bebida" value="${esc(query)}"></label>`}<div class="menu-layout"><section class="products-area">${tv?'':`<nav class="categories" aria-label="Categorías"><button type="button" data-category="" class="${category?'':'active'}">Todos</button>${categories.map(c=>`<button type="button" data-category="${esc(c)}" class="${c===category?'active':''}">${esc(c)}</button>`).join('')}</nav>`}<div class="products${tv?' tv-count-'+Math.min(3,list.length-page*3):''}">${(tv?list.slice(page*3,page*3+3):list).map(card).join('')||'<p class="empty">No hay productos para esta búsqueda.</p>'}</div>${tv?`<div class="pagination" aria-label="Página de productos">${page+1} / ${pages} · ${category||'Todos'}</div>`:''}</section></div><footer><p>${priceNote}</p><small>Para pedir, habla con nuestro equipo. Menú de consulta · UNO360X.</small><p id="connection" role="status"></p></footer>`;
  if(detailId){const p=data.items.find(p=>p.id===detailId);if(p)detail(p);else{$('#detail').close();detailId=undefined;}}
 }
 function detail(p){
@@ -30,15 +29,16 @@ async function load(){
  }catch(e){if(data){$('#connection').textContent='Sin conexión. Estos datos pueden no estar actualizados; confirma precios y disponibilidad con el local.';}else $('#menu').innerHTML='<section class="unavailable-menu"><h1>No pudimos cargar el menú</h1><p>Revisa la conexión. Volveremos a intentar automáticamente.</p></section>';}
 }
 function rotate(){
- if(!tv||paused||!data||document.hidden||$('#detail').open||Date.now()-lastRotation<data.interval*1000)return;
- const list=filtered();if(page+1<Math.ceil(list.length/3))page++;else{page=0;const cats=['',...new Set(data.items.map(p=>p.category))];category=cats[(cats.indexOf(category)+1)%cats.length];}
+ if(!tv||!data||document.hidden||$('#detail').open||Date.now()-lastRotation<data.interval*1000)return;
+ const list=filtered();if(page+1<Math.ceil(list.length/3))page++;else{page=0;const cats=[...new Set(data.items.map(p=>p.category))];category=cats.length?cats[(cats.indexOf(category)+1)%cats.length]:'';}
  lastRotation=Date.now();render();
 }
 document.addEventListener('click',e=>{
+ if(tv)return;
  const cat=e.target.closest('[data-category]');if(cat){category=cat.dataset.category;page=0;lastRotation=Date.now();render();}
  const product=e.target.closest('[data-product]');if(product){const p=data?.items.find(p=>p.id===product.dataset.product);if(p)detail(p);}
- const a=e.target.closest('[data-action]')?.dataset.action;if(a==='close'){$('#detail').close();detailId=undefined;}if(a==='pause'){paused=!paused;lastRotation=Date.now();render();}
+ const a=e.target.closest('[data-action]')?.dataset.action;if(a==='close'){$('#detail').close();detailId=undefined;}
 });
 document.addEventListener('input',e=>{if(e.target.id==='search'){query=e.target.value;const at=e.target.selectionStart;render();$('#search').focus();$('#search').setSelectionRange(at,at);}});
 $('#detail').addEventListener('close',()=>{detailId=undefined;});
-await load();setInterval(load,30000);ticker=setInterval(rotate,1000);
+await load();setInterval(load,30000);setInterval(rotate,1000);

@@ -75,3 +75,13 @@ Se retira el panel QR del DOM de TV y la cuadrícula ocupa todo el ancho. No se 
 Prueba Playwright existente actualizada: ausencia de `.qr`/`.qr-panel` en TV, ancho completo, TV 1920×1080 y 1366×768 sin desplazamiento, administración en desktop/tablet/celular, QR aún descargable en administración, menú móvil y detalle sin cambios. Archivo `menu-public-ui.test.cjs` aprobado.
 
 Release del ajuste sin QR: `/srv/uno360x-saas/restaurant-releases/20261122-tv-no-qr/source`. Respaldo: `/var/backups/uno360x-restaurant/split-20261123-011719` (UTC). Vista pública HTTPS verificada en navegador: sin imagen/panel QR y productos a ancho completo. Odoo y receptor fiscal conservaron sus procesos.
+
+## TV automática sin controles
+
+Se eliminan del DOM de TV las categorías seleccionables y el botón Pausar/Continuar. Las tarjetas de producto son artículos informativos, no botones: tocarlas no abre un diálogo ni interrumpe el ciclo. El celular conserva búsqueda, categorías y detalle interactivo. El QR de mesa y su descarga no cambian.
+
+La TV empieza por la primera categoría publicada. Recorre todas sus páginas de hasta tres productos, cambia a la siguiente categoría y vuelve al inicio. Usa el intervalo que el administrador guardó en Ajustes del POS (12 segundos de forma predeterminada). Los diseños de uno y dos productos se amplían automáticamente. Las transiciones respetan reduced-motion.
+
+Validación: dos pruebas Playwright del menú público aprobadas. Comidas → Bebidas → Comidas sin controles, QR ni diálogos en TV; cinco productos de una categoría repartidos en dos páginas antes de pasar a Bebidas; menú móvil y administración intactos. Vistas 1920×1080 y 1366×768 verificadas, sin desplazamiento. Cambio restringido a los archivos públicos JS/CSS y pruebas, sin modificar servidor, gateway, bases Odoo o fiscalidad.
+
+Release de TV pasiva: `/srv/uno360x-saas/restaurant-releases/20261122-tv-passive/source`. Respaldo: `/var/backups/uno360x-restaurant/split-20261123-012312` (UTC). Archivos públicos servidos verificados contra la release. En navegador HTTPS se observaron Comidas y el cambio automático a Bebidas, sin tocar controles. Capturas `tv-automatica-comidas-publicado.jpg` y `tv-automatica-bebidas-publicado.jpg`. Odoo productivo y receptor fiscal conservaron sus procesos.
