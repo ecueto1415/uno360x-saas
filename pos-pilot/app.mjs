@@ -189,7 +189,7 @@ function reports(){
  panel('Autorizaciones',state.audits.map(a=>line(esc(a.action)+' · '+esc(a.userName||a.user),esc(a.details.previous?.name||'')+(a.details.next?' → '+esc(a.details.next.name)+'<br>':'')+esc(a.details.reason)+'<br><small>'+esc(new Date(a.at).toLocaleString('es-DO'))+'</small>')).join('')||'Sin autorizaciones')+'</div>';
 }
 function menu(){
- return '<div class="layout">'+panel('Productos',($('#role').value==='supervisor'?'<div class="actions">'+action('edit','+ Nuevo producto','','primary')+action('posSettings','Ajustes del POS')+'</div>':'')+state.products.map(p=>{
+ return '<div class="layout">'+panel('Productos',($('#role').value==='supervisor'?'<div class="actions">'+action('edit','+ Nuevo producto','','primary')+action('posSettings','Ajustes del POS')+action('digitalMenu','Menú digital y QR')+'</div>':'')+state.products.map(p=>{
   const info=$('#role').value==='supervisor'?margin(p,state.ingredients):null;
   return line(title(p)+'<br><small>'+esc(p.category)+' · '+money(p.cents)+' · '+esc(p.station)+'</small>'+
   (info&&Object.keys(p.recipe||{}).length?'<br><small>Costo estimado '+money(info.cost)+' · Margen normal '+money(info.normal)+(info.happy===null?'':' · Happy hour '+money(info.happy))+'</small>':''),$('#role').value==='supervisor'?action('edit','Editar',p.id):'');
@@ -283,7 +283,7 @@ document.addEventListener('click',async e=>{
  if(a==='requestCheck')command('request-check',{order:v});
  if(a==='chooseBusiness'){setupChoice=v;render();}
  if(a==='posSettings'){settingsOpen=true;digitalMenuOpen=false;render();}
- if(a==='digitalMenu'){if($('#role').value!=='supervisor')return;digitalMenuOpen=true;menuUnsaved=false;render();}
+ if(a==='digitalMenu'){if($('#role').value!=='supervisor')return;settingsOpen=true;digitalMenuOpen=true;menuUnsaved=false;render();}
  if(a==='digitalBack'){digitalMenuOpen=false;render();}
  if(a==='publishDigital'){if(menuUnsaved){flash('Guarda los cambios antes de publicar.',true);return;}command('menu-publish',{revision:state.publicMenu?.revision||0});}
  if(a==='previewDigital'){if(menuUnsaved){flash('Guarda los cambios antes de ver la vista previa.',true);return;}previewDigitalMenu();}

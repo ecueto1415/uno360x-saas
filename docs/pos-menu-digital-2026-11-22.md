@@ -85,3 +85,11 @@ La TV empieza por la primera categoría publicada. Recorre todas sus páginas de
 Validación: dos pruebas Playwright del menú público aprobadas. Comidas → Bebidas → Comidas sin controles, QR ni diálogos en TV; cinco productos de una categoría repartidos en dos páginas antes de pasar a Bebidas; menú móvil y administración intactos. Vistas 1920×1080 y 1366×768 verificadas, sin desplazamiento. Cambio restringido a los archivos públicos JS/CSS y pruebas, sin modificar servidor, gateway, bases Odoo o fiscalidad.
 
 Release de TV pasiva: `/srv/uno360x-saas/restaurant-releases/20261122-tv-passive/source`. Respaldo: `/var/backups/uno360x-restaurant/split-20261123-012312` (UTC). Archivos públicos servidos verificados contra la release. En navegador HTTPS se observaron Comidas y el cambio automático a Bebidas, sin tocar controles. Capturas `tv-automatica-comidas-publicado.jpg` y `tv-automatica-bebidas-publicado.jpg`. Odoo productivo y receptor fiscal conservaron sus procesos.
+
+## Acceso directo en el SaaS
+
+POS → Menú → Menú digital y QR. Acceso directo visible solo para el administrador del POS. Abre la misma configuración existente, con Abrir menú en celular, Abrir en televisor y Descargar QR tras publicar. El acceso por Ajustes del POS permanece disponible. Código común para clientes actuales y nuevas cuentas, sin actualización por base Odoo.
+
+La prueba completa de menú público utiliza ahora el acceso directo: publicar, QR, consulta móvil/TV y restricciones para camarero. La TV continúa pasiva, sin QR ni controles; no hay cambios fiscales.
+
+Release del acceso directo: `/srv/uno360x-saas/restaurant-releases/20261122-menu-qr-access/source`; respaldo `/var/backups/uno360x-restaurant/split-20261123-012916` (UTC). Verificado en INCIVI: botón visible y configuración abre correctamente, sin guardar ni publicar datos de esa empresa. Pruebas del menú público (2) aprobadas.
