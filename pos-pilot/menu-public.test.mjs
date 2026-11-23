@@ -43,3 +43,11 @@ test('Published catalog changes refresh without republication; unavailable produ
  await cmd('open',{fund:0});const o=(await cmd('order',{service:'llevar'})).result;const denied=await cmd('add',{order:o.id,product:'wings'});assert.equal(denied.status,400);assert.match(denied.error,/agotado/);
  assert.equal((await snap()).events.length,0);assert.equal((await snap()).payments.length,0);
 }));
+
+test('Save and publish is atomic: clearing Publicar removes the product from the live menu in one operation',()=>fixture(async({cmd,snap,fetcher})=>{
+ let s=await snap();assert.equal((await cmd('menu-save-publish',config(s),'waiter')).status,400);
+ assert.equal((await cmd('menu-save-publish',config(s))).status,200);s=await snap();const token=s.publicMenu.token;assert.equal(s.publicMenu.dirty,false);
+ const items=s.publicMenu.draft.items.map(i=>({...i,published:i.id==='mojito'}));const key=crypto.randomUUID(),command=config(s,{items});await cmd('menu-save-publish',command,'admin','a',key);await cmd('menu-save-publish',command,'admin','a',key);
+ let d=await(await fetcher('/menu-pos/'+token+'/data')).json();assert.deepEqual(d.items.map(p=>p.id),['mojito']);s=await snap();assert.equal(s.publicMenu.revision,4);assert.equal(s.publicMenu.dirty,false);
+ const before=JSON.stringify(s);assert.equal((await cmd('menu-save-publish',config(s,{items:items.map(i=>({...i,published:false}))}))).status,400);assert.equal(JSON.stringify(await snap()),before,'Invalid publication rolls back the draft and revision as well');
+}));

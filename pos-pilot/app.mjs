@@ -226,7 +226,7 @@ async function command(type,data,after){
   if(type==='order'){guestToAdd='';guestFilter='all';}
   if(type==='guest-save')guestToAdd=r.result.id;
   if(type==='floor-save'){floorEditing=false;floorDraft=undefined;}
-  if(['menu-save','menu-publish'].includes(type))menuUnsaved=false;
+  if(['menu-save','menu-publish','menu-save-publish'].includes(type))menuUnsaved=false;
   if(type==='zone-save')floorVersion=state.floor.version;
   if(type==='setup-finish'){setupChoice=undefined;mode='Caja';}
   if(type==='sync-inventory')flash('Inventario: '+r.result.filter(x=>x.state==='confirmado').length+' confirmados, '+r.result.filter(x=>x.state==='pendiente').length+' pendientes.');
@@ -247,7 +247,7 @@ async function command(type,data,after){
   else if(type==='zone-archive'){floorZone=floorZones(state)[0].id;floorSelection=undefined;flash('Zona retirada del plano. Puedes restaurarla desde Administrar zonas.');}
   else if(type==='zone-restore')flash('Zona restaurada.');
   else if(type==='menu-save')flash('Configuración guardada. Pulsa Publicar menú para aplicar la selección y disponibilidad.');
-  else if(type==='menu-publish')flash(r.result.published?'Menú publicado. Ya puedes abrir el enlace y descargar el QR.':'Menú desactivado. El enlace público ya no muestra productos.');
+  else if(['menu-publish','menu-save-publish'].includes(type))flash(r.result.published?'Menú publicado. Ya puedes abrir el enlace y descargar el QR.':'Menú desactivado. El enlace público ya no muestra productos.');
   else if(type==='fiscal')flash('Mismo comprobante · '+r.result.status);
   else flash('Operación registrada.');
  }catch(e){const message=e instanceof TypeError&&pendingRequest?'Sin comunicación con caja. Repite la misma operación al reconectar.':e.message;flash(message,true);if($('#modal').open){const msg=document.createElement('p');msg.textContent=message;msg.setAttribute('role','alert');$('#modal-content').prepend(msg);}}
@@ -285,7 +285,7 @@ document.addEventListener('click',async e=>{
  if(a==='posSettings'){settingsOpen=true;digitalMenuOpen=false;render();}
  if(a==='digitalMenu'){if($('#role').value!=='supervisor')return;settingsOpen=true;digitalMenuOpen=true;menuUnsaved=false;render();}
  if(a==='digitalBack'){digitalMenuOpen=false;render();}
- if(a==='publishDigital'){if(menuUnsaved){flash('Guarda los cambios antes de publicar.',true);return;}command('menu-publish',{revision:state.publicMenu?.revision||0});}
+ if(a==='publishDigital')$('#digital-form')?.requestSubmit();
  if(a==='previewDigital')await previewDigitalMenu();
  if(a==='allDigital'){document.querySelectorAll('#digital-form input[name=published]').forEach(c=>c.checked=true);menuUnsaved=true;}
  if(a==='backToPOS')switchTo('Caja');
@@ -463,7 +463,7 @@ document.addEventListener('submit',async e=>{
  if(type==='close')payload.counted=cash(values.counted);
  if(type==='waste'||type==='count')payload.quantity=Number(values.quantity);
  if(type==='guest-distribute'){payload.assignments=picked().lines.filter(l=>!l.payment).map(l=>({line:l.id,guest:values['guest_'+l.id]}));for(const k of Object.keys(payload))if(k.startsWith('guest_'))delete payload[k];}
- if(type==='menu-save'){
+ if(['menu-save','menu-save-publish'].includes(type)){
   payload.revision=state.publicMenu?.revision||0;payload.enabled=values.enabled==='yes';payload.interval=Number(values.interval);
   const published=new Set(data.getAll('published')),available=new Set(data.getAll('available'));
   payload.items=state.products.map(p=>({id:p.id,published:published.has(p.id),available:available.has(p.id)}));
@@ -514,12 +514,12 @@ function digitalMenuSettings(){
   return '<div class="digital-row"><div class="digital-product">'+(photo?'<img src="'+esc(photo)+'" alt="">':'<span class="digital-icon">🍽</span>')+'<div><strong>'+title(p)+'</strong><small>'+esc(p.category)+'</small></div></div><strong class="digital-price">'+money(p.cents)+'</strong><label class="digital-toggle"><span>Disponible</span><input type="checkbox" name="available" aria-label="Disponible '+esc(p.name)+'" value="'+esc(p.id)+'" '+(i.available?'checked':'')+'></label><label class="digital-toggle"><span>Publicar</span><input type="checkbox" name="published" aria-label="Publicar '+esc(p.name)+'" value="'+esc(p.id)+'" '+(i.published?'checked':'')+'></label></div>';
  }).join('');
  return panel('Tu catálogo, listo para mostrar','<p class="muted">Publica los productos del POS que quieras mostrar a tus clientes.</p><div class="actions">'+action('digitalBack','Volver a Ajustes')+action('previewDigital','Vista previa')+action('publishDigital','Publicar menú','','primary')+'</div>')+
- '<div class="digital-layout"><section class="panel"><form id="digital-form" data-command="menu-save">'+
+ '<div class="digital-layout"><section class="panel"><form id="digital-form" data-command="menu-save-publish">'+
  input('name','Nombre del negocio','text','maxlength="100" minlength="2" required value="'+esc(d.name)+'"')+
  '<div class="digital-fields">'+select('enabled','Menú público',[['yes','Activado'],['no','Desactivado']],d.enabled?'yes':'no')+input('interval','Rotar pantalla cada (segundos)','number','min="8" max="60" value="'+d.interval+'" required')+'</div>'+
  input('logoUpload','Logo del negocio (opcional, hasta 120 KB)','file','accept="image/png,image/jpeg,image/webp"')+(d.logo?'<label class="check"><input type="checkbox" name="removeLogo">Quitar logo actual</label>':'')+
- '<p class="muted">Estado: '+(m.dirty?'Cambios guardados sin publicar':live?'Publicado':'No publicado')+'. Los cambios de selección y disponibilidad se aplican al publicar. Los precios, descripciones y fotos publicados se actualizan desde el catálogo.</p><div class="actions">'+action('allDigital','Seleccionar todos')+'</div><div class="digital-list">'+(rows||'<p>Agrega productos desde Menú antes de publicar.</p>')+'</div><p class="muted">Los agotados se muestran como No disponible. La disponibilidad también se respeta al agregar productos a una cuenta del POS.</p><button class="primary" type="submit">Guardar configuración</button></form></section>'+
- panel('Tu menú público',live?'<img class="digital-qr" src="'+url+'qr.svg" alt="QR para abrir el menú"><p>Un enlace para este negocio. No pide iniciar sesión.</p><div class="actions"><a class="digital-link" href="'+url+'" target="_blank" rel="noopener noreferrer">Abrir menú en celular</a><a class="digital-link" href="'+url+'?view=tv" target="_blank" rel="noopener noreferrer">Abrir en televisor</a><a class="digital-link" href="'+url+'qr.svg" download="UNO360X-menu-QR.svg">Descargar QR</a></div><label>Enlace del menú<input readonly value="'+url+'"></label>':'<p>Guarda la configuración y publica el menú para generar el acceso público y el QR.</p>')+'</div>'+panel('Precios e impuestos claros','<p>Se muestran el precio base, el ITBIS de cada producto y la propina legal para consumo en el local. El menú es solo de consulta y no permite ordenar ni pagar.</p>');
+ '<p class="muted">Estado: '+(m.dirty?'Cambios guardados sin publicar':live?'Publicado':'No publicado')+'. Quita o marca los productos y pulsa Guardar y publicar cambios para actualizar el menú. Los precios, descripciones y fotos publicados se actualizan desde el catálogo.</p><div class="actions">'+action('allDigital','Seleccionar todos')+'</div><div class="digital-list">'+(rows||'<p>Agrega productos desde Menú antes de publicar.</p>')+'</div><p class="muted">Los agotados se muestran como No disponible. La disponibilidad también se respeta al agregar productos a una cuenta del POS.</p><button class="primary" type="submit">Guardar y publicar cambios</button></form></section>'+
+ panel('Tu menú público',live?'<img class="digital-qr" src="'+url+'qr.svg" alt="QR para abrir el menú"><p>Un enlace para este negocio. No pide iniciar sesión.</p><div class="actions"><a class="digital-link" href="'+url+'" target="_blank" rel="noopener noreferrer">Abrir menú en celular</a><a class="digital-link" href="'+url+'?view=tv" target="_blank" rel="noopener noreferrer">Abrir en televisor</a><a class="digital-link" href="'+url+'qr.svg" download="UNO360X-menu-QR.svg">Descargar QR</a></div><label>Enlace del menú<input readonly value="'+url+'"></label>':'<p>Selecciona los productos y pulsa Guardar y publicar cambios para generar el menú y su QR.</p>')+'</div>'+panel('Precios e impuestos claros','<p>Se muestran el precio base, el ITBIS de cada producto y la propina legal para consumo en el local. El menú es solo de consulta y no permite ordenar ni pagar.</p>');
 }
 async function previewDigitalMenu(){
  if($('#role').value!=='supervisor'||!$('#digital-form'))return;

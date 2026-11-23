@@ -43,7 +43,7 @@ function configureTables(s,enabled,count){
 export function apply(s,command,user,actor=user,staff=[]){
  const {type}=command;
  if(['zone-archive','zone-restore','table-archive'].includes(type))return archiveFloorItem(s,command,user,actor);
- if(['menu-save','menu-publish'].includes(type))return digitalMenuCommand(s,command,user,actor);
+ if(['menu-save','menu-publish','menu-save-publish'].includes(type))return digitalMenuCommand(s,command,user,actor);
  if(type==='staff-role'){
   role(user,'supervisor');fail(staff.some(p=>p.id===command.account)&&['caja','camarero','cocina','barra'].includes(command.role),'Selecciona un usuario habilitado de esta empresa y un rol del POS.');
   (s.staffRoles??={})[command.account]=command.role;log(s,actor,'rol del equipo POS',{account:command.account,role:command.role});return {account:command.account,role:command.role};
@@ -413,6 +413,7 @@ export function publicState(s,user,actor){
 
 
 export function digitalMenuCommand(s,command,user,actor){
+ if(command.type==='menu-save-publish'){digitalMenuCommand(s,{...command,type:'menu-save'},user,actor);return digitalMenuCommand(s,{type:'menu-publish',revision:s.publicMenu.revision},user,actor);}
  role(user,'supervisor');fail(!setupRequired(s),'Completa la configuración inicial del POS.');
  const current=s.publicMenu||{revision:0};
  fail(Number.isInteger(command.revision)&&command.revision===current.revision,'El menú cambió. Vuelve a abrirlo antes de guardar.');

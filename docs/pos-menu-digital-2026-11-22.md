@@ -8,10 +8,10 @@ Administrador: Restaurante → Menú → Ajustes del POS → Configurar menú di
 
 1. Nombre y logo opcional del negocio; activar el menú; rotación de 8 a 60 segundos.
 2. Seleccionar los productos a publicar y su disponibilidad.
-3. Guardar configuración → Vista previa → Publicar menú.
+3. Revisar con Vista previa; aplicar con Guardar y publicar cambios en un solo paso.
 4. Abrir en televisor o celular; descargar el QR SVG. El enlace no requiere una cuenta.
 
-Los cambios de selección, logo, nombre y disponibilidad se publican explícitamente. Los precios, descripciones, impuestos y fotos de productos publicados se toman del catálogo actual sin volver a publicar. El visitante consulta actualizaciones cada 30 segundos. Los nuevos productos no aparecen hasta seleccionarlos. La disponibilidad es manual; al publicar un producto agotado también se bloquea agregarlo a una cuenta nueva del POS, sin modificar líneas ya pedidas.
+Los cambios de selección, logo, nombre y disponibilidad se publican explícitamente. Los precios, descripciones, impuestos y fotos de productos publicados se toman del catálogo actual sin volver a publicar. El visitante consulta actualizaciones cada 10 segundos. Los nuevos productos no aparecen hasta seleccionarlos. La disponibilidad es manual; al publicar un producto agotado también se bloquea agregarlo a una cuenta nueva del POS, sin modificar líneas ya pedidas.
 
 TV: tres tarjetas por página, categorías y QR; rotación con pausa; animación suave que respeta reduced-motion. Diseño compacto sin desplazamiento a 1366×768 y vista amplia 1920×1080. Celular: búsqueda, categorías, disponibilidad y detalle con ITBIS/propina/total. Tablet soportada. Es solo consulta, sin pedidos ni pagos públicos. No cambia el transporte fiscal ni certificación de INCIVI.
 
@@ -101,3 +101,19 @@ Vista previa usa ahora los valores actuales del formulario, incluso antes del pr
 Prueba E2E ampliada: abrir sin configuración previa, abrir con selección sin guardar, respetar agotados y productos ocultos, nombre tratado como texto (sin inyectar HTML), no mutar el estado del servidor, conservar la selección tras cerrar y funcionar en celular sin desbordamiento. El flujo guardado/publicación/QR/TV también pasa.
 
 Release de la corrección: `/srv/uno360x-saas/restaurant-releases/20261122-menu-preview-fix/source`; respaldo `/var/backups/uno360x-restaurant/split-20261123-013403` (UTC). Verificado en INCIVI seleccionando Mojito sin guardar ni publicar: se abrió el diálogo y mostró precio/disponibilidad; se cerró y revirtió la selección local. No se escribió configuración de la empresa. Odoo productivo y receptor fiscal sin reinicios. Las dos pruebas E2E del menú público pasaron.
+
+## Regreso desde el producto en celular
+
+El detalle público tiene una barra fija con Volver al menú y altura táctil mínima de 48 px. Se mantiene visible al desplazarse hasta el final. Cada apertura de producto crea una sola entrada de historial, por lo que Atrás del navegador/teléfono cierra el detalle y conserva búsqueda/categoría. Adelante restaura el producto; Escape también cierra. La actualización de precios conserva la posición del detalle y no añade entradas de historial. Al reabrir un producto empieza arriba.
+
+Pruebas en 320×568 y 390×844: producto largo, desplazamiento al final, control visible y accesible, actualización de precio con diálogo abierto, cierre por botón, Atrás, Adelante y Escape; sin abandonar el menú ni perder búsqueda. Vista TV sigue sin controles.
+
+## Guardar y publicar en un paso
+
+Se reemplaza Guardar configuración por Guardar y publicar cambios. Publicar menú en la cabecera envía el mismo formulario. El comando `menu-save-publish` valida y guarda borrador y publicación en la misma transacción e idempotencia existente. Si la publicación falla, revierte ambas partes. Retirar un producto y guardar lo quita de la versión pública sin un segundo paso oculto. Se mantiene la API de borrador para compatibilidad.
+
+Se comprobó el caso reportado: borrador sin hamburguesa mientras la publicación anterior aún la contenía. Las pruebas ahora cubren desmarcar desde UI y aplicar en un paso; el menú público consulta cada 10 segundos y se actualiza al volver a la pestaña. No se aplica publicidad automática solo por cambiar una casilla sin guardar.
+
+Validación: 24 pruebas de modelo y 3 pruebas E2E del menú aprobadas. Sin cambios de pagos, inventario, reservas Odoo ni transporte fiscal.
+
+Release de ambos ajustes: `/srv/uno360x-saas/restaurant-releases/20261122-menu-mobile-publish/source`; respaldo `/var/backups/uno360x-restaurant/split-20261123-014355` (UTC). Las 24 pruebas de modelo pasaron también en el servidor; assets servidos coinciden con la release. Verificación HTTPS del menú real de INCIVI en 320×568: detalle de Mojito con Volver fijo y regreso mediante historial al listado conservando búsqueda. Durante el trabajo el usuario publicó nuevas selecciones; no se sobrescribió su selección actual ni se forzó retirar un producto reactivado. OUTSOLUTECH y receptor fiscal conservaron sus procesos.
