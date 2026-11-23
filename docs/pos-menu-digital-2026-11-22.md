@@ -117,3 +117,9 @@ Se comprobó el caso reportado: borrador sin hamburguesa mientras la publicació
 Validación: 24 pruebas de modelo y 3 pruebas E2E del menú aprobadas. Sin cambios de pagos, inventario, reservas Odoo ni transporte fiscal.
 
 Release de ambos ajustes: `/srv/uno360x-saas/restaurant-releases/20261122-menu-mobile-publish/source`; respaldo `/var/backups/uno360x-restaurant/split-20261123-014355` (UTC). Las 24 pruebas de modelo pasaron también en el servidor; assets servidos coinciden con la release. Verificación HTTPS del menú real de INCIVI en 320×568: detalle de Mojito con Volver fijo y regreso mediante historial al listado conservando búsqueda. Durante el trabajo el usuario publicó nuevas selecciones; no se sobrescribió su selección actual ni se forzó retirar un producto reactivado. OUTSOLUTECH y receptor fiscal conservaron sus procesos.
+
+## Un solo botón para guardar y publicar
+
+Se retira Publicar menú de la cabecera y su controlador. Arriba quedan Volver a Ajustes y Vista previa. El único botón Guardar y publicar cambios está al final del formulario. La prueba E2E comprueba ausencia del duplicado, una sola acción de guardar, su posición al final y la publicación completa con ese botón. Este cambio de presentación se sirve desde la versión común del POS para todas las empresas del SaaS.
+
+Release del botón único: `/srv/uno360x-saas/restaurant-releases/20261122-menu-single-save/source`; respaldo `/var/backups/uno360x-restaurant/split-20261123-014829` (UTC). Verificado en INCIVI: arriba Volver a Ajustes/Vista previa, un solo Guardar y publicar cambios al final. Tres pruebas E2E aprobadas. Sin guardar datos del cliente durante la verificación; backend, fiscalidad y procesos de OUTSOLUTECH/INCIVI conservados.

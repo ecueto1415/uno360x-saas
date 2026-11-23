@@ -246,7 +246,7 @@ async function command(type,data,after){
   else if(type==='table-archive')flash('Mesa retirada del plano. Su historial se conserva.');
   else if(type==='zone-archive'){floorZone=floorZones(state)[0].id;floorSelection=undefined;flash('Zona retirada del plano. Puedes restaurarla desde Administrar zonas.');}
   else if(type==='zone-restore')flash('Zona restaurada.');
-  else if(type==='menu-save')flash('Configuración guardada. Pulsa Publicar menú para aplicar la selección y disponibilidad.');
+  else if(type==='menu-save')flash('Configuración guardada.');
   else if(['menu-publish','menu-save-publish'].includes(type))flash(r.result.published?'Menú publicado. Ya puedes abrir el enlace y descargar el QR.':'Menú desactivado. El enlace público ya no muestra productos.');
   else if(type==='fiscal')flash('Mismo comprobante · '+r.result.status);
   else flash('Operación registrada.');
@@ -285,7 +285,6 @@ document.addEventListener('click',async e=>{
  if(a==='posSettings'){settingsOpen=true;digitalMenuOpen=false;render();}
  if(a==='digitalMenu'){if($('#role').value!=='supervisor')return;settingsOpen=true;digitalMenuOpen=true;menuUnsaved=false;render();}
  if(a==='digitalBack'){digitalMenuOpen=false;render();}
- if(a==='publishDigital')$('#digital-form')?.requestSubmit();
  if(a==='previewDigital')await previewDigitalMenu();
  if(a==='allDigital'){document.querySelectorAll('#digital-form input[name=published]').forEach(c=>c.checked=true);menuUnsaved=true;}
  if(a==='backToPOS')switchTo('Caja');
@@ -513,7 +512,7 @@ function digitalMenuSettings(){
   const i=d.items.find(i=>i.id===p.id)||{published:false,available:p.available!==false},photo=p.photo?.startsWith('data:')?p.photo:p.photo?basePath+'/images/'+p.photo:'';
   return '<div class="digital-row"><div class="digital-product">'+(photo?'<img src="'+esc(photo)+'" alt="">':'<span class="digital-icon">🍽</span>')+'<div><strong>'+title(p)+'</strong><small>'+esc(p.category)+'</small></div></div><strong class="digital-price">'+money(p.cents)+'</strong><label class="digital-toggle"><span>Disponible</span><input type="checkbox" name="available" aria-label="Disponible '+esc(p.name)+'" value="'+esc(p.id)+'" '+(i.available?'checked':'')+'></label><label class="digital-toggle"><span>Publicar</span><input type="checkbox" name="published" aria-label="Publicar '+esc(p.name)+'" value="'+esc(p.id)+'" '+(i.published?'checked':'')+'></label></div>';
  }).join('');
- return panel('Tu catálogo, listo para mostrar','<p class="muted">Publica los productos del POS que quieras mostrar a tus clientes.</p><div class="actions">'+action('digitalBack','Volver a Ajustes')+action('previewDigital','Vista previa')+action('publishDigital','Publicar menú','','primary')+'</div>')+
+ return panel('Tu catálogo, listo para mostrar','<p class="muted">Publica los productos del POS que quieras mostrar a tus clientes.</p><div class="actions">'+action('digitalBack','Volver a Ajustes')+action('previewDigital','Vista previa')+'</div>')+
  '<div class="digital-layout"><section class="panel"><form id="digital-form" data-command="menu-save-publish">'+
  input('name','Nombre del negocio','text','maxlength="100" minlength="2" required value="'+esc(d.name)+'"')+
  '<div class="digital-fields">'+select('enabled','Menú público',[['yes','Activado'],['no','Desactivado']],d.enabled?'yes':'no')+input('interval','Rotar pantalla cada (segundos)','number','min="8" max="60" value="'+d.interval+'" required')+'</div>'+
