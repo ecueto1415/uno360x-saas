@@ -38,7 +38,7 @@ function configureTables(s,enabled,count){
  const previousCount=s.setup.tableCount||5,wasEnabled=s.setup.tablesEnabled;
  for(let number=1;number<=count;number++)if(!tables.some(t=>t.number===number))tables.push({number,name:'Mesa '+String(number).padStart(2,'0'),active:enabled});
  for(const t of tables){if(t.archived){t.active=false;continue;}if(!enabled||t.number>count)t.active=false;else if(!wasEnabled||t.number>previousCount)t.active=true;}
- s.tables=tables;s.setup.tablesEnabled=enabled;s.setup.tableCount=count;
+ s.tables=tables;s.setup.tablesEnabled=enabled;s.setup.tableCount=count;placeNewFloorTables(s);
 }
 export function apply(s,command,user,actor=user,staff=[]){
  const {type}=command;
@@ -116,7 +116,7 @@ export function apply(s,command,user,actor=user,staff=[]){
   const previous=table?{...table}:null,next={number,name,active:command.active,archived:false};
   if(table){Object.assign(table,next);if(command.active&&!floorZones(s).some(z=>z.id===(table.zone||'salon')))table.zone=floorZones(s)[0].id;}else tables.push(next);s.tables=tables;
   if(s.setup&&command.active)s.setup.tableCount=Math.max(s.setup.tableCount||5,number);
-  if(s.floor)s.floor.version=(s.floor.version||0)+1;
+  placeNewFloorTables(s);
   log(s,actor,'configuración de mesa',{previous,next});return next;
  }
  if(type==='open'){
@@ -327,10 +327,41 @@ const manager=user=>modelAssert(user==='supervisor','Solo el administrador puede
 const clean=(v,n=60)=>String(v??'').trim().slice(0,n);
 export const invoicesFor=o=>o.invoices|| (o.fiscal?[o.fiscal]:[]);
 export const floorZones=s=>(s.floor?.zones||[{id:'salon',name:'Salón'},{id:'terraza',name:'Terraza'},{id:'barra',name:'Barra'}]).filter(z=>z.active!==false);
-export function floorTables(s){
- const positions=[[6,5],[94,5],[50,45],[6,94],[94,94]];
- const tables=restaurantTables(s),rows=Math.ceil(tables.length/3);
- return tables.map((t,i)=>({zone:'salon',shape:'rect',seats:4,x:tables.length<=5?positions[i][0]:(i%3)*50,y:tables.length<=5?positions[i][1]:rows<=1?0:Math.floor(i/3)/(rows-1)*100,...t}));
+const floorHeightForRows=(rows,small=false)=>Math.max(small?650:600,rows*180+40);
+function floorLayout(s){
+ const tables=restaurantTables(s).map(t=>({zone:'salon',shape:'rect',seats:4,...t})),rowsByZone={...s.floor?.zoneRows};
+ const hasPosition=t=>Number.isFinite(t.x)&&Number.isFinite(t.y)&&t.x>=0&&t.x<=100&&t.y>=0&&t.y<=100;
+ for(const zone of new Set(tables.map(t=>t.zone))){
+  const active=tables.filter(t=>t.active&&t.zone===zone),fresh=active.filter(t=>!hasPosition(t)),fixed=active.filter(hasPosition);
+  let rows=Math.max(3,Math.ceil(active.length/3),rowsByZone[zone]||0);
+  if(!fixed.length&&active.length<=5){
+   const positions=[[6,5],[94,5],[50,45],[6,94],[94,94]];fresh.forEach((t,i)=>Object.assign(t,{x:positions[i][0],y:positions[i][1]}));
+  }else if(fresh.length){
+   for(;rows<=active.length+5;rows++){
+    const gapY=Math.max(157/(floorHeightForRows(rows)-169),162/(floorHeightForRows(rows,true)-174))*100;
+    const occupied=fixed.map(t=>({x:t.x,y:t.y})),assigned=[];
+    for(const table of fresh){
+     let point;
+     for(let row=0;row<rows&&!point;row++)for(const x of [0,50,100]){
+      const y=row/(rows-1)*100;
+      if(!occupied.some(p=>Math.abs(p.x-x)<46&&Math.abs(p.y-y)<gapY)){point={x,y};break;}
+     }
+     if(!point)break;occupied.push(point);assigned.push({table,...point});
+    }
+    if(assigned.length===fresh.length){for(const {table,x,y} of assigned)Object.assign(table,{x,y});break;}
+   }
+  }
+  rowsByZone[zone]=rows;
+ }
+ for(const t of tables)if(!hasPosition(t)){t.x=0;t.y=0;}
+ return {tables,rowsByZone};
+}
+export const floorTables=s=>floorLayout(s).tables;
+export const floorCanvasHeight=(s,zone,small=false)=>floorHeightForRows(floorLayout(s).rowsByZone[zone]||3,small);
+function placeNewFloorTables(s){
+ const layout=floorLayout(s);
+ s.tables=restaurantTables(s).map(t=>t.active?{...layout.tables.find(p=>p.number===t.number)}:t);
+ s.floor={...s.floor,zones:s.floor?.zones||floorZones(s),zoneRows:layout.rowsByZone,version:(s.floor?.version||0)+1};
 }
 export function configureFloor(s,command,user,actor){
  manager(user);const zones=floorZones(s),archived=(s.floor?.zones||[]).filter(z=>z.active===false);
@@ -344,13 +375,13 @@ export function configureFloor(s,command,user,actor){
  }
  modelAssert(command.version===(s.floor?.version||0),'El plano cambió. Vuelve a abrirlo antes de guardar.');
  modelAssert(Array.isArray(command.tables)&&command.tables.length>0&&command.tables.length<=200&&new Set(command.tables.map(t=>t.number)).size===command.tables.length,'Plano inválido.');
- const tables=floorTables(s);
+ const layout=floorLayout(s),tables=layout.tables;
  for(const input of command.tables){
   const table=tables.find(t=>t.number===input.number);
   modelAssert(table&&(zones.some(z=>z.id===input.zone)||!table.active&&archived.some(z=>z.id===input.zone))&&['rect','round'].includes(input.shape)&&Number.isInteger(input.seats)&&input.seats>=1&&input.seats<=30&&['x','y'].every(k=>Number.isFinite(input[k])&&input[k]>=0&&input[k]<=100)&&clean(input.name,40),'Revisa la zona, posición, nombre y lugares de las mesas.');
   Object.assign(table,{zone:input.zone,shape:input.shape,seats:input.seats,x:input.x,y:input.y,name:clean(input.name,40)});
  }
- s.tables=tables;s.floor={zones:[...zones,...archived],version:(s.floor?.version||0)+1};
+ s.tables=tables;s.floor={...s.floor,zoneRows:layout.rowsByZone,zones:[...zones,...archived],version:(s.floor?.version||0)+1};
  s.audits.push({user:actor,action:'edición del plano',details:{reason:'Posiciones y configuración del salón guardadas'},at:new Date().toISOString()});return s.floor;
 }
 export function ownOrder(o,user,actor){modelAssert(user!=='camarero'||o.waiter?.id===actor,'Solo puedes modificar las mesas que atiendes.');}

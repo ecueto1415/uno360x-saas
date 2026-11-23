@@ -103,3 +103,18 @@ test('Guided assignment is atomic and idempotent; cancellation preserves history
  const next=(await cmd('order',{service:'mesa',table:1,people:1})).result;const line=(await cmd('add',{order:next.id,product:'burger'})).result;await cmd('add',{order:next.id,product:'wings'});await cmd('send',{order:next.id});await cmd('pay',{order:next.id,lines:[line.id],method:'efectivo',kind:'E32'});
  assert.equal((await cmd('cancel-order',{order:next.id,reason:'No debe permitir pago',confirmed:true})).status,400);
 }));
+
+ test('Growing an edited floor to 18 tables keeps existing positions and gives new tables non-overlapping places',()=>fixture(async({snap,cmd})=>{
+ let s=await snap(),tables=floorTables(s);const coords=[[0,0],[53.9,42.2],[100,0],[1.5,46.8],[0,89.1]];
+ tables=tables.map((t,i)=>({...t,x:coords[i][0],y:coords[i][1]}));await cmd('floor-save',{version:0,tables});await cmd('table',{number:8,name:'Mesa 08',active:true});
+ s=await snap();const eight=s.tables.find(t=>t.number===8);await cmd('floor-save',{version:s.floor.version,tables:floorTables(s).map(t=>t.number===8?{...t,x:100,y:89.1}:t)});
+ await cmd('table',{number:17,name:'Mesa 09',active:true});s=await snap();const fixed=s.tables.filter(t=>t.number!==17).map(t=>({...t}));await cmd('tables-config',{enabled:true,count:18});s=await snap();assert.equal(s.tables.filter(t=>t.active).length,18);assert.deepEqual(s.tables.map(t=>t.number).sort((a,b)=>a-b),Array.from({length:18},(_,i)=>i+1));
+ for(const t of fixed){const current=s.tables.find(x=>x.number===t.number);assert.equal(current.x,t.x);assert.equal(current.y,t.y);assert.equal(current.name,t.name);}
+ assert.equal(s.tables.find(t=>t.number===17).name,'Mesa 09','Existing labels are preserved');assert.ok(s.floor.zoneRows.salon>=6);
+ const {floorCanvasHeight}=await import('./domain.mjs');for(const small of [false,true]){
+  const h=floorCanvasHeight(s,'salon',small),w=small?520:800,tw=small?145:198,th=small?150:145,rects=floorTables(s).filter(t=>t.active).map(t=>({x:t.x/100*(w-tw-24),y:t.y/100*(h-th-24),n:t.number}));
+  for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){const a=rects[i],b=rects[j];assert.ok(Math.abs(a.x-b.x)>=tw||Math.abs(a.y-b.y)>=th,'Overlap '+a.n+' / '+b.n+' small='+small);}
+ }
+ const before=s.tables;await cmd('floor-save',{version:s.floor.version,tables:floorTables(s)});s=await snap();assert.deepEqual(s.tables,before);assert.equal(s.tables.filter(t=>t.active).length,18);
+ await cmd('open',{fund:0});assert.equal((await cmd('order',{service:'mesa',table:18,people:2})).status,200);
+}));

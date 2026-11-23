@@ -25,3 +25,4 @@ button,a,input,select,textarea{touch-action:manipulation}#mobile-orderbar{displa
 .cancelled-order{background:#fff1e6;border:1px solid #e4b88e;border-radius:12px;padding:14px;color:#864718;margin:12px 0}.cancelled-order p{margin:6px 0 0}
 
 .digital-preview-item>div{min-width:0;overflow-wrap:anywhere}.digital-preview-logo{display:block;width:64px;height:64px;object-fit:contain;margin:12px 0}
+.floor-table .floor-number{font-size:12px;fill:#607489}

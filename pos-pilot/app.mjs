@@ -1,4 +1,4 @@
-import {money,totals,margin,restaurantTables,equalShares,businessTypes,setupRequired,floorTables,floorZones,invoicesFor} from './domain.mjs';
+import {money,totals,margin,restaurantTables,equalShares,businessTypes,setupRequired,floorTables,floorZones,floorCanvasHeight,invoicesFor} from './domain.mjs';
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const modes={Mesas:'Mesas',Pedidos:'Pedidos',Cocina:'Cocina',Barra:'Barra',Caja:'Caja',Inventario:'Inventario y mermas',Reportes:'Reportes y cierre de caja',Menú:'Menú y recetas'};
@@ -84,6 +84,7 @@ function setupWizard(){
   panel('Antes de empezar','<p>1. Crea el producto con su nombre y precio.</p><p>2. Selecciona su categoría, imagen y destino: Cocina o Barra, o Sin comanda para venta directa.</p><p>3. Guarda y repite para el siguiente producto.</p><p class="muted">No hace falta completar todos los productos ahora. Los agregas después desde Menú.</p>')+'</div><div class="actions">'+back+action('setupFinish','Guardar y abrir el POS','','primary')+'</div>';
 }
 function render(){
+ const oldFloor=$('.floor-stage'),floorScroll=oldFloor?.scrollTop,oldFloorZone=oldFloor?.dataset.zone;
  $('#nav').innerHTML=Object.keys(modes).map((n,i)=>(i===5?'<div class="nav-divider"></div>':'')+action('nav',icon(n)+'<span>'+n+'</span>',n,(n===mode?'active ':'')+(i>4?'secondary-nav':''))).join('');
  const current=picked();
  $('#title').textContent=digitalMenuOpen?'Menú digital':mode==='Caja'&&current?orderName(current):modes[mode];
@@ -93,6 +94,7 @@ function render(){
  const role=$('#role').value;
  const restricted=['cocina','barra'].includes(role)?mode!==(role==='cocina'?'Cocina':'Barra'):role==='camarero'&&['Reportes','Inventario'].includes(mode);
  $('#view').innerHTML=restricted?panel('Acceso reservado','<p>Esta opción corresponde a otro rol del equipo.</p>'):configuring()?setupWizard():settingsOpen?(digitalMenuOpen?digitalMenuSettings():posSettings()):({Mesas:tables,Pedidos:orders,Caja:register,Cocina:()=>station('cocina'),Barra:()=>station('barra'),Inventario:inventory,Reportes:reports,Menú:menu})[mode]();
+ const newFloor=$('.floor-stage');if(newFloor&&oldFloorZone===newFloor.dataset.zone)newFloor.scrollTop=floorScroll||0;
  $('#mobile-orderbar').hidden=configuring()||settingsOpen||mode!=='Caja'||!current||current.closed||current.amountsHidden;
  document.querySelectorAll('#mobile-orderbar button').forEach(b=>b.disabled=locked);
  $('#mobile-nav-toggle').disabled=locked;
@@ -104,7 +106,7 @@ function orders(){
  const open=state.orders.filter(o=>!o.closed);
  return panel('Pedidos en curso','<div class="actions">'+action('nav','Ver mesas','Mesas')+action('new','Para llevar','llevar')+action('new','Pedido en barra','barra')+'</div><div class="grid order-grid">'+(open.map(o=>action('pick','<strong>'+orderName(o)+'</strong><small>Pedido #'+o.number+' · '+(o.lineCount??o.lines.length)+' productos</small><small>Atiende: '+esc(o.waiter?.name||'Sin asignar')+'</small><b>'+(o.amountsHidden?'Cuenta reservada':money(totals(o.lines,o.service).total))+'</b>',o.id,'order-card')).join('')||'<p class="muted">No hay pedidos abiertos.</p>')+'</div>');
 }
-function floorDimensions(){const small=innerWidth<=450;const count=(floorDraft||floorTables(state)).filter(t=>t.active&&t.zone===floorZone).length;return {w:small?520:800,h:Math.max(small?650:600,Math.ceil(count/3)*180+40),tw:small?145:198,th:small?150:145};}
+function floorDimensions(){const small=innerWidth<=450;return {w:small?520:800,h:floorCanvasHeight(floorDraft?{...state,tables:floorDraft}:state,floorZone,small),tw:small?145:198,th:small?150:145};}
 function tables(){
  if(state.setup?.tablesEnabled===false)return panel('Venta sin mesas','<p>Este POS está configurado sin salón. Puedes activarlo desde Menú → Ajustes del POS → Mesas.</p>'+action('nav','Ir a Caja','Caja','primary'));
  const list=(floorDraft||floorTables(state)).filter(t=>t.active),zones=floorZones(state);
@@ -118,10 +120,10 @@ function tables(){
   const x=12+t.x/100*(d.w-d.tw-24),y=12+t.y/100*(d.h-d.th-24),mid=d.tw/2;
   const detail=o?(o.people||'')+' comensales · '+(o.waiter?.name||'Sin asignar'):t.seats+' lugares · Libre';
   const amount=o&&!o.amountsHidden?money(totals(o.lines,o.service).total-paidFor(o)):o?'Cuenta reservada':'';
-  return '<g role="button" tabindex="0" aria-label="'+esc(t.name+' · '+detail)+'" data-action="floorSelect" data-value="'+t.number+'" class="floor-table '+cls+(selected?' selected-floor':'')+'" transform="translate('+x+','+y+')"><title>'+esc(t.name+' · '+detail)+'</title><rect width="'+d.tw+'" height="'+d.th+'" rx="'+(t.shape==='round'?60:14)+'"/><svg x="'+(mid-16)+'" y="14" width="32" height="32" viewBox="0 0 24 24"><path d="'+iconPaths.Mesas+'"/></svg><text class="floor-name" x="'+mid+'" y="65">'+esc(t.name.length>17?t.name.slice(0,16)+'…':t.name)+'</text><text class="floor-meta" x="'+mid+'" y="88">'+esc(detail.length>27?detail.slice(0,26)+'…':detail)+'</text><text class="floor-amount" x="'+mid+'" y="111">'+esc(floorEditing?'Selecciona para ubicar':amount)+'</text><text class="floor-meta" x="'+mid+'" y="132">'+(floorEditing?'':o?.opened?Math.max(0,Math.floor((Date.now()-Date.parse(o.opened))/60000))+' min':'')+'</text></g>';
+  return '<g role="button" tabindex="0" aria-label="'+esc(t.name+' · Número '+t.number+' · '+detail)+'" data-action="floorSelect" data-value="'+t.number+'" class="floor-table '+cls+(selected?' selected-floor':'')+'" transform="translate('+x+','+y+')"><title>'+esc(t.name+' · '+detail)+'</title><rect width="'+d.tw+'" height="'+d.th+'" rx="'+(t.shape==='round'?60:14)+'"/><text class="floor-number" aria-hidden="true" x="'+(d.tw-25)+'" y="29">#'+String(t.number).padStart(2,'0')+'</text><svg x="'+(mid-16)+'" y="14" width="32" height="32" viewBox="0 0 24 24"><path d="'+iconPaths.Mesas+'"/></svg><text class="floor-name" x="'+mid+'" y="65">'+esc(t.name.length>17?t.name.slice(0,16)+'…':t.name)+'</text><text class="floor-meta" x="'+mid+'" y="88">'+esc(detail.length>27?detail.slice(0,26)+'…':detail)+'</text><text class="floor-amount" x="'+mid+'" y="111">'+esc(floorEditing?'Selecciona para ubicar':amount)+'</text><text class="floor-meta" x="'+mid+'" y="132">'+(floorEditing?'':o?.opened?Math.max(0,Math.floor((Date.now()-Date.parse(o.opened))/60000))+' min':'')+'</text></g>';
  }).join('');
- const tools=$('#role').value==='supervisor'?'<div class="actions">'+action('manageTables','Administrar mesas')+action('manageZones','Administrar zonas')+(!floorEditing?action('editFloor','Editar plano'):action('newZone','+ Agregar zona'))+'</div>':'';
- const plan=panel(floorEditing?'Editar plano':'Plano de mesas','<p class="muted">Zonas del local</p><div class="tabs">'+zones.map(z=>action('zone',esc(z.name),z.id,z.id===floorZone?'primary':'')).join('')+'</div>'+tools+'<div class="floor-stage"><svg class="floor-canvas '+(floorEditing?'is-editing':'')+'" viewBox="0 0 '+d.w+' '+d.h+'" aria-label="Plano del salón">'+svg+'</svg></div><div class="floor-legend"><span>○ Libre</span><span>● En servicio</span><span>● Por cobrar</span></div>');
+ const tools=$('#role').value==='supervisor'?'<div class="actions">'+action('manageTables','Administrar mesas')+action('tableSettings','Configurar cantidad')+action('manageZones','Administrar zonas')+(!floorEditing?action('editFloor','Editar plano'):action('newZone','+ Agregar zona'))+'</div>':'';
+ const plan=panel(floorEditing?'Editar plano':'Plano de mesas','<p class="muted">'+list.length+' mesas activas · '+visible.length+' en esta zona · '+visible.filter(t=>!open.some(o=>o.table===t.number)).length+' libres</p><div class="tabs">'+zones.map(z=>action('zone',esc(z.name),z.id,z.id===floorZone?'primary':'')).join('')+'</div>'+tools+'<p class="muted">Desliza dentro del plano para ver todas las mesas.</p><div class="floor-stage" data-zone="'+esc(floorZone)+'"><svg class="floor-canvas '+(floorEditing?'is-editing':'')+'" viewBox="0 0 '+d.w+' '+d.h+'" aria-label="Plano del salón">'+svg+'</svg></div><div class="floor-legend"><span>○ Libre</span><span>● En servicio</span><span>● Por cobrar</span></div>');
  const o=table&&open.find(o=>o.table===table.number);
  let detail;
  if(floorEditing&&table)detail=panel('Mesa seleccionada','<div class="floor-fields">'+input('floorName','Nombre de la mesa','text','data-floor-field="name" maxlength="40" value="'+esc(table.name)+'"')+select('floorZone','Zona de la mesa',zones.map(z=>[z.id,z.name]),table.zone).replace('<select','<select data-floor-field="zone"')+input('floorSeats','Lugares','number','data-floor-field="seats" min="1" max="30" value="'+table.seats+'"')+select('floorShape','Forma',[['rect','Rectangular'],['round','Redonda']],table.shape).replace('<select','<select data-floor-field="shape"')+input('floorX','Posición horizontal (%)','number','data-floor-field="x" min="0" max="100" step="0.1" value="'+table.x+'"')+input('floorY','Posición vertical (%)','number','data-floor-field="y" min="0" max="100" step="0.1" value="'+table.y+'"')+'</div><div class="seat-controls" aria-label="Mover mesa">'+action('moveFloor','← Izquierda','left')+action('moveFloor','Arriba ↑','up')+action('moveFloor','Abajo ↓','down')+action('moveFloor','Derecha →','right')+'</div><p class="muted">Solo el administrador edita el plano. Usa las flechas para mover la mesa; con mouse también puedes arrastrarla.</p><div class="actions">'+action('cancelFloor','Cancelar')+action('saveFloor','Guardar plano','','primary')+'</div>');
@@ -284,12 +286,13 @@ document.addEventListener('click',async e=>{
  if(a==='chooseBusiness'){setupChoice=v;render();}
  if(a==='posSettings'){settingsOpen=true;digitalMenuOpen=false;render();}
  if(a==='digitalMenu'){if($('#role').value!=='supervisor')return;settingsOpen=true;digitalMenuOpen=true;menuUnsaved=false;render();}
- if(a==='digitalBack'){digitalMenuOpen=false;render();}
+ if(a==='digitalBack'){if(menuUnsaved)modal('Cambios sin guardar','<p>Tienes cambios en el menú digital que aún no has guardado. Puedes seguir editando o volver al menú sin aplicarlos.</p>'+action('dismiss','Seguir editando','','primary')+action('digitalLeave','Volver sin guardar'));else switchTo('Menú');}
+ if(a==='digitalLeave'){if($('#modal').open)$('#modal').close();menuUnsaved=false;switchTo('Menú');}
  if(a==='previewDigital')await previewDigitalMenu();
  if(a==='allDigital'){document.querySelectorAll('#digital-form input[name=published]').forEach(c=>c.checked=true);menuUnsaved=true;}
  if(a==='backToPOS')switchTo('Caja');
  if(a==='manageProducts')switchTo('Menú');
- if(a==='tableSettings')modal('Configurar mesas',form('tables-config',select('enabled','¿Atiendes en mesas?',[['yes','Sí, con mesas'],['no','No, solo mostrador']],state.setup?.tablesEnabled===false?'no':'yes')+input('count','Cantidad de mesas','number','min="1" max="200" value="'+(state.setup?.tableCount||Math.max(5,...restaurantTables(state).filter(t=>t.active).map(t=>t.number)))+'" required')+'<p class="muted">Los nombres se editan desde Mesas → Administrar mesas. No se desactivan mesas con cuentas abiertas.</p>'));
+ if(a==='tableSettings')modal('Configurar mesas',form('tables-config',select('enabled','¿Atiendes en mesas?',[['yes','Sí, con mesas'],['no','No, solo mostrador']],state.setup?.tablesEnabled===false?'no':'yes')+input('count','Cantidad de mesas','number','min="1" max="200" value="'+(state.setup?.tableCount||Math.max(5,...restaurantTables(state).filter(t=>t.active).map(t=>t.number)))+'" required')+'<p class="muted">Esta cantidad crea las mesas desde 01 hasta el total indicado. Los nombres y posiciones existentes se conservan; las mesas retiradas no se restauran automáticamente. No se desactivan mesas con cuentas abiertas.</p>'));
  if(a==='stationSettings')modal('Configurar estaciones',form('stations-config',select('kitchen','Cocina',[['yes','Activa'],['no','Inactiva']],state.setup?.stations?.cocina===false?'no':'yes')+select('bar','Barra',[['yes','Activa'],['no','Inactiva']],state.setup?.stations?.barra===false?'no':'yes')+'<p class="muted">Antes de desactivar una estación, reasigna sus productos y completa las comandas pendientes.</p>'));
  if(a==='teamRoles')modal('Roles del equipo',form('staff-role',select('account','Usuario del equipo',staffOptions())+select('role','Rol en este POS',[['caja','Caja'],['camarero','Camarero'],['cocina','Cocina'],['barra','Barra']])+'<p class="muted">El camarero ve montos solo de sus mesas. Cocina y Barra no ven importes. Los administradores conservan su permiso de supervisión.</p>')+'<div class="space">'+staff.map(p=>line(esc(p.name),esc(state.staffRoles?.[p.id]||'Según su permiso de POS'))).join('')+'</div>');
  if(a==='changeBusiness')modal('Cambiar tipo de negocio',form('review-business-change',select('business','Nuevo tipo de negocio',businessTypes.filter(([id])=>id!==(state.setup?.business||'restaurant')))),{previousBusiness:state.setup?.business||'restaurant'});
@@ -299,7 +302,7 @@ document.addEventListener('click',async e=>{
  if(a==='setupFinish')command('setup-finish',{});
  if(a==='manageTables'){
   const list=restaurantTables(state);
-  modal('Administrar mesas','<p>Agrega mesas o quítalas del plano. Quitar conserva su historial y permite restaurarlas.</p>'+action('editTable','+ Agregar mesa','','primary')+list.filter(t=>!t.archived).map(t=>line(esc(t.name)+' · '+(t.active?'Activa':'Inactiva'),action('editTable','Editar',t.number)+' '+action('archiveTable','Quitar mesa',t.number))).join('')+(list.some(t=>t.archived)?'<h3 class="space">Mesas retiradas</h3>'+list.filter(t=>t.archived).map(t=>line(esc(t.name),action('editTable','Restaurar mesa',t.number))).join(''):''));
+  modal('Administrar mesas','<p>Agregar mesa crea una sola mesa. Para crear varias, usa Configurar cantidad. Quitar conserva su historial.</p>'+action('editTable','+ Agregar mesa','','primary')+action('tableSettings','Configurar cantidad')+list.filter(t=>!t.archived).map(t=>line(esc(t.name)+' · '+(t.active?'Activa':'Inactiva'),action('editTable','Editar',t.number)+' '+action('archiveTable','Quitar mesa',t.number))).join('')+(list.some(t=>t.archived)?'<h3 class="space">Mesas retiradas</h3>'+list.filter(t=>t.archived).map(t=>line(esc(t.name),action('editTable','Restaurar mesa',t.number))).join(''):''));
  }
  if(a==='archiveTable'){
   const t=restaurantTables(state).find(t=>t.number===Number(v));if(t)modal('Quitar '+t.name,'<p>Se quitará del plano y se conservará su historial. Puedes restaurarla desde Administrar mesas. No se permite si tiene una cuenta abierta.</p>'+action('confirmArchiveTable','Sí, quitar mesa',v,'primary'));
@@ -316,7 +319,7 @@ document.addEventListener('click',async e=>{
  if(a==='editTable'){
   const t=restaurantTables(state).find(t=>t.number===Number(v));
   const number=t?.number||Math.max(0,...restaurantTables(state).map(t=>t.number))+1;
-  modal(t?'Editar mesa':'Agregar mesa',form('table',input('number','Número de mesa','number','min="1" max="200" value="'+number+'" '+(t?'readonly':'')+' required')+input('name','Nombre de la mesa','text','maxlength="40" value="'+esc(t?.name||'Mesa '+String(number).padStart(2,'0'))+'" required')+select('active','Estado',[['yes','Activa'],['no','Inactiva']],t?.active===false&&!t?.archived?'no':'yes')));
+  modal(t?'Editar mesa':'Agregar mesa',form('table',input('number','Número de mesa','number','min="1" max="200" value="'+number+'" '+(t?'readonly':'')+' required')+input('name','Nombre de la mesa','text','maxlength="40" value="'+esc(t?.name||'Mesa '+String(number).padStart(2,'0'))+'" required')+select('active','Estado',[['yes','Activa'],['no','Inactiva']],t?.active===false&&!t?.archived?'no':'yes')));if(!t)$('#modal input[name=name]').dataset.autoName=$('#modal input[name=name]').value;
  }
  if(a==='showOrder')$('.order-panel')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
  if(a==='category'){category=v;render();}
@@ -423,6 +426,7 @@ document.addEventListener('click',e=>{
  }
 });
 document.addEventListener('input',e=>{
+ if(e.target.name==='number'&&e.target.closest('form')?.dataset.command==='table'){const name=$('#modal input[name=name]');if(name?.dataset.autoName&&name.value===name.dataset.autoName){const n=Number(e.target.value);if(Number.isInteger(n)&&n>=1&&n<=200){name.value='Mesa '+String(n).padStart(2,'0');name.dataset.autoName=name.value;}}}
  if(e.target.closest('#digital-form'))menuUnsaved=true;
  if(e.target.id==='guest-add')guestToAdd=e.target.value;
  if(e.target.dataset.floorField&&floorEditing){
@@ -512,7 +516,7 @@ function digitalMenuSettings(){
   const i=d.items.find(i=>i.id===p.id)||{published:false,available:p.available!==false},photo=p.photo?.startsWith('data:')?p.photo:p.photo?basePath+'/images/'+p.photo:'';
   return '<div class="digital-row"><div class="digital-product">'+(photo?'<img src="'+esc(photo)+'" alt="">':'<span class="digital-icon">🍽</span>')+'<div><strong>'+title(p)+'</strong><small>'+esc(p.category)+'</small></div></div><strong class="digital-price">'+money(p.cents)+'</strong><label class="digital-toggle"><span>Disponible</span><input type="checkbox" name="available" aria-label="Disponible '+esc(p.name)+'" value="'+esc(p.id)+'" '+(i.available?'checked':'')+'></label><label class="digital-toggle"><span>Publicar</span><input type="checkbox" name="published" aria-label="Publicar '+esc(p.name)+'" value="'+esc(p.id)+'" '+(i.published?'checked':'')+'></label></div>';
  }).join('');
- return panel('Tu catálogo, listo para mostrar','<p class="muted">Publica los productos del POS que quieras mostrar a tus clientes.</p><div class="actions">'+action('digitalBack','Volver a Ajustes')+action('previewDigital','Vista previa')+'</div>')+
+ return panel('Tu catálogo, listo para mostrar','<p class="muted">Publica los productos del POS que quieras mostrar a tus clientes.</p><div class="actions">'+action('digitalBack','‹ Volver al menú')+action('previewDigital','Vista previa')+'</div>')+
  '<div class="digital-layout"><section class="panel"><form id="digital-form" data-command="menu-save-publish">'+
  input('name','Nombre del negocio','text','maxlength="100" minlength="2" required value="'+esc(d.name)+'"')+
  '<div class="digital-fields">'+select('enabled','Menú público',[['yes','Activado'],['no','Desactivado']],d.enabled?'yes':'no')+input('interval','Rotar pantalla cada (segundos)','number','min="8" max="60" value="'+d.interval+'" required')+'</div>'+
