@@ -107,7 +107,17 @@ export function apply(s,command,user,actor=user,staff=[]){
   }
   throw new Error('Paso de configuración desconocido.');
  }
- if(setupRequired(s))fail(['product','table'].includes(type),'El administrador debe completar la configuración inicial del POS.');
+ if(setupRequired(s))fail(['product','table','tables-add'].includes(type),'El administrador debe completar la configuración inicial del POS.');
+ if(type==='tables-add'){
+  role(user,'supervisor');const count=command.count,number=command.number,zone=command.zone;
+  fail(Number.isInteger(count)&&count>=1&&count<=200&&Number.isInteger(number)&&number>=1&&number+count-1<=200,'Indica una cantidad y un número inicial válidos, hasta la mesa 200.');
+  fail(floorZones(s).some(z=>z.id===zone),'Selecciona una zona activa.');
+  const tables=restaurantTables(s),numbers=Array.from({length:count},(_,i)=>number+i);
+  fail(!tables.some(t=>numbers.includes(t.number)),'Uno de esos números ya existe. Elige otro número inicial; no se modificó ninguna mesa.');
+  const added=numbers.map(n=>({number:n,name:count===1?label(command.name,40)||'Mesa '+String(n).padStart(2,'0'):'Mesa '+String(n).padStart(2,'0'),active:true,zone,archived:false}));
+  s.tables=[...tables,...added];if(s.setup){s.setup.tablesEnabled=true;s.setup.tableCount=Math.max(s.setup.tableCount||0,...numbers);}placeNewFloorTables(s);
+  log(s,actor,'mesas agregadas',{count,zone,numbers});return {count,zone,numbers};
+ }
  if(type==='table'){
   role(user,'supervisor');const number=command.number,name=label(command.name,40);
   fail(Number.isInteger(number)&&number>=1&&number<=200&&name&&typeof command.active==='boolean','Indica un número de mesa de 1 a 200 y su nombre.');

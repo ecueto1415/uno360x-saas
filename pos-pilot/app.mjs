@@ -122,7 +122,7 @@ function tables(){
   const amount=o&&!o.amountsHidden?money(totals(o.lines,o.service).total-paidFor(o)):o?'Cuenta reservada':'';
   return '<g role="button" tabindex="0" aria-label="'+esc(t.name+' · Número '+t.number+' · '+detail)+'" data-action="floorSelect" data-value="'+t.number+'" class="floor-table '+cls+(selected?' selected-floor':'')+'" transform="translate('+x+','+y+')"><title>'+esc(t.name+' · '+detail)+'</title><rect width="'+d.tw+'" height="'+d.th+'" rx="'+(t.shape==='round'?60:14)+'"/><text class="floor-number" aria-hidden="true" x="'+(d.tw-25)+'" y="29">#'+String(t.number).padStart(2,'0')+'</text><svg x="'+(mid-16)+'" y="14" width="32" height="32" viewBox="0 0 24 24"><path d="'+iconPaths.Mesas+'"/></svg><text class="floor-name" x="'+mid+'" y="65">'+esc(t.name.length>17?t.name.slice(0,16)+'…':t.name)+'</text><text class="floor-meta" x="'+mid+'" y="88">'+esc(detail.length>27?detail.slice(0,26)+'…':detail)+'</text><text class="floor-amount" x="'+mid+'" y="111">'+esc(floorEditing?'Selecciona para ubicar':amount)+'</text><text class="floor-meta" x="'+mid+'" y="132">'+(floorEditing?'':o?.opened?Math.max(0,Math.floor((Date.now()-Date.parse(o.opened))/60000))+' min':'')+'</text></g>';
  }).join('');
- const tools=$('#role').value==='supervisor'?'<div class="actions">'+action('manageTables','Administrar mesas')+action('tableSettings','Configurar cantidad')+action('manageZones','Administrar zonas')+(!floorEditing?action('editFloor','Editar plano'):action('newZone','+ Agregar zona'))+'</div>':'';
+ const tools=$('#role').value==='supervisor'?'<div class="actions">'+action('editTable','+ Agregar mesa')+action('manageTables','Administrar mesas')+action('manageZones','Administrar zonas')+(!floorEditing?action('editFloor','Editar plano'):action('newZone','+ Agregar zona'))+'</div>':'';
  const plan=panel(floorEditing?'Editar plano':'Plano de mesas','<p class="muted">'+list.length+' mesas activas · '+visible.length+' en esta zona · '+visible.filter(t=>!open.some(o=>o.table===t.number)).length+' libres</p><div class="tabs">'+zones.map(z=>action('zone',esc(z.name),z.id,z.id===floorZone?'primary':'')).join('')+'</div>'+tools+'<p class="muted">Desliza dentro del plano para ver todas las mesas.</p><div class="floor-stage" data-zone="'+esc(floorZone)+'"><svg class="floor-canvas '+(floorEditing?'is-editing':'')+'" viewBox="0 0 '+d.w+' '+d.h+'" aria-label="Plano del salón">'+svg+'</svg></div><div class="floor-legend"><span>○ Libre</span><span>● En servicio</span><span>● Por cobrar</span></div>');
  const o=table&&open.find(o=>o.table===table.number);
  let detail;
@@ -242,6 +242,7 @@ async function command(type,data,after){
   else if(type==='business-change')flash('Tipo de negocio actualizado. Se conservaron mesas, productos, estaciones y ventas.');
   else if(type==='stations-config'||type==='tables-config')flash('Ajustes del POS guardados.');
   else if(type==='guest-save')flash(r.result.name+' guardado en este pedido.');
+  else if(type==='tables-add'){floorZone=r.result.zone;render();flash(r.result.count===1?'Mesa agregada.':r.result.count+' mesas agregadas.');}
   else if(type==='floor-save')flash('Plano guardado.');
   else if(type==='cancel-order')flash('Cuenta cancelada. La mesa quedó libre y el historial se conserva.');
   else if(type==='guest-distribute')flash('Productos asignados. Continúa con el cobro por persona.');
@@ -302,7 +303,7 @@ document.addEventListener('click',async e=>{
  if(a==='setupFinish')command('setup-finish',{});
  if(a==='manageTables'){
   const list=restaurantTables(state);
-  modal('Administrar mesas','<p>Agregar mesa crea una sola mesa. Para crear varias, usa Configurar cantidad. Quitar conserva su historial.</p>'+action('editTable','+ Agregar mesa','','primary')+action('tableSettings','Configurar cantidad')+list.filter(t=>!t.archived).map(t=>line(esc(t.name)+' · '+(t.active?'Activa':'Inactiva'),action('editTable','Editar',t.number)+' '+action('archiveTable','Quitar mesa',t.number))).join('')+(list.some(t=>t.archived)?'<h3 class="space">Mesas retiradas</h3>'+list.filter(t=>t.archived).map(t=>line(esc(t.name),action('editTable','Restaurar mesa',t.number))).join(''):''));
+  modal('Administrar mesas','<p>Agrega una o varias mesas y elige su zona. Quitar conserva su historial.</p>'+action('editTable','+ Agregar mesa','','primary')+list.filter(t=>!t.archived).map(t=>line(esc(t.name)+' · '+(t.active?'Activa':'Inactiva'),action('editTable','Editar',t.number)+' '+action('archiveTable','Quitar mesa',t.number))).join('')+(list.some(t=>t.archived)?'<h3 class="space">Mesas retiradas</h3>'+list.filter(t=>t.archived).map(t=>line(esc(t.name),action('editTable','Restaurar mesa',t.number))).join(''):''));
  }
  if(a==='archiveTable'){
   const t=restaurantTables(state).find(t=>t.number===Number(v));if(t)modal('Quitar '+t.name,'<p>Se quitará del plano y se conservará su historial. Puedes restaurarla desde Administrar mesas. No se permite si tiene una cuenta abierta.</p>'+action('confirmArchiveTable','Sí, quitar mesa',v,'primary'));
@@ -319,6 +320,7 @@ document.addEventListener('click',async e=>{
  if(a==='editTable'){
   const t=restaurantTables(state).find(t=>t.number===Number(v));
   const number=t?.number||Math.max(0,...restaurantTables(state).map(t=>t.number))+1;
+  if(!t){modal('Agregar mesa',form('tables-add',select('mode','¿Cuántas quieres crear?',[['one','Una mesa'],['many','Varias mesas']],'one')+'<div id="table-quantity" hidden>'+input('count','Cantidad de mesas nuevas','number','min="1" max="200" value="2" required')+'</div>'+input('number','<span id=table-number-label>Número de mesa</span>','number','min="1" max="200" value="'+number+'" required')+'<p class="muted">El número identifica la primera mesa; no es la cantidad. Las mesas existentes se conservan.</p><div id="table-name">'+input('name','Nombre de la mesa','text','maxlength="40" value="Mesa '+String(number).padStart(2,'0')+'"')+'</div>'+select('zone','Zona',floorZones(state).map(z=>[z.id,z.name]),floorZone||floorZones(state)[0].id)));$('#modal input[name=name]').dataset.autoName=$('#modal input[name=name]').value;return;}
   modal(t?'Editar mesa':'Agregar mesa',form('table',input('number','Número de mesa','number','min="1" max="200" value="'+number+'" '+(t?'readonly':'')+' required')+input('name','Nombre de la mesa','text','maxlength="40" value="'+esc(t?.name||'Mesa '+String(number).padStart(2,'0'))+'" required')+select('active','Estado',[['yes','Activa'],['no','Inactiva']],t?.active===false&&!t?.archived?'no':'yes')));if(!t)$('#modal input[name=name]').dataset.autoName=$('#modal input[name=name]').value;
  }
  if(a==='showOrder')$('.order-panel')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
@@ -425,8 +427,9 @@ document.addEventListener('click',e=>{
   openEqualPayment(n);
  }
 });
+document.addEventListener('change',e=>{if(e.target.name==='mode'&&e.target.form?.dataset.command==='tables-add'){const many=e.target.value==='many';$('#table-quantity').hidden=!many;$('#table-name').hidden=many;$('#table-number-label').textContent=many?'Primer número de mesa':'Número de mesa';}});
 document.addEventListener('input',e=>{
- if(e.target.name==='number'&&e.target.closest('form')?.dataset.command==='table'){const name=$('#modal input[name=name]');if(name?.dataset.autoName&&name.value===name.dataset.autoName){const n=Number(e.target.value);if(Number.isInteger(n)&&n>=1&&n<=200){name.value='Mesa '+String(n).padStart(2,'0');name.dataset.autoName=name.value;}}}
+ if(e.target.name==='number'&&['table','tables-add'].includes(e.target.closest('form')?.dataset.command)){const name=$('#modal input[name=name]');if(name?.dataset.autoName&&name.value===name.dataset.autoName){const n=Number(e.target.value);if(Number.isInteger(n)&&n>=1&&n<=200){name.value='Mesa '+String(n).padStart(2,'0');name.dataset.autoName=name.value;}}}
  if(e.target.closest('#digital-form'))menuUnsaved=true;
  if(e.target.id==='guest-add')guestToAdd=e.target.value;
  if(e.target.dataset.floorField&&floorEditing){
@@ -452,6 +455,7 @@ document.addEventListener('submit',async e=>{
  }
  if(type==='open')payload.fund=cash(values.fund);
  if(type==='order')payload.people=values.people?Number(values.people):undefined;
+ if(type==='tables-add'){payload.number=Number(values.number);payload.count=values.mode==='many'?Number(values.count):1;}
  if(type==='table'){payload.number=Number(values.number);payload.active=values.active==='yes';}
  if(type==='setup-tables'||type==='tables-config'){payload.count=Number(values.count);payload.enabled=values.enabled==='yes';}
  if(type==='stations-config'){payload.kitchen=values.kitchen==='yes';payload.bar=values.bar==='yes';}
