@@ -1,0 +1,21 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require(process.env.POS_PLAYWRIGHT_PATH||'playwright');
+test('Phone/tablet: unassigned products guide to separate bills, send commandas, two payments; cancel unpaid account safely',async()=>{
+ const {makeDemoServer}=await import('./server.mjs'),browser=await chromium.launch({channel:'msedge',headless:true}),out=path.resolve('../outputs/Menu_Digital_Implementado');fs.mkdirSync(out,{recursive:true});
+ try{for(const width of [390,768]){
+  const server=makeDemoServer(':memory:',{close(){},authorize(){return {scope:'qa',account:'1',role:'supervisor',staff:[{id:'1',name:'Administrador'}]};}});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,ctx=await browser.newContext({viewport:{width,height:1024},hasTouch:true,isMobile:true});
+  try{
+   const p=await ctx.newPage();p.setDefaultTimeout(7000);const b=n=>p.getByRole('button',{name:n,exact:true});const snap=async()=>(await(await fetch(base+'/api/state')).json()).state;
+   async function nav(n){if(!await p.locator('#nav [data-value="'+n+'"]').isVisible())await p.locator('#mobile-nav-toggle').tap();await p.locator('#nav [data-value="'+n+'"]').tap();}
+   await p.goto(base);await b('Abrir turno').tap();await nav('Mesas');await p.locator('[data-action=floorSelect][data-value="2"]').tap();await b('Abrir pedido').tap();await p.locator('#modal').getByRole('button',{name:'Abrir pedido',exact:true}).tap();
+   for(const name of ['Carlos','Ana']){await b('+ Crear persona').tap();await p.getByLabel('Nombre de la persona - opcional').fill(name);await b('Crear persona').tap();await p.getByText(name+' guardado en este pedido.',{exact:true}).waitFor();}
+   await p.getByLabel('Agregar productos a').selectOption('');for(const product of ['burger','wings']){await p.locator('[data-action=product][data-value="'+product+'"]').tap();await b('Añadir a la cuenta').tap();}
+   await b('Dividir y cobrar').tap();await p.getByRole('button',{name:/^Por persona/}).tap();await p.getByRole('heading',{name:'Asignar productos a personas',exact:true}).waitFor();
+   await p.getByLabel(/^Producto 1/).selectOption({label:'Carlos'});await p.getByLabel(/^Producto 2/).selectOption({label:'Ana'});await b('Continuar al cobro').tap();await p.getByRole('heading',{name:'Enviar pedido antes de cobrar',exact:true}).waitFor();await b('Enviar comanda y continuar').tap();await p.getByLabel('¿Cómo se hará la factura?').selectOption('person');
+   await p.screenshot({path:path.join(out,'cuentas-guiadas-'+width+'.png'),fullPage:true});await b('Registrar pago').tap();await p.getByText(/Pago registrado/).waitFor();await b('Cobrar').tap();await p.getByLabel('Método de pago').selectOption('tarjeta');await b('Registrar pago').tap();await p.getByText(/Pago registrado/).waitFor();
+   let s=await snap();assert.equal(s.payments.length,2);assert.equal(s.orders[0].invoices.length,2);assert.equal(s.orders[0].closed,true);assert.equal(s.orders[0].invoices[0].guestName,'Carlos');assert.equal(s.orders[0].invoices[1].guestName,'Ana');
+   await nav('Mesas');await p.locator('[data-action=floorSelect][data-value="3"]').tap();await b('Abrir pedido').tap();await p.locator('#modal').getByRole('button',{name:'Abrir pedido',exact:true}).tap();await b('Cancelar cuenta').tap();await b('Cancelar').tap();assert.equal((await snap()).orders[1].closed,false);await b('Cancelar cuenta').tap();await p.getByLabel('Motivo de la cancelación').fill('Prueba de mesa abierta por error');await b('Confirmar cancelación').tap();await p.getByText('Cuenta cancelada · Sin cobro',{exact:true}).waitFor();s=await snap();assert.equal(s.orders[1].cancelled.reason,'Prueba de mesa abierta por error');assert.equal(s.orders[1].closed,true);assert.equal(s.payments.length,2);assert.equal(await b('Cancelar cuenta').count(),0);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth),width);
+   await p.screenshot({path:path.join(out,'cuenta-cancelada-'+width+'.png'),fullPage:true});
+  }finally{await ctx.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+ }}finally{await browser.close();}
+});

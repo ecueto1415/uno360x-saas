@@ -71,3 +71,35 @@ test('Persisted team roles override base cash access; forged headers cannot gran
  assert.equal((await cmd('staff-role',{account:'4',role:'caja'})).status,200,'Verified manager remains administrator');
  assert.equal((await cmd('pay',{order:o.id,lines:[added.id],method:'efectivo',kind:'E32'},'4')).status,200);
 }));
+
+test('Tables and empty zones can be removed and restored without deleting history; open accounts are protected',()=>fixture(async({snap,cmd})=>{
+ await cmd('open',{fund:0});const o=(await cmd('order',{service:'mesa',table:1,people:2})).result;
+ assert.equal((await cmd('table-archive',{number:1,confirmed:true})).status,400);
+ assert.equal((await cmd('table-archive',{number:2,confirmed:true},'2')).status,400);
+ assert.equal((await cmd('table-archive',{number:2})).status,400);
+ assert.equal((await cmd('table-archive',{number:2,confirmed:true})).status,200);
+ let s=await snap();assert.equal(s.tables.find(t=>t.number===2).archived,true);assert.equal(s.orders[0].id,o.id);
+ assert.equal((await cmd('zone-archive',{id:'salon',confirmed:true})).status,400);
+ assert.equal((await cmd('zone-archive',{id:'terraza',confirmed:true})).status,200);
+ s=await snap();assert.equal(s.floor.zones.find(z=>z.id==='terraza').active,false);
+ await cmd('zone-save',{name:'Patio'});s=await snap();assert.equal(s.floor.zones.find(z=>z.id==='terraza').active,false,'Adding a zone preserves archived zones');
+ const tables=floorTables(s);assert.equal((await cmd('floor-save',{tables,version:s.floor.version})).status,200);
+ assert.equal((await cmd('zone-restore',{id:'terraza'})).status,200);
+ assert.equal((await cmd('table',{number:2,name:'Mesa 02',active:true})).status,200);s=await snap();assert.equal(s.tables.find(t=>t.number===2).archived,false);assert.equal(s.tables.find(t=>t.number===2).active,true);
+}));
+
+test('Guided assignment is atomic and idempotent; cancellation preserves history and refuses payments or unauthorized users',()=>fixture(async({snap,cmd})=>{
+ await cmd('open',{fund:0});const o=(await cmd('order',{service:'mesa',table:1,people:2})).result;
+ const c=(await cmd('guest-save',{order:o.id,name:'Carlos'})).result,a=(await cmd('guest-save',{order:o.id,name:'Ana'})).result;
+ const l1=(await cmd('add',{order:o.id,product:'burger'})).result,l2=(await cmd('add',{order:o.id,product:'wings'})).result;
+ assert.equal((await cmd('guest-distribute',{order:o.id,assignments:[{line:l1.id,guest:c.id},{line:l2.id,guest:'other'}]})).status,400);
+ assert.equal((await snap()).orders[0].lines[0].guest,null);
+ const key=crypto.randomUUID(),assign={order:o.id,assignments:[{line:l1.id,guest:c.id},{line:l2.id,guest:a.id}]};await cmd('guest-distribute',assign,'1',key);await cmd('guest-distribute',assign,'1',key);
+ assert.equal((await snap()).audits.filter(a=>a.action==='distribución por persona').length,1);
+ await cmd('send',{order:o.id});assert.equal((await cmd('cancel-order',{order:o.id,reason:'Pedido de prueba cancelado',confirmed:true},'4')).status,400);
+ assert.equal((await cmd('cancel-order',{order:o.id,reason:'Pedido de prueba cancelado'})).status,400);
+ const cancelKey=crypto.randomUUID();assert.equal((await cmd('cancel-order',{order:o.id,reason:'Pedido de prueba cancelado',confirmed:true},'1',cancelKey)).status,200);await cmd('cancel-order',{order:o.id,reason:'Pedido de prueba cancelado',confirmed:true},'1',cancelKey);
+ let s=await snap();assert.equal(s.orders[0].closed,true);assert.equal(s.orders[0].lines.length,2);assert.ok(s.orders[0].lines.every(l=>l.status==='anulada'));assert.equal(s.events.length,0);assert.equal(s.payments.length,0);assert.equal(s.audits.filter(a=>a.action==='cancelación de cuenta').length,1);
+ const next=(await cmd('order',{service:'mesa',table:1,people:1})).result;const line=(await cmd('add',{order:next.id,product:'burger'})).result;await cmd('add',{order:next.id,product:'wings'});await cmd('send',{order:next.id});await cmd('pay',{order:next.id,lines:[line.id],method:'efectivo',kind:'E32'});
+ assert.equal((await cmd('cancel-order',{order:next.id,reason:'No debe permitir pago',confirmed:true})).status,400);
+}));

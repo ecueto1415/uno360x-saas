@@ -4,12 +4,12 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const modes={Mesas:'Mesas',Pedidos:'Pedidos',Cocina:'Cocina',Barra:'Barra',Caja:'Caja',Inventario:'Inventario y mermas',Reportes:'Reportes y cierre de caja',Menú:'Menú y recetas'};
 const iconPaths={Mesas:'M4 9h16M6 9V5h12v4M6 9l-2 11M18 9l2 11M8 15h8',Pedidos:'M9 4H5v17h14V4h-4M9 3h6v4H9zM8 12h8M8 16h6',Cocina:'M7 14a4 4 0 0 1-2-7 4 4 0 0 1 7-3 4 4 0 0 1 7 3 4 4 0 0 1-2 7v7H7zM7 17h10',Barra:'M3 3h18l-9 10zM12 13v8M7 21h10',Caja:'M4 9h16v12H4zM7 9V3h10v6M7 14h3M14 14h3M7 17h3M14 17h3',Inventario:'M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10',Reportes:'M4 3v18h17M8 17v-5M13 17V7M18 17v-9',Menú:'M4 4h16v16H4zM8 8h8M8 12h8M8 16h4'};
 const icon=name=>'<svg class="icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+(iconPaths[name]||iconPaths.Menú)+'"/></svg>';
-let inventoryConnected=false;
+let inventoryConnected=false,publicMenuOrigin=location.origin;
 let staff=[],displayName='',currentAccount='';
 const basePath=new URL(import.meta.url).pathname.replace(/\/app.mjs$/,'');
 const staffOptions=()=>staff.map(person=>[person.id,person.name]);
 let pendingRequest;
-let settingsOpen=false,setupChoice;
+let settingsOpen=false,digitalMenuOpen=false,menuUnsaved=false,setupChoice;
 let floorZone='salon',floorSelection,floorEditing=false,floorDraft,floorVersion=0,guestToAdd='',guestFilter='all',roleInitialized=false;
 let mode='Caja',state,summary,selected,locked=false,formData,category='',query='',stationPoll;
 const cash=v=>Math.round(Number(v)*100);
@@ -18,7 +18,7 @@ const orderName=o=>o.service==='mesa'?(restaurantTables(state).find(t=>t.number=
 const title=l=>esc(l.name);
 const action=(name,label,value='',style='')=>'<button type="button" class="'+style+'" data-action="'+name+'" data-value="'+esc(value)+'">'+label+'</button>';
 const panel=(label,content)=>'<section class="panel"><h2>'+label+'</h2>'+content+'</section>';
-const form=(type,content)=>'<form data-command="'+type+'">'+content+'<button class="primary" type="submit">'+({open:'Abrir turno',add:'Añadir a la cuenta',pay:'Registrar pago',product:'Guardar producto',order:'Abrir pedido',close:'Confirmar cierre',waste:'Registrar merma',count:'Guardar conteo',void:'Autorizar anulación',discount:'Autorizar descuento',refund:'Registrar devolución','setup-business':'Continuar','setup-tables':'Continuar','review-business-change':'Revisar cambio','guest-save':'Crear persona'}[type]||'Guardar')+'</button></form>';
+const form=(type,content)=>'<form data-command="'+type+'">'+content+'<button class="primary" type="submit">'+({open:'Abrir turno',add:'Añadir a la cuenta',pay:'Registrar pago',product:'Guardar producto',order:'Abrir pedido',close:'Confirmar cierre',waste:'Registrar merma',count:'Guardar conteo',void:'Autorizar anulación',discount:'Autorizar descuento',refund:'Registrar devolución','setup-business':'Continuar','setup-tables':'Continuar','review-business-change':'Revisar cambio','guest-save':'Crear persona','guest-distribute':'Continuar al cobro','cancel-order':'Confirmar cancelación'}[type]||'Guardar')+'</button></form>';
 const input=(name,label,type='text',extra='')=>'<label>'+label+'<input name="'+name+'" type="'+type+'" '+extra+'></label>';
 const options=(entries,chosen)=>entries.map(([v,t])=>'<option value="'+esc(v)+'" '+(v===chosen?'selected':'')+'>'+esc(t)+'</option>').join('');
 const select=(name,label,entries,chosen)=>'<label>'+label+'<select name="'+name+'">'+options(entries,chosen)+'</select></label>';
@@ -32,7 +32,7 @@ function modal(title,html,data={}){
 async function refresh(renderNow=true){
  const res=await fetch(basePath+'/api/state',{headers:{'X-Pos-Role':$('#role').value},signal:AbortSignal.timeout(10000)});
  const data=await res.json();if(!res.ok)throw new Error(data.error);
- ({state,summary,inventoryConnected}=data);
+ ({state,summary,inventoryConnected}=data);publicMenuOrigin=data.menuOrigin||location.origin;
  staff=data.staff||[];displayName=data.connected?.displayName||'';currentAccount=data.connected?.account||'';
  if(!selected){
   const table=Number(new URL(location.href).searchParams.get('mesa'));
@@ -47,13 +47,14 @@ async function refresh(renderNow=true){
  if(!roleInitialized){if(['cocina','barra'].includes($('#role').value))mode=$('#role').value==='cocina'?'Cocina':'Barra';else if($('#role').value==='camarero')mode='Mesas';roleInitialized=true;}
  if(renderNow)render();
 }
-function switchTo(next){settingsOpen=false;mode=configuring()?'Caja':next;render();}
+function switchTo(next){settingsOpen=false;digitalMenuOpen=false;mode=configuring()?'Caja':next;render();}
 const configuring=()=>setupRequired(state);
 const stationEntries=()=>[['cocina','Cocina'],['barra','Barra'],['ninguna','Sin comanda']].filter(([id])=>id==='ninguna'||state.setup?.stations?.[id]!==false);
 function posSettings(){
  if($('#role').value!=='supervisor'){settingsOpen=false;return menu();}
  return panel('Ajustes del POS','<p class="muted">Mesas, productos y estaciones se administran por separado. El POS abre directamente para el trabajo diario.</p>')+'<div class="layout">'+
  panel('Mesas','<p>Activa el salón, ajusta su cantidad y edita los nombres de las mesas.</p>'+action('tableSettings','Configurar mesas'))+
+ panel('Menú digital','<p>Muestra tu catálogo en televisión o por QR. Solo publica lo que elijas.</p>'+action('digitalMenu','Configurar menú digital'))+
  panel('Productos','<p>Crea o edita tu catálogo, precios, imágenes y destino de las comandas.</p>'+action('manageProducts','Administrar productos'))+
  panel('Estaciones','<p>Activa Cocina o Barra sin cambiar el tipo de negocio.</p>'+action('stationSettings','Configurar estaciones'))+
  panel('Equipo del POS','<p>Define quién trabaja en Caja, atiende mesas o recibe comandas. No cambia permisos de Odoo.</p>'+action('teamRoles','Roles del equipo'))+
@@ -85,13 +86,13 @@ function setupWizard(){
 function render(){
  $('#nav').innerHTML=Object.keys(modes).map((n,i)=>(i===5?'<div class="nav-divider"></div>':'')+action('nav',icon(n)+'<span>'+n+'</span>',n,(n===mode?'active ':'')+(i>4?'secondary-nav':''))).join('');
  const current=picked();
- $('#title').textContent=mode==='Caja'&&current?orderName(current):modes[mode];
+ $('#title').textContent=digitalMenuOpen?'Menú digital':mode==='Caja'&&current?orderName(current):modes[mode];
  $('#context').textContent=mode==='Caja'&&current?(current.people?current.people+' personas · ':'')+'Atiende: '+(current.waiter?.name||'Sin asignar'):'Restaurantes y bares';
  $('#shift-status').textContent=state.shift&&!state.shift.closed?'Turno abierto':'Caja cerrada';
  $('#shift-status').classList.toggle('closed',!state.shift||Boolean(state.shift.closed));
  const role=$('#role').value;
  const restricted=['cocina','barra'].includes(role)?mode!==(role==='cocina'?'Cocina':'Barra'):role==='camarero'&&['Reportes','Inventario'].includes(mode);
- $('#view').innerHTML=restricted?panel('Acceso reservado','<p>Esta opción corresponde a otro rol del equipo.</p>'):configuring()?setupWizard():settingsOpen?posSettings():({Mesas:tables,Pedidos:orders,Caja:register,Cocina:()=>station('cocina'),Barra:()=>station('barra'),Inventario:inventory,Reportes:reports,Menú:menu})[mode]();
+ $('#view').innerHTML=restricted?panel('Acceso reservado','<p>Esta opción corresponde a otro rol del equipo.</p>'):configuring()?setupWizard():settingsOpen?(digitalMenuOpen?digitalMenuSettings():posSettings()):({Mesas:tables,Pedidos:orders,Caja:register,Cocina:()=>station('cocina'),Barra:()=>station('barra'),Inventario:inventory,Reportes:reports,Menú:menu})[mode]();
  $('#mobile-orderbar').hidden=configuring()||settingsOpen||mode!=='Caja'||!current||current.closed||current.amountsHidden;
  document.querySelectorAll('#mobile-orderbar button').forEach(b=>b.disabled=locked);
  $('#mobile-nav-toggle').disabled=locked;
@@ -119,7 +120,7 @@ function tables(){
   const amount=o&&!o.amountsHidden?money(totals(o.lines,o.service).total-paidFor(o)):o?'Cuenta reservada':'';
   return '<g role="button" tabindex="0" aria-label="'+esc(t.name+' · '+detail)+'" data-action="floorSelect" data-value="'+t.number+'" class="floor-table '+cls+(selected?' selected-floor':'')+'" transform="translate('+x+','+y+')"><title>'+esc(t.name+' · '+detail)+'</title><rect width="'+d.tw+'" height="'+d.th+'" rx="'+(t.shape==='round'?60:14)+'"/><svg x="'+(mid-16)+'" y="14" width="32" height="32" viewBox="0 0 24 24"><path d="'+iconPaths.Mesas+'"/></svg><text class="floor-name" x="'+mid+'" y="65">'+esc(t.name.length>17?t.name.slice(0,16)+'…':t.name)+'</text><text class="floor-meta" x="'+mid+'" y="88">'+esc(detail.length>27?detail.slice(0,26)+'…':detail)+'</text><text class="floor-amount" x="'+mid+'" y="111">'+esc(floorEditing?'Selecciona para ubicar':amount)+'</text><text class="floor-meta" x="'+mid+'" y="132">'+(floorEditing?'':o?.opened?Math.max(0,Math.floor((Date.now()-Date.parse(o.opened))/60000))+' min':'')+'</text></g>';
  }).join('');
- const tools=$('#role').value==='supervisor'?'<div class="actions">'+action('manageTables','Administrar mesas')+(!floorEditing?action('editFloor','Editar plano'):action('newZone','+ Agregar zona'))+'</div>':'';
+ const tools=$('#role').value==='supervisor'?'<div class="actions">'+action('manageTables','Administrar mesas')+action('manageZones','Administrar zonas')+(!floorEditing?action('editFloor','Editar plano'):action('newZone','+ Agregar zona'))+'</div>':'';
  const plan=panel(floorEditing?'Editar plano':'Plano de mesas','<p class="muted">Zonas del local</p><div class="tabs">'+zones.map(z=>action('zone',esc(z.name),z.id,z.id===floorZone?'primary':'')).join('')+'</div>'+tools+'<div class="floor-stage"><svg class="floor-canvas '+(floorEditing?'is-editing':'')+'" viewBox="0 0 '+d.w+' '+d.h+'" aria-label="Plano del salón">'+svg+'</svg></div><div class="floor-legend"><span>○ Libre</span><span>● En servicio</span><span>● Por cobrar</span></div>');
  const o=table&&open.find(o=>o.table===table.number);
  let detail;
@@ -140,7 +141,7 @@ function register(){
  if(!guestOptions.some(([id])=>id===guestToAdd))guestToAdd='';
  const catalog=(o?select('guestToAdd','Agregar productos a',guestOptions,guestToAdd).replace('<select','<select id="guest-add" class="photo-guide"'):'')+'<div class="tabs">'+action('nav','En mesa','Mesas',!o||o.service==='mesa'?'active':'')+action('new','Para llevar','llevar',o?.service==='llevar'?'active':'')+action('new','Barra','barra',o?.service==='barra'?'active':'')+'</div><input class="search" id="search" type="search" aria-label="Buscar producto" placeholder="Buscar producto" value="'+esc(query)+'"><div class="tabs">'+action('category','Todos','',!category?'active':'')+cats.map(c=>action('category',esc(c),c,c===category?'active':'')).join('')+'</div><div class="grid catalog">'+products.map(p=>{
  const src=p.photo?.startsWith('data:')?p.photo:p.photo?basePath+'/images/'+p.photo:'';
- return action('product',(src?'<img src="'+esc(src)+'" alt="">':'<span class="placeholder">'+(p.station==='barra'?'🍹':'🍽')+'</span>')+'<strong>'+title(p)+'</strong><small>'+money(p.cents)+'</small><span class="add-product-label">+ Agregar al pedido</span>',p.id,'tile');
+ return action('product',(src?'<img src="'+esc(src)+'" alt="">':'<span class="placeholder">'+(p.station==='barra'?'🍹':'🍽')+'</span>')+'<strong>'+title(p)+'</strong><small>'+money(p.cents)+'</small><span class="add-product-label">'+(p.available===false?'Agotado':'+ Agregar al pedido')+'</span>',p.id,'tile').replace('<button','<button'+(p.available===false?' disabled':''));
  }).join('')+'</div>';
  if(!o)return '<div class="layout">'+panel('Menú',catalog)+panel('Cuenta', '<p>Abre una mesa o selecciona un pedido.</p>'+action('nav','Ver mesas','Mesas','primary'))+'</div>';
  const hasPayments=state.payments.some(p=>p.order===o.id),guests=o.guests||[];
@@ -153,15 +154,17 @@ function register(){
  let bill=items+prices(totals(o.lines,o.service))+(paid?line('Pagado',money(paid))+line('Pendiente',money(totals(o.lines,o.service).total-paid)): '');
  const documents=invoicesFor(o);
  if(documents.length)bill+=documents.map(d=>'<section class="invoice-card"><strong>'+esc(d.guestName?'Factura de '+d.guestName:'Factura de la mesa')+' · '+esc(d.kind)+'</strong><small><span>'+esc(d.status)+'</span> · '+money(d.amount)+'</small><small>Sin e-NCF · documento de prueba</small><div class="actions">'+action('print','Imprimir ticket',o.id+','+d.id,'primary')+action('fiscal','Ver estado fiscal',o.id+','+d.id)+'</div></section>').join('');
- if(o.closed)bill+=line('Pago','Registrado')+(state.shift?.id===o.shift&&!state.shift.closed&&$('#role').value==='supervisor'&&documents.length&&o.lines.some(l=>!l.refund)?'<div class="actions">'+action('refund','Devolver partidas',o.id)+'</div>':'')+(state.refunds||[]).filter(r=>r.order===o.id).map(r=>line('Devolución registrada',money(r.amount))).join('');
+ if(o.cancelled)bill='<div class="cancelled-order"><strong>Cuenta cancelada · Sin cobro</strong><p>'+esc(o.cancelled.reason)+'</p></div>'+bill;
+ if(o.closed)bill+=(o.cancelled?'':line('Pago','Registrado'))+(state.shift?.id===o.shift&&!state.shift.closed&&$('#role').value==='supervisor'&&documents.length&&o.lines.some(l=>!l.refund)?'<div class="actions">'+action('refund','Devolver partidas',o.id)+'</div>':'')+(state.refunds||[]).filter(r=>r.order===o.id).map(r=>line('Devolución registrada',money(r.amount))).join('');
  else if(['caja','supervisor'].includes($('#role').value))bill+='<div class="checkout-actions">'+action('charge',icon('Caja')+'Cobrar',o.id,'primary')+'<div>'+action('send','Enviar comanda',o.id)+action('pay','Dividir y cobrar',o.id)+'</div></div>';
  else bill+='<div class="actions">'+action('send','Enviar comanda',o.id,'primary')+action('requestCheck','Marcar por cobrar',o.id)+'</div>';
+ if(!o.closed&&!hasPayments&&!documents.length&&$('#role').value==='supervisor')bill+='<div class="actions space">'+action('cancelOrder','Cancelar cuenta',o.id)+'</div>';
  const assignment='<div class="assignment"><span>Atiende: <strong>'+esc(o.waiter?.name||'Sin asignar')+'</strong></span>'+(!o.closed&&o.service==='mesa'&&$('#role').value==='supervisor'?action('reassign','Reasignar mesa',o.id):'')+'</div>';
  const guestControls='<div class="seat-controls">'+action('guestFilter','Todos','all',guestFilter==='all'?'primary':'')+action('guestFilter','Cuenta general','general',guestFilter==='general'?'primary':'')+guests.map(g=>action('guestFilter',esc(g.name),g.id,guestFilter===g.id?'primary':'')).join('')+action('guestFilter','Compartido','shared',guestFilter==='shared'?'primary':'')+(!hasPayments&&!o.closed?action('createGuest','+ Crear persona'):'')+'</div>'+(!guests.length?'<p class="muted">No hay personas creadas. La cuenta puede cobrarse completa o dividirse sin crear personas.</p>':!hasPayments&&!o.closed?'<div class="guest-edit">'+guests.map(g=>action('editGuest','Editar '+esc(g.name),g.id)).join('')+'</div>':'')+(guestFilter!=='all'?'<p class="muted">Se filtran los productos; los totales corresponden a toda la mesa.</p>':'');
  return '<div class="layout register-layout"><section class="panel catalog-panel"><h2>Menú</h2><p class="catalog-guide"><strong>1. Agrega productos</strong><br>Elige Cuenta general o crea una persona. Toca la foto y pulsa «Añadir a la cuenta».</p>'+catalog+'</section><section class="panel order-panel"><div class="order-heading"><h2>Pedido · '+orderName(o)+'</h2><span class="station-badge">Cocina · Barra</span></div>'+(o.people?'<p class="muted">'+o.people+' comensales · Pedido #'+o.number+'</p>':'')+assignment+guestControls+bill+'</section></div>';
 }
 function station(key){
- const cards=state.orders.flatMap(o=>[...new Set(o.lines.filter(l=>l.station===key&&l.batch).map(l=>l.batch))].map(batch=>{
+ const cards=state.orders.filter(o=>!o.cancelled).flatMap(o=>[...new Set(o.lines.filter(l=>l.station===key&&l.batch).map(l=>l.batch))].map(batch=>{
   const items=o.lines.filter(l=>l.batch===batch&&l.station===key);
   return panel(orderName(o)+' · #'+o.number,'<p class="muted">Atiende: '+esc(o.waiter?.name||'Sin asignar')+'</p>'+items.map(l=>line(title(l)+'<br><small>'+esc([...l.modifiers,l.note].filter(Boolean).join(' · '))+'</small>',
    l.status==='lista'?'Lista':action('ready','Marcar lista',o.id+','+l.id,'primary'))).join(''));
@@ -182,6 +185,7 @@ function reports(){
  return '<div class="layout">'+panel('Movimientos de caja',line('Fondo inicial',money(s.fund))+Object.entries(summary.methods).map(([n,m])=>line(n,money(m))).join('')+Object.entries(summary.refunds||{}).filter(([,m])=>m>0).map(([n,m])=>line('Devoluciones · '+n,money(m))).join('')+line('Efectivo esperado',money(summary.expected),'total'))+
  panel('Arqueo de efectivo',s.closed?line('Efectivo contado',money(s.counted))+line('Diferencia',money(s.difference))+line('Cerró',esc(s.userClosed)):form('close',input('counted','Efectivo contado','number','min="0" step=".01" required')))+
  panel('Comprobantes del turno',state.orders.filter(o=>o.shift===s.id).flatMap(o=>invoicesFor(o).map(d=>line(orderName(o)+' #'+o.number+(d.guestName?' · '+esc(d.guestName):''),esc(d.kind)+' · '+esc(d.status)+' '+action('pick','Abrir venta',o.id)+' '+action('print','Imprimir',o.id+','+d.id)))).join('')||'Sin comprobantes')+
+ panel('Cuentas canceladas',state.orders.filter(o=>o.shift===s.id&&o.cancelled).map(o=>line(orderName(o)+' #'+o.number,esc(o.cancelled.reason)+' '+action('pick','Ver cuenta cancelada',o.id))).join('')||'Sin cuentas canceladas')+
  panel('Autorizaciones',state.audits.map(a=>line(esc(a.action)+' · '+esc(a.userName||a.user),esc(a.details.previous?.name||'')+(a.details.next?' → '+esc(a.details.next.name)+'<br>':'')+esc(a.details.reason)+'<br><small>'+esc(new Date(a.at).toLocaleString('es-DO'))+'</small>')).join('')||'Sin autorizaciones')+'</div>';
 }
 function menu(){
@@ -200,7 +204,8 @@ function printTicket(order,document){
   (document?.guestName?'<p>Persona: '+esc(document.guestName)+'</p>':'')+lines+prices(totals(selectedLines,order.service))+payments+refunds+'<p>Comprobante '+esc(document?.kind)+' · '+esc(document?.status)+'</p><p>Sin e-NCF · Sin valor fiscal</p>';
  window.print();
 }
-async function command(type,data){
+async function command(type,data,after){
+ let succeeded=false;
  if(locked)return;locked=true;
  document.querySelectorAll('button').forEach(b=>b.disabled=true);
  try{
@@ -214,13 +219,14 @@ async function command(type,data){
    body:JSON.stringify({key:pendingRequest.key,...JSON.parse(payload)})});
   const r=await response.json();
   pendingRequest=undefined;
-  if(!response.ok)throw new Error(r.error);
+  if(!response.ok)throw new Error(r.error);succeeded=true;if(type==='guest-distribute')after=openPersonPayment;
   state=r.state;summary=r.summary;
   if($('#modal').open)$('#modal').close();
   if(type==='order'){selected=r.result.id;mode='Caja';}
   if(type==='order'){guestToAdd='';guestFilter='all';}
   if(type==='guest-save')guestToAdd=r.result.id;
   if(type==='floor-save'){floorEditing=false;floorDraft=undefined;}
+  if(['menu-save','menu-publish'].includes(type))menuUnsaved=false;
   if(type==='zone-save')floorVersion=state.floor.version;
   if(type==='setup-finish'){setupChoice=undefined;mode='Caja';}
   if(type==='sync-inventory')flash('Inventario: '+r.result.filter(x=>x.state==='confirmado').length+' confirmados, '+r.result.filter(x=>x.state==='pendiente').length+' pendientes.');
@@ -235,10 +241,17 @@ async function command(type,data){
   else if(type==='stations-config'||type==='tables-config')flash('Ajustes del POS guardados.');
   else if(type==='guest-save')flash(r.result.name+' guardado en este pedido.');
   else if(type==='floor-save')flash('Plano guardado.');
+  else if(type==='cancel-order')flash('Cuenta cancelada. La mesa quedó libre y el historial se conserva.');
+  else if(type==='guest-distribute')flash('Productos asignados. Continúa con el cobro por persona.');
+  else if(type==='table-archive')flash('Mesa retirada del plano. Su historial se conserva.');
+  else if(type==='zone-archive'){floorZone=floorZones(state)[0].id;floorSelection=undefined;flash('Zona retirada del plano. Puedes restaurarla desde Administrar zonas.');}
+  else if(type==='zone-restore')flash('Zona restaurada.');
+  else if(type==='menu-save')flash('Configuración guardada. Pulsa Publicar menú para aplicar la selección y disponibilidad.');
+  else if(type==='menu-publish')flash(r.result.published?'Menú publicado. Ya puedes abrir el enlace y descargar el QR.':'Menú desactivado. El enlace público ya no muestra productos.');
   else if(type==='fiscal')flash('Mismo comprobante · '+r.result.status);
   else flash('Operación registrada.');
  }catch(e){const message=e instanceof TypeError&&pendingRequest?'Sin comunicación con caja. Repite la misma operación al reconectar.':e.message;flash(message,true);if($('#modal').open){const msg=document.createElement('p');msg.textContent=message;msg.setAttribute('role','alert');$('#modal-content').prepend(msg);}}
- finally{locked=false;render();document.querySelectorAll('#modal button').forEach(b=>b.disabled=false);}
+ finally{locked=false;render();document.querySelectorAll('#modal button').forEach(b=>b.disabled=false);if(succeeded)after?.();}
 }
 document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-action]');if(!b||locked)return;
@@ -269,7 +282,12 @@ document.addEventListener('click',async e=>{
  if(a==='assignGuest')modal('Asignar producto a una persona',form('guest-assign',select('guest','Persona',[['','Cuenta general'],...(picked()?.guests||[]).map(g=>[g.id,g.name]),['shared','Compartido']],picked()?.lines.find(l=>l.id===v)?.guest||'')),{order:selected,line:v});
  if(a==='requestCheck')command('request-check',{order:v});
  if(a==='chooseBusiness'){setupChoice=v;render();}
- if(a==='posSettings'){settingsOpen=true;render();}
+ if(a==='posSettings'){settingsOpen=true;digitalMenuOpen=false;render();}
+ if(a==='digitalMenu'){if($('#role').value!=='supervisor')return;digitalMenuOpen=true;menuUnsaved=false;render();}
+ if(a==='digitalBack'){digitalMenuOpen=false;render();}
+ if(a==='publishDigital'){if(menuUnsaved){flash('Guarda los cambios antes de publicar.',true);return;}command('menu-publish',{revision:state.publicMenu?.revision||0});}
+ if(a==='previewDigital'){if(menuUnsaved){flash('Guarda los cambios antes de ver la vista previa.',true);return;}previewDigitalMenu();}
+ if(a==='allDigital'){document.querySelectorAll('#digital-form input[name=published]').forEach(c=>c.checked=true);menuUnsaved=true;}
  if(a==='backToPOS')switchTo('Caja');
  if(a==='manageProducts')switchTo('Menú');
  if(a==='tableSettings')modal('Configurar mesas',form('tables-config',select('enabled','¿Atiendes en mesas?',[['yes','Sí, con mesas'],['no','No, solo mostrador']],state.setup?.tablesEnabled===false?'no':'yes')+input('count','Cantidad de mesas','number','min="1" max="200" value="'+(state.setup?.tableCount||Math.max(5,...restaurantTables(state).filter(t=>t.active).map(t=>t.number)))+'" required')+'<p class="muted">Los nombres se editan desde Mesas → Administrar mesas. No se desactivan mesas con cuentas abiertas.</p>'));
@@ -280,11 +298,26 @@ document.addEventListener('click',async e=>{
  if(a==='setupBack'){const step=state.setup?.step;command('setup-step',{step:step==='products'&&['restaurant','bakery'].includes(state.setup.business)?'tables':'business'});}
  if(a==='setupExamples')command('setup-examples',{});
  if(a==='setupFinish')command('setup-finish',{});
- if(a==='manageTables')modal('Administrar mesas','<p>Empiezas con 5 mesas. Agrega más o edita su nombre. Solo el supervisor puede hacerlo.</p>'+action('editTable','+ Agregar mesa','','primary')+restaurantTables(state).map(t=>line(esc(t.name)+' · '+(t.active?'Activa':'Inactiva'),action('editTable','Editar',t.number))).join(''));
+ if(a==='manageTables'){
+  const list=restaurantTables(state);
+  modal('Administrar mesas','<p>Agrega mesas o quítalas del plano. Quitar conserva su historial y permite restaurarlas.</p>'+action('editTable','+ Agregar mesa','','primary')+list.filter(t=>!t.archived).map(t=>line(esc(t.name)+' · '+(t.active?'Activa':'Inactiva'),action('editTable','Editar',t.number)+' '+action('archiveTable','Quitar mesa',t.number))).join('')+(list.some(t=>t.archived)?'<h3 class="space">Mesas retiradas</h3>'+list.filter(t=>t.archived).map(t=>line(esc(t.name),action('editTable','Restaurar mesa',t.number))).join(''):''));
+ }
+ if(a==='archiveTable'){
+  const t=restaurantTables(state).find(t=>t.number===Number(v));if(t)modal('Quitar '+t.name,'<p>Se quitará del plano y se conservará su historial. Puedes restaurarla desde Administrar mesas. No se permite si tiene una cuenta abierta.</p>'+action('confirmArchiveTable','Sí, quitar mesa',v,'primary'));
+ }
+ if(a==='confirmArchiveTable')command('table-archive',{number:Number(v),confirmed:true});
+ if(a==='manageZones'){
+  const zones=state.floor?.zones||floorZones(state);
+  modal('Administrar zonas','<p>Solo puedes quitar zonas sin mesas activas ni cuentas abiertas. Puedes restaurarlas después.</p>'+action('newZone','+ Agregar zona')+zones.filter(z=>z.active!==false).map(z=>line(esc(z.name),action('editZone','Editar zona',z.id)+' '+action('archiveZone','Quitar zona',z.id))).join('')+(zones.some(z=>z.active===false)?'<h3 class="space">Zonas retiradas</h3>'+zones.filter(z=>z.active===false).map(z=>line(esc(z.name),action('restoreZone','Restaurar zona',z.id))).join(''):''));
+ }
+ if(a==='editZone'){const z=floorZones(state).find(z=>z.id===v);if(z)modal('Editar zona',form('zone-save',input('name','Nombre de la zona','text','maxlength="35" required value="'+esc(z.name)+'"')),{id:z.id});}
+ if(a==='archiveZone'){const z=floorZones(state).find(z=>z.id===v);if(z)modal('Quitar zona '+z.name,'<p>Se quitará del plano sin borrar el historial. La zona debe estar vacía de mesas activas y cuentas abiertas.</p>'+action('confirmArchiveZone','Sí, quitar zona',v,'primary'));}
+ if(a==='confirmArchiveZone')command('zone-archive',{id:v,confirmed:true});
+ if(a==='restoreZone')command('zone-restore',{id:v});
  if(a==='editTable'){
   const t=restaurantTables(state).find(t=>t.number===Number(v));
   const number=t?.number||Math.max(0,...restaurantTables(state).map(t=>t.number))+1;
-  modal(t?'Editar mesa':'Agregar mesa',form('table',input('number','Número de mesa','number','min="1" max="200" value="'+number+'" '+(t?'readonly':'')+' required')+input('name','Nombre de la mesa','text','maxlength="40" value="'+esc(t?.name||'Mesa '+String(number).padStart(2,'0'))+'" required')+select('active','Estado',[['yes','Activa'],['no','Inactiva']],t?.active===false?'no':'yes')));
+  modal(t?'Editar mesa':'Agregar mesa',form('table',input('number','Número de mesa','number','min="1" max="200" value="'+number+'" '+(t?'readonly':'')+' required')+input('name','Nombre de la mesa','text','maxlength="40" value="'+esc(t?.name||'Mesa '+String(number).padStart(2,'0'))+'" required')+select('active','Estado',[['yes','Activa'],['no','Inactiva']],t?.active===false&&!t?.archived?'no':'yes')));
  }
  if(a==='showOrder')$('.order-panel')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
  if(a==='category'){category=v;render();}
@@ -317,9 +350,11 @@ document.addEventListener('click',async e=>{
  if(a==='fiscal'){const [order,invoice]=v.split(',');command('fiscal',{order,invoice});}
  if(a==='pay'){
   const o=picked();if(!o||o.closed)return;
-  modal('Dividir cuenta','<p>Elige cómo repartir lo que falta por pagar. Cada persona puede usar un método de pago diferente.</p><div class="split-options">'+((o.guests||[]).length&&!o.equalSplit?action('splitPerson','Por persona<br><small>Usar los productos asignados a cada nombre.</small>','','primary'):'')+(!o.equalSplit&&o.invoiceMode!=='person'?action('splitProducts','Por productos<br><small>Cada persona elige lo que consumió.</small>','','primary'):'')+(o.invoiceMode!=='person'?action('splitEqual','En partes iguales<br><small>Reparte el total entre varias personas.</small>','','primary'):'')+'</div>');
+  modal('Dividir cuenta','<p>Elige cómo repartir lo que falta por pagar. Cada persona puede usar un método de pago diferente.</p><div class="split-options">'+(!o.equalSplit?action('splitPerson','Por persona<br><small>Crear personas o asignar lo que consumió cada una.</small>','','primary'):'')+(!o.equalSplit&&o.invoiceMode!=='person'?action('splitProducts','Por productos<br><small>Cada persona elige lo que consumió.</small>','','primary'):'')+(o.invoiceMode!=='person'?action('splitEqual','En partes iguales<br><small>Reparte el total entre varias personas.</small>','','primary'):'')+'</div>');
  }
  if(a==='splitPerson')openPersonPayment();
+ if(a==='sendForPersonPay')command('send',{order:v},openPersonPayment);
+ if(a==='cancelOrder'){const o=picked();if(o&&o.id===v)modal('Cancelar cuenta · '+orderName(o),'<p>La mesa quedará libre. Se conservarán el pedido, el usuario y el motivo. Las comandas se retirarán de Cocina y Barra. Si ya se prepararon productos, registra la merma correspondiente.</p>'+form('cancel-order',input('reason','Motivo de la cancelación','text','minlength="3" maxlength="180" required')),{order:o.id,confirmed:true});}
  if(a==='splitEqual')openEqualPayment();
  if(a==='splitProducts'||a==='charge'){
   const o=picked(),unpaid=o.lines.filter(l=>!l.payment);
@@ -337,6 +372,7 @@ document.addEventListener('click',async e=>{
   const recipe=p.id==='mojito'?'<h3>Receta del mojito</h3>'+Object.entries(state.ingredients).map(([k,i])=>input('recipe_'+k,esc(i.name)+' ('+i.unit+')','number','min="0" '+attrs(p.recipe?.[k]||0))).join(''):'';
   modal(p.id?'Editar producto':'Nuevo producto',form('product',
    input('name','Nombre','text',attrs(p.name)+' required')+input('category','Categoría','text',attrs(p.category)+' required')+
+   input('description','Descripción para el menú digital','text','maxlength="600" '+attrs(p.description||''))+
    input('price','Precio (RD$)','number','min="0" step=".01" '+attrs(p.cents==null?'':p.cents/100)+' required')+
    input('happyPrice','Precio happy hour (RD$)','number','min="0" step=".01" '+attrs(p.happy==null?'':p.happy/100))+
    select('tax','ITBIS',[[0,'Exento'],[16,'16 %'],[18,'18 %']],p.tax??18)+
@@ -360,6 +396,14 @@ function openEqualPayment(people){
 
 function openPersonPayment(){
  const o=picked();if(!o||o.closed)return;
+ const pending=o.lines.filter(l=>!l.payment),people=o.guests||[];
+ if(!pending.length){modal('Cuenta sin productos pendientes','<p>Agrega productos al pedido o revisa los pagos ya registrados.</p>');return;}
+ if(!people.length){modal('Crea las personas de esta cuenta','<p>Agrega un nombre por persona. Después podrás asignar sus productos y elegir una factura de mesa o facturas separadas.</p>'+action('createGuest','+ Crear persona','','primary'));return;}
+ if(pending.some(l=>!people.some(g=>g.id===l.guest))){
+  const fields=pending.map((l,i)=>select('guest_'+l.id,'Producto '+(i+1)+' · '+l.name+' · '+money(l.cents),[['','Elegir persona'],...people.map(g=>[g.id,g.name])],people.some(g=>g.id===l.guest)?l.guest:'').replace('<select','<select required')).join('');
+  modal('Asignar productos a personas','<p>Ya creaste las personas. Ahora indica quién consumió cada producto. Los productos de Cuenta general o Compartido deben asignarse para facturar por persona.</p>'+form('guest-distribute',fields),{order:o.id});return;
+ }
+ if(pending.some(l=>l.status==='pendiente')){modal('Enviar pedido antes de cobrar','<p>Hay productos pendientes de enviar a Cocina o Barra. Puedes enviarlos y continuar al cobro por persona.</p>'+action('sendForPersonPay','Enviar comanda y continuar',o.id,'primary'));return;}
  const guests=(o.guests||[]).filter(g=>o.lines.some(l=>l.guest===g.id&&!l.payment));
  if(!guests.length){flash('Crea personas y asigna sus productos antes de cobrar por persona.',true);return;}
  const paid=state.payments.some(p=>p.order===o.id),mode=o.invoiceMode||'table';
@@ -380,6 +424,7 @@ document.addEventListener('click',e=>{
  }
 });
 document.addEventListener('input',e=>{
+ if(e.target.closest('#digital-form'))menuUnsaved=true;
  if(e.target.id==='guest-add')guestToAdd=e.target.value;
  if(e.target.dataset.floorField&&floorEditing){
   const t=floorDraft.find(t=>t.number===floorSelection),key=e.target.dataset.floorField;
@@ -417,6 +462,15 @@ document.addEventListener('submit',async e=>{
  if(type==='discount')payload.cents=cash(values.discount);
  if(type==='close')payload.counted=cash(values.counted);
  if(type==='waste'||type==='count')payload.quantity=Number(values.quantity);
+ if(type==='guest-distribute'){payload.assignments=picked().lines.filter(l=>!l.payment).map(l=>({line:l.id,guest:values['guest_'+l.id]}));for(const k of Object.keys(payload))if(k.startsWith('guest_'))delete payload[k];}
+ if(type==='menu-save'){
+  payload.revision=state.publicMenu?.revision||0;payload.enabled=values.enabled==='yes';payload.interval=Number(values.interval);
+  const published=new Set(data.getAll('published')),available=new Set(data.getAll('available'));
+  payload.items=state.products.map(p=>({id:p.id,published:published.has(p.id),available:available.has(p.id)}));
+  payload.logo=data.has('removeLogo')?'':state.publicMenu?.draft?.logo||'';
+  if(values.logoUpload?.size){if(values.logoUpload.size>120000){flash('El logo supera 120 KB.',true);return;}payload.logo=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(values.logoUpload);});}
+  delete payload.logoUpload;delete payload.published;delete payload.available;delete payload.removeLogo;
+ }
  if(type==='product'){
   payload.cents=cash(values.price);payload.tax=Number(values.tax);payload.happy=values.happyPrice?cash(values.happyPrice):null;
   if(values.photo==='keep')payload.photo=formData.existingPhoto;
@@ -450,3 +504,25 @@ document.addEventListener('pointermove',e=>{
 document.addEventListener('pointerup',e=>{if(floorDrag){const {svg,moved}=floorDrag;floorDrag=undefined;if(svg.hasPointerCapture(e.pointerId))svg.releasePointerCapture(e.pointerId);requestAnimationFrame(()=>{if(floorEditing)render();}); }});
 document.addEventListener('pointercancel',()=>{floorDrag=undefined;});
 document.addEventListener('keydown',e=>{const node=e.target.closest?.('.floor-table');if(node&&['Enter',' '].includes(e.key)){e.preventDefault();node.dispatchEvent(new MouseEvent('click',{bubbles:true}));}});
+
+function digitalMenuSettings(){
+ if($('#role').value!=='supervisor'){digitalMenuOpen=false;return posSettings();}
+ const m=state.publicMenu||{},d=m.draft||{name:$('header p').textContent.replace('UNO360X POS / ',''),enabled:true,interval:12,items:[]};
+ const live=Boolean(m.live?.enabled),url=m.token?publicMenuOrigin+'/menu-pos/'+m.token+'/':'';
+ const rows=state.products.map(p=>{
+  const i=d.items.find(i=>i.id===p.id)||{published:false,available:p.available!==false},photo=p.photo?.startsWith('data:')?p.photo:p.photo?basePath+'/images/'+p.photo:'';
+  return '<div class="digital-row"><div class="digital-product">'+(photo?'<img src="'+esc(photo)+'" alt="">':'<span class="digital-icon">🍽</span>')+'<div><strong>'+title(p)+'</strong><small>'+esc(p.category)+'</small></div></div><strong class="digital-price">'+money(p.cents)+'</strong><label class="digital-toggle"><span>Disponible</span><input type="checkbox" name="available" aria-label="Disponible '+esc(p.name)+'" value="'+esc(p.id)+'" '+(i.available?'checked':'')+'></label><label class="digital-toggle"><span>Publicar</span><input type="checkbox" name="published" aria-label="Publicar '+esc(p.name)+'" value="'+esc(p.id)+'" '+(i.published?'checked':'')+'></label></div>';
+ }).join('');
+ return panel('Tu catálogo, listo para mostrar','<p class="muted">Publica los productos del POS que quieras mostrar a tus clientes.</p><div class="actions">'+action('digitalBack','Volver a Ajustes')+action('previewDigital','Vista previa')+action('publishDigital','Publicar menú','','primary')+'</div>')+
+ '<div class="digital-layout"><section class="panel"><form id="digital-form" data-command="menu-save">'+
+ input('name','Nombre del negocio','text','maxlength="100" minlength="2" required value="'+esc(d.name)+'"')+
+ '<div class="digital-fields">'+select('enabled','Menú público',[['yes','Activado'],['no','Desactivado']],d.enabled?'yes':'no')+input('interval','Rotar pantalla cada (segundos)','number','min="8" max="60" value="'+d.interval+'" required')+'</div>'+
+ input('logoUpload','Logo del negocio (opcional, hasta 120 KB)','file','accept="image/png,image/jpeg,image/webp"')+(d.logo?'<label class="check"><input type="checkbox" name="removeLogo">Quitar logo actual</label>':'')+
+ '<p class="muted">Estado: '+(m.dirty?'Cambios guardados sin publicar':live?'Publicado':'No publicado')+'. Los cambios de selección y disponibilidad se aplican al publicar. Los precios, descripciones y fotos publicados se actualizan desde el catálogo.</p><div class="actions">'+action('allDigital','Seleccionar todos')+'</div><div class="digital-list">'+(rows||'<p>Agrega productos desde Menú antes de publicar.</p>')+'</div><p class="muted">Los agotados se muestran como No disponible. La disponibilidad también se respeta al agregar productos a una cuenta del POS.</p><button class="primary" type="submit">Guardar configuración</button></form></section>'+
+ panel('Tu menú público',live?'<img class="digital-qr" src="'+url+'qr.svg" alt="QR para abrir el menú"><p>Un enlace para este negocio. No pide iniciar sesión.</p><div class="actions"><a class="digital-link" href="'+url+'" target="_blank" rel="noopener noreferrer">Abrir menú en celular</a><a class="digital-link" href="'+url+'?view=tv" target="_blank" rel="noopener noreferrer">Abrir en televisor</a><a class="digital-link" href="'+url+'qr.svg" download="UNO360X-menu-QR.svg">Descargar QR</a></div><label>Enlace del menú<input readonly value="'+url+'"></label>':'<p>Guarda la configuración y publica el menú para generar el acceso público y el QR.</p>')+'</div>'+panel('Precios e impuestos claros','<p>Se muestran el precio base, el ITBIS de cada producto y la propina legal para consumo en el local. El menú es solo de consulta y no permite ordenar ni pagar.</p>');
+}
+function previewDigitalMenu(){
+ const d=state.publicMenu?.draft;if(!d){flash('Guarda primero la configuración del menú.',true);return;}
+ const rows=d.items.filter(i=>i.published).map(i=>{const p=state.products.find(p=>p.id===i.id);if(!p)return '';const photo=p.photo?.startsWith('data:')?p.photo:p.photo?basePath+'/images/'+p.photo:'';return '<div class="digital-preview-item">'+(photo?'<img src="'+esc(photo)+'" alt="">':'')+'<div><strong>'+title(p)+'</strong><p>'+esc(p.description||p.category)+'</p><strong>'+money(p.cents)+'</strong><small>'+(i.available?'Disponible':'No disponible')+' · ITBIS '+p.tax+'%</small></div></div>';}).join('');
+ modal('Vista previa · '+d.name,'<p>Vista previa de la selección guardada. Solo consulta; todavía no publica cambios.</p>'+(rows||'<p>No hay productos seleccionados.</p>'));
+}

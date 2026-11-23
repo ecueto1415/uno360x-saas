@@ -1,0 +1,37 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require(process.env.POS_PLAYWRIGHT_PATH||'playwright');
+test('Digital menu: admin publication, anonymous QR/mobile/TV, details, refresh, unavailable products and revoke',async()=>{
+ const {makeDemoServer}=await import('./server.mjs');
+ const access={close(){},authorize(req){return req.headers['x-user']?{scope:'pilot',account:req.headers['x-user'],role:req.headers['x-user']==='admin'?'supervisor':'camarero',staff:[],branchName:'Restaurante piloto'}:null;}};
+ const server=makeDemoServer(':memory:',access);await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;
+ const browser=await chromium.launch({channel:'msedge',headless:true}),out=process.env.POS_SCREENSHOTS||path.resolve('../outputs/Menu_Digital_Implementado');fs.mkdirSync(out,{recursive:true});
+ const admin=await browser.newContext({viewport:{width:1440,height:1000},extraHTTPHeaders:{'X-User':'admin'}}),guest=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+ const errors=[];
+ const cmd=async(type,more={})=>{const r=await fetch(base+'/api/command',{method:'POST',headers:{'Content-Type':'application/json','X-User':'admin'},body:JSON.stringify({key:crypto.randomUUID(),type,...more})});const d=await r.json();assert.equal(r.status,200,d.error);return d;};
+ const snap=async()=>(await(await fetch(base+'/api/state',{headers:{'X-User':'admin'}})).json()).state;
+ async function shot(p,name){assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth),p.viewportSize().width);await p.screenshot({path:path.join(out,name+'.png'),fullPage:true});}
+ try{
+  await cmd('product',{name:'Producto privado',category:'Pruebas',cents:12300,tax:18,station:'ninguna',description:'Solo interno'});
+  const a=await admin.newPage();a.setDefaultTimeout(8000);a.on('pageerror',e=>errors.push(e.message));
+  await a.goto(base);await a.locator('#nav [data-value="Menú"]').click();await a.getByRole('button',{name:'Ajustes del POS',exact:true}).click();await a.getByRole('button',{name:'Configurar menú digital',exact:true}).click();
+  await a.getByLabel('Nombre del negocio',{exact:true}).fill('Restaurante piloto');await a.getByLabel('Rotar pantalla cada (segundos)').fill('8');
+  for(const n of ['Hamburguesa','Alitas','Mojito'])await a.getByLabel('Publicar '+n,{exact:true}).check();
+  await a.getByLabel('Disponible Alitas',{exact:true}).uncheck();await a.getByRole('button',{name:'Guardar configuración',exact:true}).click();await a.getByText(/Configuración guardada/).waitFor();
+  await a.getByRole('button',{name:'Vista previa',exact:true}).click();await a.locator('#modal').getByText('Mojito',{exact:true}).waitFor();assert.equal(await a.locator('#modal').getByText('Producto privado',{exact:true}).count(),0);await a.getByRole('button',{name:'Cancelar',exact:true}).click();
+  await a.getByRole('button',{name:'Publicar menú',exact:true}).click();await a.getByText(/Menú publicado. Ya puedes/).waitFor();const url=await a.getByRole('link',{name:'Abrir menú en celular',exact:true}).getAttribute('href');assert.ok(url.startsWith(base+'/menu-pos/'));
+  await shot(a,'admin-desktop');await a.setViewportSize({width:768,height:1024});await shot(a,'admin-tablet');await a.setViewportSize({width:390,height:844});await shot(a,'admin-phone');
+  const p=await guest.newPage();p.setDefaultTimeout(8000);p.on('pageerror',e=>errors.push(e.message));await p.clock.install();await p.goto(url);await p.getByRole('heading',{name:'Nuestro menú',exact:true}).waitFor();assert.equal(await p.getByText('Producto privado',{exact:true}).count(),0);assert.equal(await p.getByRole('button',{name:/Registrar pago|Cobrar|Añadir/}).count(),0);await shot(p,'menu-phone');
+  await p.getByRole('button',{name:/^Mojito ·/}).tap();await p.getByText('ITBIS (18%) adicional: RD$54.00',{exact:true}).waitFor();await p.getByText('Total en el local: RD$384.00',{exact:true}).waitFor();await shot(p,'detalle-phone');await p.getByRole('button',{name:'‹ Volver al menú',exact:true}).tap();
+  await p.getByLabel('Buscar producto').fill('alitas');assert.equal(await p.locator('.product').count(),1);await p.getByText('No disponible',{exact:true}).waitFor();await p.getByLabel('Buscar producto').fill('');
+  const tv=await guest.newPage();tv.on('pageerror',e=>errors.push(e.message));await tv.setViewportSize({width:1920,height:1080});await tv.clock.install();await tv.goto(url+'?view=tv');await tv.getByRole('heading',{name:'¿Qué te apetece hoy?',exact:true}).waitFor();await tv.locator('.qr').evaluate(img=>img.decode());await tv.clock.fastForward(1000);await shot(tv,'menu-tv');
+  await tv.setViewportSize({width:1366,height:768});await shot(tv,'menu-tv-1366');assert.ok(await tv.evaluate(()=>document.documentElement.scrollHeight<=innerHeight),'TV 1366x768 fits without scrolling');await tv.setViewportSize({width:1920,height:1080});
+  await tv.locator('.qr').screenshot({path:path.join(out,'qr-verificado.png')});fs.writeFileSync(path.join(out,'qr-esperado.txt'),url);
+  await tv.clock.fastForward(9000);assert.equal(await tv.locator('.categories .active').textContent(),'Comida');await tv.getByRole('button',{name:'Pausar rotación',exact:true}).click();const cat=await tv.locator('.categories .active').textContent();await tv.clock.fastForward(18000);assert.equal(await tv.locator('.categories .active').textContent(),cat);
+  let s=await snap(),b=s.products.find(p=>p.id==='burger');await cmd('product',{...b,cents:50000,description:'Descripción <script>alert(1)</script>',modifiers:b.modifiers.join(',')});await p.clock.fastForward(31000);await p.getByRole('button',{name:/^Hamburguesa · RD\$500.00/}).waitFor();assert.equal(await p.locator('#menu script').count(),0);
+  await p.route('**/data',r=>r.abort());await p.clock.fastForward(31000);await p.getByText(/Sin conexión. Estos datos/).waitFor();assert.ok(await p.locator('.product').count()>0);await p.unroute('**/data');
+  const waiter=await browser.newContext({extraHTTPHeaders:{'X-User':'waiter'}});try{const w=await waiter.newPage();await w.goto(base);await w.locator('#nav [data-value="Menú"]').click();assert.equal(await w.getByRole('button',{name:'Ajustes del POS',exact:true}).count(),0);}finally{await waiter.close();}
+  s=await snap();await cmd('menu-save',{...s.publicMenu.draft,revision:s.publicMenu.revision,enabled:false});s=await snap();await cmd('menu-publish',{revision:s.publicMenu.revision});await p.clock.fastForward(31000);await p.getByRole('heading',{name:'Menú no disponible',exact:true}).waitFor();assert.equal(await p.locator('.product').count(),0);
+  s=await snap();assert.equal(s.orders.length,0);assert.equal(s.payments.length,0);assert.equal(s.events.length,0);assert.deepEqual(errors,[]);
+  console.log('Admin desktop/tablet/phone, anonymous mobile/TV, categories, literal descriptions, taxes, QR, auto-refresh, pause, role checks and revoke PASSED');
+ }finally{await admin.close();await guest.close();await browser.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});

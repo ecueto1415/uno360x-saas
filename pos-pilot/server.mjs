@@ -7,6 +7,7 @@ import { stockConnector } from './lab-stock.mjs';
 import { businessAccess } from './access.mjs';
 import {proxyAccess,bodyMatches} from './proxy-access.mjs';
 import { seed, apply, cashSummary,publicState } from './domain.mjs';
+import {PUBLIC_PREFIX,menuData,publicPage,qrSvg,imageBytes} from './public-menu.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 const roles=new Set(['caja','camarero','cocina','barra','supervisor']);
 const demoStaff=[{id:'caja',name:'Cajero de prueba'},{id:'camarero',name:'Camarero de prueba'},{id:'supervisor',name:'Supervisor de prueba'},{id:'ana',name:'Ana García'},{id:'carlos',name:'Carlos Pérez'}];
@@ -16,6 +17,9 @@ export function makeServer(file, access=null, inventory=null, origin=null, optio
  if(file!==':memory:')mkdirSync(dirname(file),{recursive:true});
  const db=new DatabaseSync(file);
  db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS pilot (id TEXT PRIMARY KEY, state TEXT NOT NULL)');
+ db.exec('CREATE TABLE IF NOT EXISTS menu_public (token TEXT PRIMARY KEY, scope TEXT NOT NULL UNIQUE)');
+ const publicRead=db.prepare('SELECT scope FROM menu_public WHERE token=?');
+ const publicWrite=db.prepare('INSERT INTO menu_public VALUES (?,?) ON CONFLICT(scope) DO UPDATE SET token=excluded.token');
  const read=db.prepare('SELECT state FROM pilot WHERE id=?');
  const write=db.prepare('INSERT INTO pilot VALUES (?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state');
  function state(scope){const row=read.get(scope);return row?JSON.parse(row.state):seed(options);}
@@ -38,7 +42,7 @@ export function makeServer(file, access=null, inventory=null, origin=null, optio
    const result=prior?.result??apply(s,command,user,actor,staff);
    for(const audit of s.audits.slice(auditStart))audit.userName=staff.find(p=>p.id===actor)?.name||actor;
    s.operations[key]={user:actor,signature,result};
-   write.run(scope,JSON.stringify(s));db.exec('COMMIT');
+   write.run(scope,JSON.stringify(s));if(s.publicMenu?.token)publicWrite.run(s.publicMenu.token,scope);db.exec('COMMIT');
    return {result,state:s,summary:cashSummary(s)};
   }catch(error){db.exec('ROLLBACK');throw error;}
  }
@@ -65,7 +69,8 @@ export function makeServer(file, access=null, inventory=null, origin=null, optio
   '/images/burger.jpg':'images/burger-hq.jpg','/images/wings.jpg':'images/wings-hq.jpg','/images/mojito.jpg':'images/mojito-hq.jpg'};
  const content={html:'text/html; charset=utf-8',mjs:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',jpg:'image/jpeg'};
  function reply(res,status,body,mime='application/json; charset=utf-8'){
-  res.writeHead(status,{'Content-Type':mime,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
+  res.writeHead(status,{'Content-Type':mime,'Cache-Control':res.getHeader('Cache-Control')||'no-store','X-Content-Type-Options':'nosniff',
+   'Referrer-Policy':'no-referrer',
    'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"});
   res.end(mime.startsWith('application/json')?JSON.stringify(body):body);
  }
@@ -75,6 +80,29 @@ export function makeServer(file, access=null, inventory=null, origin=null, optio
    if(req.method==='GET'&&Object.hasOwn(files,url.pathname)){
     const file=files[url.pathname];return reply(res,200,readFileSync(join(here,file)),content[file.split('.').at(-1)]);
    }
+   if(url.pathname.startsWith(PUBLIC_PREFIX+'/')){
+    if(!['GET','HEAD'].includes(req.method))return reply(res,405,{error:'El menú es solo de consulta.'});
+    const asset={'/menu-pos/assets/menu.css':['menu-public.css','text/css; charset=utf-8'],'/menu-pos/assets/menu.mjs':['menu-public.mjs','text/javascript; charset=utf-8']}[url.pathname];
+    if(asset)return reply(res,200,readFileSync(join(here,asset[0])),asset[1]);
+    const match=/^\/menu-pos\/([a-f0-9]{32})(?:\/(data|qr\.svg|logo|photo\/[A-Za-z0-9-]{1,80}))?\/?$/.exec(url.pathname);
+    if(!match)return reply(res,404,{error:'Menú no disponible.'});
+    const [,token,route]=match,index=publicRead.get(token),s=index&&state(index.scope),data=s&&menuData(s,token);
+    if(!route)return reply(res,200,publicPage(),'text/html; charset=utf-8');
+    if(!data)return reply(res,404,{error:'Este menú no está disponible. Consulta al equipo del local.'});
+    if(route==='data')return reply(res,200,data);
+    if(route==='qr.svg'){
+     const publicOrigin=options.publicOrigin||origin||'http://'+req.headers.host;
+     res.setHeader('Content-Disposition','attachment; filename="UNO360X-menu-QR.svg"');
+     return reply(res,200,qrSvg(publicOrigin+PUBLIC_PREFIX+'/'+token+'/'),'image/svg+xml; charset=utf-8');
+    }
+    if(route==='logo'||route?.startsWith('photo/')){
+     const product=route.startsWith('photo/')&&s.products.find(p=>p.id===route.slice(6)&&data.items.some(i=>i.id===p.id));
+     const image=imageBytes(route==='logo'?s.publicMenu.live.logo:product?.photo);
+     if(image)res.setHeader('Cache-Control','public, max-age=300');
+     return image?reply(res,200,image.body,image.mime):reply(res,404,{error:'Imagen no disponible.'});
+    }
+    return reply(res,200,publicPage(),'text/html; charset=utf-8');
+   }
    const connected=access?.authorize(req);
    if(access&&!connected)return reply(res,403,{error:'La cuenta no tiene acceso al POS de esta sucursal.'});
    const scope=connected?.scope||'negocio-demostracion:sucursal-centro';
@@ -82,7 +110,7 @@ export function makeServer(file, access=null, inventory=null, origin=null, optio
    const staff=connected?(connected.staff||[{id:connected.account,name:connected.displayName||connected.account}]):demoStaff;
    if(req.method==='GET'&&url.pathname==='/api/state'){
     const s=state(scope),user=authorizedRole();if(!roles.has(user))return reply(res,403,{error:'Rol inválido.'});
-    return reply(res,200,view({state:s,summary:cashSummary(s),inventoryConnected:Boolean(inventory),staff,connected:connected?{role:user,branchName:connected.branchName,displayName:connected.displayName||'',account:connected.account}:null},user,connected?.account||user));
+    return reply(res,200,view({state:s,summary:cashSummary(s),inventoryConnected:Boolean(inventory),menuOrigin:options.publicOrigin||origin||'http://'+req.headers.host,staff,connected:connected?{role:user,branchName:connected.branchName,displayName:connected.displayName||'',account:connected.account}:null},user,connected?.account||user));
    }
    if(req.method==='POST'&&url.pathname==='/api/command'){
     if(req.headers.origin&&req.headers.origin!==(origin||'http://'+req.headers.host))return reply(res,403,{error:'Origen inválido.'});
@@ -114,5 +142,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(realpathSync(process.argv[1]
  const {POS_IDENTITY_DB,POS_ENTITLEMENTS}=process.env;
  if(Boolean(POS_IDENTITY_DB)!==Boolean(POS_ENTITLEMENTS))throw new Error('Configura la base de identidad y las autorizaciones POS juntas.');
  const access=process.env.POS_PROXY_KEY?proxyAccess(process.env.POS_PROXY_KEY):POS_IDENTITY_DB?businessAccess(POS_IDENTITY_DB,POS_ENTITLEMENTS):null;
- makeServer(process.env.POS_DB||join(here,'var','pilot.sqlite'),access,process.env.POS_ODOO_CONFIG?stockConnector(process.env.POS_ODOO_CONFIG):null,process.env.POS_ORIGIN).listen(port,process.env.POS_BIND_HOST||'127.0.0.1',()=>console.log('UNO360X POS de pruebas: http://127.0.0.1:'+port));
+ makeServer(process.env.POS_DB||join(here,'var','pilot.sqlite'),access,process.env.POS_ODOO_CONFIG?stockConnector(process.env.POS_ODOO_CONFIG):null,process.env.POS_ORIGIN,{publicOrigin:process.env.POS_PUBLIC_ORIGIN||(access?'https://piloto.uno360x.com':undefined)}).listen(port,process.env.POS_BIND_HOST||'127.0.0.1',()=>console.log('UNO360X POS de pruebas: http://127.0.0.1:'+port));
 }

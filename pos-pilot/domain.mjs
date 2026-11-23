@@ -37,11 +37,13 @@ function configureTables(s,enabled,count){
  const tables=restaurantTables(s);
  const previousCount=s.setup.tableCount||5,wasEnabled=s.setup.tablesEnabled;
  for(let number=1;number<=count;number++)if(!tables.some(t=>t.number===number))tables.push({number,name:'Mesa '+String(number).padStart(2,'0'),active:enabled});
- for(const t of tables){if(!enabled||t.number>count)t.active=false;else if(!wasEnabled||t.number>previousCount)t.active=true;}
+ for(const t of tables){if(t.archived){t.active=false;continue;}if(!enabled||t.number>count)t.active=false;else if(!wasEnabled||t.number>previousCount)t.active=true;}
  s.tables=tables;s.setup.tablesEnabled=enabled;s.setup.tableCount=count;
 }
 export function apply(s,command,user,actor=user,staff=[]){
  const {type}=command;
+ if(['zone-archive','zone-restore','table-archive'].includes(type))return archiveFloorItem(s,command,user,actor);
+ if(['menu-save','menu-publish'].includes(type))return digitalMenuCommand(s,command,user,actor);
  if(type==='staff-role'){
   role(user,'supervisor');fail(staff.some(p=>p.id===command.account)&&['caja','camarero','cocina','barra'].includes(command.role),'Selecciona un usuario habilitado de esta empresa y un rol del POS.');
   (s.staffRoles??={})[command.account]=command.role;log(s,actor,'rol del equipo POS',{account:command.account,role:command.role});return {account:command.account,role:command.role};
@@ -111,9 +113,10 @@ export function apply(s,command,user,actor=user,staff=[]){
   fail(Number.isInteger(number)&&number>=1&&number<=200&&name&&typeof command.active==='boolean','Indica un número de mesa de 1 a 200 y su nombre.');
   const tables=restaurantTables(s),table=tables.find(t=>t.number===number);
   fail(command.active||!s.orders.some(o=>!o.closed&&o.table===number),'No puedes desactivar una mesa con una cuenta abierta.');
-  const previous=table?{...table}:null,next={number,name,active:command.active};
-  if(table)Object.assign(table,next);else tables.push(next);s.tables=tables;
+  const previous=table?{...table}:null,next={number,name,active:command.active,archived:false};
+  if(table){Object.assign(table,next);if(command.active&&!floorZones(s).some(z=>z.id===(table.zone||'salon')))table.zone=floorZones(s)[0].id;}else tables.push(next);s.tables=tables;
   if(s.setup&&command.active)s.setup.tableCount=Math.max(s.setup.tableCount||5,number);
+  if(s.floor)s.floor.version=(s.floor.version||0)+1;
   log(s,actor,'configuración de mesa',{previous,next});return next;
  }
  if(type==='open'){
@@ -136,6 +139,7 @@ export function apply(s,command,user,actor=user,staff=[]){
   const happy=command.happy;
   fail(happy==null||nonnegative(happy),'Precio de happy hour inválido.');
   const next={id:p?.id||id(),name,category,cents:command.cents,tax:command.tax,station:command.station,photo,happy,
+   description:command.description==null?(p?.description||''):label(command.description,600),available:p?.available!==false,
    modifiers:String(command.modifiers||'').split(',').map(v=>label(v,40)).filter(Boolean).slice(0,12),recipe};
   if(p) Object.assign(p,next);else s.products.push(next);
   return next;
@@ -203,8 +207,16 @@ export function apply(s,command,user,actor=user,staff=[]){
  }
  const o=s.orders.find(o=>o.id===command.order);
  fail(o&&o.shift===s.shift.id&&(!o.closed||type==='ready'),'Pedido cerrado o fuera del turno.');
- if(['guest-save','guest-assign','invoice-mode','request-check'].includes(type))return guestCommand(s,o,command,user,actor);
+ if(['guest-save','guest-assign','guest-distribute','invoice-mode','request-check'].includes(type))return guestCommand(s,o,command,user,actor);
  if(['add','send'].includes(type))ownOrder(o,user,actor);
+ if(type==='cancel-order'){
+  role(user,'supervisor');const reason=String(command.reason||'').trim();
+  fail(command.confirmed===true&&reason.length>=3&&reason.length<=180,'Confirma la cancelación y escribe un motivo de 3 a 180 caracteres.');
+  fail(!s.payments.some(p=>p.order===o.id)&&!invoicesFor(o).length,'La cuenta tiene pagos o comprobantes. Usa el proceso de devolución correspondiente.');
+  o.cancelled={reason,user:actor,at:new Date().toISOString()};o.closed=true;
+  for(const line of o.lines)line.status='anulada';
+  log(s,actor,'cancelación de cuenta',{order:o.number,table:o.table,reason});return {cancelled:true,order:o.id};
+ }
  if(type==='reassign'){
   role(user,'supervisor');
   const next=staff.find(person=>person.id===command.waiter),reason=label(command.reason,180);
@@ -217,7 +229,7 @@ export function apply(s,command,user,actor=user,staff=[]){
  if(type==='add'){
   role(user,'caja','camarero','supervisor');
   fail(!s.payments.some(p=>p.order===o.id),'La cuenta ya tiene pagos.');
-  const p=s.products.find(p=>p.id===command.product);fail(p,'Producto inválido.');
+  const p=s.products.find(p=>p.id===command.product);fail(p,'Producto inválido.');fail(p.available!==false,'Este producto está agotado.');
   fail(!command.guest||command.guest==='shared'||(o.guests||[]).some(g=>g.id===command.guest),'La persona no pertenece a esta mesa.');
   const modifiers=Array.isArray(command.modifiers)?command.modifiers.filter(m=>p.modifiers.includes(m)):[];
   const l={id:id(),product:p.id,name:p.name,cents:command.happy&&p.happy!=null?p.happy:p.cents,tax:p.tax,station:p.station,modifiers,note:label(command.note,180),recipe:structuredClone(p.recipe||{}),status:p.station==='ninguna'?'lista':'pendiente',guest:command.guest||null};
@@ -314,20 +326,20 @@ const modelAssert=(ok,text)=>{if(!ok)throw Error(text);};
 const manager=user=>modelAssert(user==='supervisor','Solo el administrador puede editar el plano.');
 const clean=(v,n=60)=>String(v??'').trim().slice(0,n);
 export const invoicesFor=o=>o.invoices|| (o.fiscal?[o.fiscal]:[]);
-export const floorZones=s=>s.floor?.zones||[{id:'salon',name:'Salón'},{id:'terraza',name:'Terraza'},{id:'barra',name:'Barra'}];
+export const floorZones=s=>(s.floor?.zones||[{id:'salon',name:'Salón'},{id:'terraza',name:'Terraza'},{id:'barra',name:'Barra'}]).filter(z=>z.active!==false);
 export function floorTables(s){
  const positions=[[6,5],[94,5],[50,45],[6,94],[94,94]];
  const tables=restaurantTables(s),rows=Math.ceil(tables.length/3);
  return tables.map((t,i)=>({zone:'salon',shape:'rect',seats:4,x:tables.length<=5?positions[i][0]:(i%3)*50,y:tables.length<=5?positions[i][1]:rows<=1?0:Math.floor(i/3)/(rows-1)*100,...t}));
 }
 export function configureFloor(s,command,user,actor){
- manager(user);const zones=floorZones(s);
+ manager(user);const zones=floorZones(s),archived=(s.floor?.zones||[]).filter(z=>z.active===false);
  if(command.type==='zone-save'){
   const name=clean(command.name,35);modelAssert(name,'Escribe el nombre de la zona.');
   modelAssert(!zones.some(z=>z.name.toLowerCase()===name.toLowerCase()&&z.id!==command.id),'Ya existe una zona con ese nombre.');
   const zone=zones.find(z=>z.id===command.id);modelAssert(!command.id||zone,'Zona no disponible.');
   if(zone)zone.name=name;else zones.push({id:crypto.randomUUID(),name});
-  s.floor={...s.floor,zones,version:(s.floor?.version||0)+1};
+  s.floor={...s.floor,zones:[...zones,...archived],version:(s.floor?.version||0)+1};
   s.audits.push({user:actor,action:'zona del salón',details:{reason:name},at:new Date().toISOString()});return s.floor;
  }
  modelAssert(command.version===(s.floor?.version||0),'El plano cambió. Vuelve a abrirlo antes de guardar.');
@@ -335,10 +347,10 @@ export function configureFloor(s,command,user,actor){
  const tables=floorTables(s);
  for(const input of command.tables){
   const table=tables.find(t=>t.number===input.number);
-  modelAssert(table&&zones.some(z=>z.id===input.zone)&&['rect','round'].includes(input.shape)&&Number.isInteger(input.seats)&&input.seats>=1&&input.seats<=30&&['x','y'].every(k=>Number.isFinite(input[k])&&input[k]>=0&&input[k]<=100)&&clean(input.name,40),'Revisa la zona, posición, nombre y lugares de las mesas.');
+  modelAssert(table&&(zones.some(z=>z.id===input.zone)||!table.active&&archived.some(z=>z.id===input.zone))&&['rect','round'].includes(input.shape)&&Number.isInteger(input.seats)&&input.seats>=1&&input.seats<=30&&['x','y'].every(k=>Number.isFinite(input[k])&&input[k]>=0&&input[k]<=100)&&clean(input.name,40),'Revisa la zona, posición, nombre y lugares de las mesas.');
   Object.assign(table,{zone:input.zone,shape:input.shape,seats:input.seats,x:input.x,y:input.y,name:clean(input.name,40)});
  }
- s.tables=tables;s.floor={zones,version:(s.floor?.version||0)+1};
+ s.tables=tables;s.floor={zones:[...zones,...archived],version:(s.floor?.version||0)+1};
  s.audits.push({user:actor,action:'edición del plano',details:{reason:'Posiciones y configuración del salón guardadas'},at:new Date().toISOString()});return s.floor;
 }
 export function ownOrder(o,user,actor){modelAssert(user!=='camarero'||o.waiter?.id===actor,'Solo puedes modificar las mesas que atiendes.');}
@@ -356,6 +368,13 @@ export function guestCommand(s,o,command,user,actor){
  }
  modelAssert(!paid,'La organización de personas y productos queda fija después del primer pago.');
  o.guests??=[];
+ if(type==='guest-distribute'){
+  const rows=command.assignments,pending=o.lines.filter(l=>!l.payment);
+  modelAssert(Array.isArray(rows)&&rows.length===pending.length&&rows.length>0&&new Set(rows.map(r=>r.line)).size===rows.length,'Revisa todos los productos pendientes.');
+  modelAssert(rows.every(r=>pending.some(l=>l.id===r.line)&&o.guests.some(g=>g.id===r.guest)),'Asigna cada producto a una persona de esta cuenta.');
+  for(const r of rows)o.lines.find(l=>l.id===r.line).guest=r.guest;
+  log(s,actor,'distribución por persona',{order:o.number,reason:'Asignación de productos antes del cobro'});return {assigned:rows.length};
+ }
  if(type==='guest-save'){
   const guest=o.guests.find(g=>g.id===command.guest);modelAssert(!command.guest||guest,'Persona no disponible en esta mesa.');
   modelAssert(guest||o.guests.length<30,'Se permiten hasta 30 personas por pedido.');
@@ -376,13 +395,13 @@ export function simulatedInvoice(o,lines,billing,guest){
 }
 export function publicState(s,user,actor){
  if(['supervisor','caja'].includes(user))return s;
- const out=structuredClone(s);out.operations={};out.audits=[];out.events=[];out.refunds=[];out.staffRoles={};
+ const out=structuredClone(s);delete out.publicMenu;out.operations={};out.audits=[];out.events=[];out.refunds=[];out.staffRoles={};
  const station=['cocina','barra'].includes(user);
  const owned=new Set(s.orders.filter(o=>o.waiter?.id===actor).map(o=>o.id));
  out.payments=station?[]:out.payments.filter(p=>owned.has(p.order));
  out.orders=out.orders.map(o=>{
   if(!station&&owned.has(o.id)){delete o.billing;delete o.fiscal;delete o.invoices;return o;}
-  const meta={id:o.id,number:o.number,table:o.table,tableName:o.tableName,service:o.service,people:o.people,waiter:o.waiter,closed:o.closed,shift:o.shift,opened:o.opened,checkRequested:o.checkRequested,amountsHidden:true,lineCount:o.lines.length};
+  const meta={id:o.id,number:o.number,table:o.table,tableName:o.tableName,service:o.service,people:o.people,waiter:o.waiter,closed:o.closed,shift:o.shift,opened:o.opened,checkRequested:o.checkRequested,cancelled:o.cancelled,amountsHidden:true,lineCount:o.lines.length};
   meta.lines=station?o.lines.filter(l=>l.station===user).map(l=>({id:l.id,name:l.name,station:l.station,batch:l.batch,status:l.status,modifiers:l.modifiers,note:l.note})):[];
   return meta;
  });
@@ -390,4 +409,49 @@ export function publicState(s,user,actor){
  for(const item of Object.values(out.ingredients))delete item.cost;
  if(station)out.products=out.products.map(p=>({id:p.id,name:p.name,category:p.category,station:p.station,photo:p.photo,modifiers:p.modifiers}));
  return out;
+}
+
+
+export function digitalMenuCommand(s,command,user,actor){
+ role(user,'supervisor');fail(!setupRequired(s),'Completa la configuración inicial del POS.');
+ const current=s.publicMenu||{revision:0};
+ fail(Number.isInteger(command.revision)&&command.revision===current.revision,'El menú cambió. Vuelve a abrirlo antes de guardar.');
+ if(command.type==='menu-save'){
+  const name=String(command.name||'').trim(),logo=String(command.logo||'');
+  fail(name.length>=2&&name.length<=100,'Escribe un nombre de negocio de 2 a 100 caracteres.');
+  fail(typeof command.enabled==='boolean'&&Number.isInteger(command.interval)&&command.interval>=8&&command.interval<=60,'Revisa la activación y los segundos de rotación (8 a 60).');
+  fail(!logo||/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(logo)&&logo.length<=180000,'Usa un logo JPG, PNG o WebP de hasta 120 KB.');
+  fail(Array.isArray(command.items)&&command.items.length<=500&&new Set(command.items.map(i=>i.id)).size===command.items.length,'Revisa los productos del menú.');
+  fail(command.items.every(i=>s.products.some(p=>p.id===i.id)&&typeof i.published==='boolean'&&typeof i.available==='boolean'),'Un producto no existe o su configuración no es válida.');
+  fail(command.items.filter(i=>i.published).length<=120,'Publica hasta 120 productos por menú.');
+  s.publicMenu={...current,token:current.token||crypto.randomUUID().replaceAll('-',''),revision:current.revision+1,dirty:true,
+   draft:{name,logo,enabled:command.enabled,interval:command.interval,items:command.items.map(i=>({id:i.id,published:i.published,available:i.available}))}};
+  log(s,actor,'borrador del menú digital',{products:command.items.filter(i=>i.published).length});return {saved:true};
+ }
+ fail(current.draft,'Guarda primero la configuración del menú.');
+ const draft=current.draft;
+ fail(!draft.enabled||draft.items.some(i=>i.published&&s.products.some(p=>p.id===i.id)),'Selecciona al menos un producto para publicar.');
+ for(const i of draft.items){const p=s.products.find(p=>p.id===i.id);if(p)p.available=i.available;}
+ s.publicMenu={...current,revision:current.revision+1,dirty:false,live:{...structuredClone(draft),publishedAt:new Date().toISOString()}};
+ log(s,actor,'publicación del menú digital',{enabled:draft.enabled,products:draft.items.filter(i=>i.published).length});return {published:draft.enabled};
+}
+
+export function archiveFloorItem(s,command,user,actor){
+ role(user,'supervisor');fail(!setupRequired(s),'Completa primero la configuración inicial.');
+ fail(command.confirmed===true||command.type==='zone-restore','Confirma que deseas quitar este elemento del plano.');
+ if(command.type==='table-archive'){
+  const tables=restaurantTables(s),table=tables.find(t=>t.number===command.number);
+  fail(table,'Mesa no disponible.');fail(!s.orders.some(o=>!o.closed&&o.table===table.number),'La mesa tiene una cuenta abierta. Ciérrala antes de quitarla.');
+  table.active=false;table.archived=true;s.tables=tables;
+  s.floor={...s.floor,zones:s.floor?.zones||floorZones(s),version:(s.floor?.version||0)+1};
+  log(s,actor,'mesa retirada del plano',{number:table.number,name:table.name});return {archived:true};
+ }
+ const zones=s.floor?.zones||floorZones(s),zone=zones.find(z=>z.id===command.id);fail(zone,'Zona no disponible.');
+ if(command.type==='zone-archive'){
+  fail(floorZones(s).length>1,'Conserva al menos una zona activa.');
+  const tables=floorTables(s).filter(t=>t.zone===zone.id);
+  fail(!tables.some(t=>t.active||s.orders.some(o=>!o.closed&&o.table===t.number)),'Mueve o quita primero las mesas de esta zona; no debe tener cuentas abiertas.');zone.active=false;
+ }else{fail(!zones.some(z=>z.id!==zone.id&&z.active!==false&&z.name.toLowerCase()===zone.name.toLowerCase()),'Hay otra zona activa con ese nombre. Renómbrala antes de restaurar.');zone.active=true;}
+ s.floor={...s.floor,zones,version:(s.floor?.version||0)+1};
+ log(s,actor,command.type==='zone-archive'?'zona retirada del plano':'zona restaurada',{id:zone.id,name:zone.name});return {archived:zone.active===false};
 }
