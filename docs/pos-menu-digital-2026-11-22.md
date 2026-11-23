@@ -93,3 +93,11 @@ POS → Menú → Menú digital y QR. Acceso directo visible solo para el admini
 La prueba completa de menú público utiliza ahora el acceso directo: publicar, QR, consulta móvil/TV y restricciones para camarero. La TV continúa pasiva, sin QR ni controles; no hay cambios fiscales.
 
 Release del acceso directo: `/srv/uno360x-saas/restaurant-releases/20261122-menu-qr-access/source`; respaldo `/var/backups/uno360x-restaurant/split-20261123-012916` (UTC). Verificado en INCIVI: botón visible y configuración abre correctamente, sin guardar ni publicar datos de esa empresa. Pruebas del menú público (2) aprobadas.
+
+## Corrección de Vista previa
+
+Vista previa usa ahora los valores actuales del formulario, incluso antes del primer guardado: nombre, selección, disponibilidad y logo nuevo. Ya no exige una configuración guardada ni bloquea por cambios pendientes. Si no hay productos seleccionados muestra un mensaje dentro del diálogo, no un aviso fuera de pantalla. No guarda, publica ni modifica la empresa; al cerrar conserva el formulario.
+
+Prueba E2E ampliada: abrir sin configuración previa, abrir con selección sin guardar, respetar agotados y productos ocultos, nombre tratado como texto (sin inyectar HTML), no mutar el estado del servidor, conservar la selección tras cerrar y funcionar en celular sin desbordamiento. El flujo guardado/publicación/QR/TV también pasa.
+
+Release de la corrección: `/srv/uno360x-saas/restaurant-releases/20261122-menu-preview-fix/source`; respaldo `/var/backups/uno360x-restaurant/split-20261123-013403` (UTC). Verificado en INCIVI seleccionando Mojito sin guardar ni publicar: se abrió el diálogo y mostró precio/disponibilidad; se cerró y revirtió la selección local. No se escribió configuración de la empresa. Odoo productivo y receptor fiscal sin reinicios. Las dos pruebas E2E del menú público pasaron.

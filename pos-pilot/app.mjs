@@ -286,7 +286,7 @@ document.addEventListener('click',async e=>{
  if(a==='digitalMenu'){if($('#role').value!=='supervisor')return;settingsOpen=true;digitalMenuOpen=true;menuUnsaved=false;render();}
  if(a==='digitalBack'){digitalMenuOpen=false;render();}
  if(a==='publishDigital'){if(menuUnsaved){flash('Guarda los cambios antes de publicar.',true);return;}command('menu-publish',{revision:state.publicMenu?.revision||0});}
- if(a==='previewDigital'){if(menuUnsaved){flash('Guarda los cambios antes de ver la vista previa.',true);return;}previewDigitalMenu();}
+ if(a==='previewDigital')await previewDigitalMenu();
  if(a==='allDigital'){document.querySelectorAll('#digital-form input[name=published]').forEach(c=>c.checked=true);menuUnsaved=true;}
  if(a==='backToPOS')switchTo('Caja');
  if(a==='manageProducts')switchTo('Menú');
@@ -521,8 +521,21 @@ function digitalMenuSettings(){
  '<p class="muted">Estado: '+(m.dirty?'Cambios guardados sin publicar':live?'Publicado':'No publicado')+'. Los cambios de selección y disponibilidad se aplican al publicar. Los precios, descripciones y fotos publicados se actualizan desde el catálogo.</p><div class="actions">'+action('allDigital','Seleccionar todos')+'</div><div class="digital-list">'+(rows||'<p>Agrega productos desde Menú antes de publicar.</p>')+'</div><p class="muted">Los agotados se muestran como No disponible. La disponibilidad también se respeta al agregar productos a una cuenta del POS.</p><button class="primary" type="submit">Guardar configuración</button></form></section>'+
  panel('Tu menú público',live?'<img class="digital-qr" src="'+url+'qr.svg" alt="QR para abrir el menú"><p>Un enlace para este negocio. No pide iniciar sesión.</p><div class="actions"><a class="digital-link" href="'+url+'" target="_blank" rel="noopener noreferrer">Abrir menú en celular</a><a class="digital-link" href="'+url+'?view=tv" target="_blank" rel="noopener noreferrer">Abrir en televisor</a><a class="digital-link" href="'+url+'qr.svg" download="UNO360X-menu-QR.svg">Descargar QR</a></div><label>Enlace del menú<input readonly value="'+url+'"></label>':'<p>Guarda la configuración y publica el menú para generar el acceso público y el QR.</p>')+'</div>'+panel('Precios e impuestos claros','<p>Se muestran el precio base, el ITBIS de cada producto y la propina legal para consumo en el local. El menú es solo de consulta y no permite ordenar ni pagar.</p>');
 }
-function previewDigitalMenu(){
- const d=state.publicMenu?.draft;if(!d){flash('Guarda primero la configuración del menú.',true);return;}
- const rows=d.items.filter(i=>i.published).map(i=>{const p=state.products.find(p=>p.id===i.id);if(!p)return '';const photo=p.photo?.startsWith('data:')?p.photo:p.photo?basePath+'/images/'+p.photo:'';return '<div class="digital-preview-item">'+(photo?'<img src="'+esc(photo)+'" alt="">':'')+'<div><strong>'+title(p)+'</strong><p>'+esc(p.description||p.category)+'</p><strong>'+money(p.cents)+'</strong><small>'+(i.available?'Disponible':'No disponible')+' · ITBIS '+p.tax+'%</small></div></div>';}).join('');
- modal('Vista previa · '+d.name,'<p>Vista previa de la selección guardada. Solo consulta; todavía no publica cambios.</p>'+(rows||'<p>No hay productos seleccionados.</p>'));
+async function previewDigitalMenu(){
+ if($('#role').value!=='supervisor'||!$('#digital-form'))return;
+ const form=new FormData($('#digital-form')),name=String(form.get('name')||'').trim()||'Tu negocio';
+ const selected=new Set(form.getAll('published')),available=new Set(form.getAll('available'));
+ let logo=form.has('removeLogo')?'':state.publicMenu?.draft?.logo||'';
+ try{
+  const upload=form.get('logoUpload');
+  if(upload?.size){
+   if(upload.size>120000||!['image/png','image/jpeg','image/webp'].includes(upload.type))throw Error('Usa un logo JPG, PNG o WebP de hasta 120 KB.');
+   logo=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error('No pudimos leer el logo. Intenta seleccionarlo de nuevo.'));r.readAsDataURL(upload);});
+  }
+  const rows=state.products.filter(p=>selected.has(p.id)).map(p=>{
+   const photo=p.photo?.startsWith('data:')?p.photo:p.photo?basePath+'/images/'+p.photo:'';
+   return '<div class="digital-preview-item">'+(photo?'<img src="'+esc(photo)+'" alt="">':'')+'<div><strong>'+title(p)+'</strong><p>'+esc(p.description||p.category)+'</p><strong>'+money(p.cents)+'</strong><small>'+(available.has(p.id)?'Disponible':'No disponible')+' · '+(p.tax?'ITBIS '+p.tax+'% adicional':'Exento de ITBIS')+'</small></div></div>';
+  }).join('');
+  modal('Vista previa · '+esc(name),(logo?'<img class="digital-preview-logo" src="'+esc(logo)+'" alt="Logo del negocio">':'')+'<p>Así se ve tu selección actual. Esta vista no guarda ni publica cambios.</p>'+(rows||'<p role="status">Selecciona al menos un producto en Publicar para verlo aquí.</p>'));
+ }catch(e){modal('No se pudo abrir la vista previa','<p role="alert">'+esc(e.message)+'</p>');}
 }
